@@ -1,0 +1,12 @@
+*.dll
+*.exe
+*.ilk
+*.obj
+*.out
+*.zip
+*.pdb
+*.dbg
+*.lib
+*.exp
+build
+build/*

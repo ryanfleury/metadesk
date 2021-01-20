@@ -1,0 +1,44 @@
+version(1);
+
+project_name = "metadesk";
+
+patterns =
+{
+	"*.c",
+	"*.cpp",
+	"*.md",
+	"*.h",
+	"*.bat",
+	"*.sh",
+	"*.4coder",
+	"*.txt",
+};
+
+blacklist_patterns =
+{
+	".*",
+};
+
+load_paths =
+{
+	{
+		{ {"."}, .recursive = true, .relative = true }, .os = "win"
+	},
+};
+
+command_list =
+{
+	{
+		.name = "build",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+		.cmd =
+		{
+			{ "build.bat", .os = "win" },
+		},
+	},
+};
+
+fkey_command[1] = "build";

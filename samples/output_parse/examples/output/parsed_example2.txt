@@ -1,0 +1,282 @@
+Node {
+  Kind: Label,
+  Flags: 00001100000100000000000000000000,
+  Flag Names: BraceLeft, BraceRight, Identifier,
+  String: a_set,
+  Whole String: a_set,
+  Tag: @sets
+  Node {
+    Kind: Label,
+    Flags: 00001101000100000000000000000000,
+    Flag Names: BraceLeft, BraceRight, BeforeComma, Identifier,
+    String: named_set,
+    Whole String: named_set,
+    Node {
+      Kind: Label,
+      Flags: 00000001001000000000000000000000,
+      Flag Names: BeforeComma, Numeric,
+      String: 1,
+      Whole String: 1,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000001011000000000000000000000,
+      Flag Names: BeforeComma, AfterComma, Numeric,
+      String: 3,
+      Whole String: 3,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000011000000000000000000000,
+      Flag Names: AfterComma, Numeric,
+      String: 7,
+      Whole String: 7,
+    }
+  }
+  Node {
+    Kind: UnnamedSet,
+    Flags: 00001101010000000000000000000000,
+    Flag Names: BraceLeft, BraceRight, BeforeComma, AfterComma,
+    Node {
+      Kind: Label,
+      Flags: 00000001000100000000000000000000,
+      Flag Names: BeforeComma, Identifier,
+      String: not,
+      Whole String: not,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000001010100000000000000000000,
+      Flag Names: BeforeComma, AfterComma, Identifier,
+      String: named,
+      Whole String: named,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000010100000000000000000000,
+      Flag Names: AfterComma, Identifier,
+      String: set,
+      Whole String: set,
+    }
+  }
+  Node {
+    Kind: UnnamedSet,
+    Flags: 00001101010000000000000000000000,
+    Flag Names: BraceLeft, BraceRight, BeforeComma, AfterComma,
+    Tag: @tag_with_params
+      Tag Children{
+        Node {
+          Kind: Label,
+          Flags: 00000001000100000000000000000000,
+          Flag Names: BeforeComma, Identifier,
+          String: p1,
+          Whole String: p1,
+        }
+        Node {
+          Kind: Label,
+          Flags: 00000001010100000000000000000000,
+          Flag Names: BeforeComma, AfterComma, Identifier,
+          String: p2,
+          Whole String: p2,
+        }
+        Node {
+          Kind: Label,
+          Flags: 00000000010100000000000000000000,
+          Flag Names: AfterComma, Identifier,
+          String: p3,
+          Whole String: p3,
+        }
+      }
+    Node {
+      Kind: Label,
+      Flags: 00000001000100000000000000000000,
+      Flag Names: BeforeComma, Identifier,
+      String: e1,
+      Whole String: e1,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000001010100000000000000000000,
+      Flag Names: BeforeComma, AfterComma, Identifier,
+      String: e2,
+      Whole String: e2,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000010100000000000000000000,
+      Flag Names: AfterComma, Identifier,
+      String: e3,
+      Whole String: e3,
+    }
+  }
+  Node {
+    Kind: UnnamedSet,
+    Flags: 00001101010000000000000000000000,
+    Flag Names: BraceLeft, BraceRight, BeforeComma, AfterComma,
+    Tag: @tag_with_params
+      Tag Children{
+        Node {
+          Kind: Label,
+          Flags: 00000001000100000000000000000000,
+          Flag Names: BeforeComma, Identifier,
+          String: p1,
+          Whole String: p1,
+        }
+        Node {
+          Kind: Label,
+          Flags: 00000001010100000000000000000000,
+          Flag Names: BeforeComma, AfterComma, Identifier,
+          String: p2,
+          Whole String: p2,
+        }
+        Node {
+          Kind: Label,
+          Flags: 00000000010100000000000000000000,
+          Flag Names: AfterComma, Identifier,
+          String: p3,
+          Whole String: p3,
+        }
+      }
+    Tag: @tag2_with_params
+      Tag Children{
+        Node {
+          Kind: Label,
+          Flags: 00000001000100000000000000000000,
+          Flag Names: BeforeComma, Identifier,
+          String: p,
+          Whole String: p,
+        }
+        Node {
+          Kind: Label,
+          Flags: 00000001010100000000000000000000,
+          Flag Names: BeforeComma, AfterComma, Identifier,
+          String: pp,
+          Whole String: pp,
+        }
+        Node {
+          Kind: Label,
+          Flags: 00000000010100000000000000000000,
+          Flag Names: AfterComma, Identifier,
+          String: ppp,
+          Whole String: ppp,
+        }
+      }
+    Node {
+      Kind: Label,
+      Flags: 00000001000100000000000000000000,
+      Flag Names: BeforeComma, Identifier,
+      String: e1,
+      Whole String: e1,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000001010100000000000000000000,
+      Flag Names: BeforeComma, AfterComma, Identifier,
+      String: e2,
+      Whole String: e2,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000010100000000000000000000,
+      Flag Names: AfterComma, Identifier,
+      String: e3,
+      Whole String: e3,
+    }
+  }
+}
+
+Node {
+  Kind: Label,
+  Flags: 00001100000100000000000000000000,
+  Flag Names: BraceLeft, BraceRight, Identifier,
+  String: empty,
+  Whole String: empty,
+  Tag: @empty_set
+}
+
+Node {
+  Kind: UnnamedSet,
+  Flags: 00001100000000000000000000000000,
+  Flag Names: BraceLeft, BraceRight,
+  Tag: @tagged_unnamed_set
+  Node {
+    Kind: Label,
+    Flags: 00001100000100000000000000000000,
+    Flag Names: BraceLeft, BraceRight, Identifier,
+    String: a_label,
+    Whole String: a_label,
+    Node {
+      Kind: Label,
+      Flags: 00000000000100000000000000000000,
+      Flag Names: Identifier,
+      String: unnamed_set_element,
+      Whole String: unnamed_set_element,
+    }
+  }
+}
+
+Node {
+  Kind: UnnamedSet,
+  Flags: 00001100000000000000000000000000,
+  Flag Names: BraceLeft, BraceRight,
+  Tag: @showcase_mixed_set_scoping
+  Node {
+    Kind: Label,
+    Flags: 10010001000000000000000000000000,
+    Flag Names: ParenLeft, BracketRight, BeforeComma,
+    String: +,
+    Whole String: +,
+    Tag: @symbol_label
+    Node {
+      Kind: Label,
+      Flags: 00000000001000000000000000000000,
+      Flag Names: Numeric,
+      String: 1,
+      Whole String: 1,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000001000000000000000000000,
+      Flag Names: Numeric,
+      String: 2,
+      Whole String: 2,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000001000000000000000000000,
+      Flag Names: Numeric,
+      String: 3,
+      Whole String: 3,
+    }
+  }
+  Node {
+    Kind: Label,
+    Flags: 01100001010000000000000000000000,
+    Flag Names: ParenRight, BracketLeft, BeforeComma, AfterComma,
+    String: *,
+    Whole String: *,
+    Tag: @symbol_label
+    Node {
+      Kind: Label,
+      Flags: 00000000000100000000000000000000,
+      Flag Names: Identifier,
+      String: x,
+      Whole String: x,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000000100000000000000000000,
+      Flag Names: Identifier,
+      String: y,
+      Whole String: y,
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000000100000000000000000000,
+      Flag Names: Identifier,
+      String: z,
+      Whole String: z,
+    }
+  }
+}
+

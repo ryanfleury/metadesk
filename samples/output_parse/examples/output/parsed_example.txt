@@ -1,0 +1,73 @@
+Node {
+  Kind: Label,
+  Flags: 00001100000100000000000000000000,
+  Flag Names: BraceLeft, BraceRight, Identifier,
+  String: foo,
+  Whole String: foo,
+  Tag: @struct
+  Node {
+    Kind: Label,
+    Flags: 11000001000100000000000000000000,
+    Flag Names: ParenLeft, ParenRight, BeforeComma, Identifier,
+    String: x,
+    Whole String: x,
+    Node {
+      Kind: UnnamedSet,
+      Flags: 00110000000000000000000000000000,
+      Flag Names: BracketLeft, BracketRight,
+      Node {
+        Kind: Label,
+        Flags: 00000000000100000000000000000000,
+        Flag Names: Identifier,
+        String: MAX_PATH,
+        Whole String: MAX_PATH,
+      }
+    }
+    Node {
+      Kind: Label,
+      Flags: 00000000000100000000000000000000,
+      Flag Names: Identifier,
+      String: char,
+      Whole String: char,
+    }
+  }
+}
+
+Node {
+  Kind: Label,
+  Flags: 00001100000100000000000000000000,
+  Flag Names: BraceLeft, BraceRight, Identifier,
+  String: bar,
+  Whole String: bar,
+  Tag: @struct
+  Tag: @test_tag
+  Node {
+    Kind: Label,
+    Flags: 00000000000100000000000000000000,
+    Flag Names: Identifier,
+    String: y,
+    Whole String: y,
+    Node {
+      Kind: Label,
+      Flags: 00000001000100000000000000000000,
+      Flag Names: BeforeComma, Identifier,
+      String: float,
+      Whole String: float,
+    }
+  }
+  Node {
+    Kind: Label,
+    Flags: 00000000000100000000000000000000,
+    Flag Names: Identifier,
+    String: z,
+    Whole String: z,
+    Node {
+      Kind: Label,
+      Flags: 00000001000100000000000000000000,
+      Flag Names: BeforeComma, Identifier,
+      String: i32,
+      Whole String: i32,
+    }
+  }
+}
+
