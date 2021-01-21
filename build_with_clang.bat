@@ -1,7 +1,8 @@
 @echo off
 
 echo ~~~ Metadesk Build ~~~
-set accepted_clang_warnings=-Wno-return-type -Wno-deprecated-declarations -Wno-pointer-sign -Wno-writable-strings -Wno-unknown-warning-option
+rem TODO(mal): Review these warnings
+set accepted_clang_warnings=-Wno-deprecated-declarations -Wno-pointer-sign -Wno-writable-strings -Wno-unknown-warning-option
 set compile_flags=-I../source/ %accepted_clang_warnings%
 
 if not exist build mkdir build

@@ -12,7 +12,7 @@ popd () {
 
 echo ~~~ Metadesk Build ~~~
 # TODO(mal): Review these warnings
-accepted_clang_warnings="-Wno-return-type -Wno-pointer-sign -Wno-writable-strings -Wno-unknown-warning-option"
+accepted_clang_warnings="-Wno-deprecated-declarations -Wno-pointer-sign -Wno-writable-strings -Wno-unknown-warning-option"
 compile_flags="-I../source/ $accepted_clang_warnings"
 
 mkdir -p build
