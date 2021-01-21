@@ -15,5 +15,5 @@ MD_MALLOC_Alloc(void *ctx, MD_u64 size)
 static void*
 MD_MALLOC_GetCtx(void)
 {
-    return(MD_MALLOC_Alloc);
+    return((void *)MD_MALLOC_Alloc);
 }

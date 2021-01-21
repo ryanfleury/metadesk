@@ -989,7 +989,8 @@ MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rul
 MD_FUNCTION_IMPL MD_Token
 MD_ZeroToken(void)
 {
-    MD_Token token = {0};
+    MD_Token token;
+    _MD_MemoryZero(&token, sizeof(token));
     return token;
 }
 
@@ -1062,7 +1063,8 @@ MD_Parse_BumpNext(MD_ParseCtx *ctx)
 MD_FUNCTION_IMPL MD_Token
 MD_Parse_LexNext(MD_ParseCtx *ctx)
 {
-    MD_Token token = {0};
+    MD_Token token;
+    _MD_MemoryZero(&token, sizeof(token));
     
     MD_u8 *one_past_last = ctx->file_contents.str + ctx->file_contents.size;
     MD_u8 *first = ctx->at;
@@ -1237,7 +1239,8 @@ MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups)
     MD_b32 skip_whitespace = (skip_groups & MD_TokenGroup_Whitespace);
     MD_b32 skip_regular    = (skip_groups & MD_TokenGroup_Regular);
     
-    MD_Token result = {0};
+    MD_Token result;
+    _MD_MemoryZero(&result, sizeof(result));
     
     loop:
     {
@@ -1270,6 +1273,7 @@ MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string)
     int result = 0;
     
     MD_Token token_any = MD_Parse_PeekSkipSome(ctx, 0);
+    MD_Token token_regular;
     if(MD_StringMatch(token_any.string, string, 0))
     {
         result = 1;
@@ -1277,7 +1281,7 @@ MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string)
         goto end;
     }
     
-    MD_Token token_regular = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+    token_regular = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
     if(MD_StringMatch(token_regular.string, string, 0))
     {
         result = 1;
@@ -1394,7 +1398,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     MD_ParseResult result = {0};
     result.node = MD_NilNode();
     
-    MD_Token token = {0};
+    MD_Token token;
+    _MD_MemoryZero(&token, sizeof(token));
     
     MD_Node *first_tag = 0;
     MD_Node *last_tag = 0;
@@ -1572,7 +1577,8 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
     
     for(;MD_Parse_Require(ctx, MD_S8Lit("@"));)
     {
-        MD_Token name = {0};
+        MD_Token name;
+        _MD_MemoryZero(&name, sizeof(name));
         if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
         {
             MD_Node *tag = _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_Tag, name);
@@ -1903,7 +1909,7 @@ MD_TagCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_StringMatchFla
 MD_FUNCTION_IMPL void
 MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 str)
 {
-    char *kind_name = kind == MD_MessageKind_Error ? "error" : "warning";
+    const char *kind_name = kind == MD_MessageKind_Error ? "error" : "warning";
     MD_CodeLoc loc = MD_CodeLocFromNode(node);
     fprintf(stderr, "%.*s(%i:%i): %s: %.*s\n",
             MD_StringExpand(loc.filename),
@@ -2265,12 +2271,13 @@ MD_PRIVATE_FUNCTION_IMPL MD_Expr *
 _MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
 {
     MD_Expr *expr = _MD_ParseUnaryExpr(ctx);
+    MD_ExprKind expr_kind;
     if(MD_ExprIsNil(expr))
     {
         goto end_parse;
     }
     
-    MD_ExprKind expr_kind = MD_BinaryExprKindFromNode(ctx->at);
+    expr_kind = MD_BinaryExprKindFromNode(ctx->at);
     if(expr_kind != MD_ExprKind_Nil)
     {
         for(int precedence = MD_ExprPrecFromExprKind(expr_kind);
