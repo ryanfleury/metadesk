@@ -500,12 +500,7 @@ struct MD_ParseResult
 typedef enum MD_ExprKind
 {
     // VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
-    // it is kept in-sync with the MD_ExprPrecFromExprKind and the following
-    // functions:
-    //
-    // MD_BinaryExprKindFromNode
-    // MD_PreUnaryExprKindFromNode
-    // MD_PostUnaryExprKindFromNode
+    // it is kept in-sync with the _MD_MetadataFromExprKind function.
     
     MD_ExprKind_Nil,
     
@@ -757,11 +752,13 @@ MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_StringMatc
 
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_OutputExpr(FILE *file, MD_Expr *expr);
 MD_FUNCTION void MD_OutputTree_C_String(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_OutputTree_C_Struct(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_OutputTree_C_Decl(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_Output_C_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type);
+MD_FUNCTION void MD_OutputExpr(FILE *file, MD_Expr *expr);
+MD_FUNCTION void MD_OutputExpr_C(FILE *file, MD_Expr *expr);
+MD_FUNCTION void MD_OutputType(FILE *file, MD_Expr *expr);
 MD_FUNCTION void MD_OutputType_C_LHS(FILE *file, MD_Expr *type);
 MD_FUNCTION void MD_OutputType_C_RHS(FILE *file, MD_Expr *type);
 

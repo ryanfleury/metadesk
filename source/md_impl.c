@@ -531,7 +531,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
     MD_b32 making_word = 0;
     MD_String8 word = {0};
     
-    for(MD_u64 i = 0; i < string.size;) 
+    for(MD_u64 i = 0; i < string.size;)
     {
         if(making_word)
         {
@@ -1979,11 +1979,85 @@ MD_ExprIsNil(MD_Expr *expr)
     return expr == 0 || expr == &_md_nil_expr || expr->kind == MD_ExprKind_Nil;
 }
 
+typedef enum _MD_ExprKindGroup
+{
+    _MD_ExprKindGroup_Nil,
+    _MD_ExprKindGroup_Atom,
+    _MD_ExprKindGroup_Binary,
+    _MD_ExprKindGroup_PreUnary,
+    _MD_ExprKindGroup_PostUnary,
+    _MD_ExprKindGroup_Type,
+}
+_MD_ExprKindGroup;
+
+typedef struct _MD_ExprKindMetadata _MD_ExprKindMetadata;
+struct _MD_ExprKindMetadata
+{
+    _MD_ExprKindGroup group;
+    MD_ExprPrec prec;
+    char *symbol;
+    char *pre_symbol;
+    char *post_symbol;
+};
+
+MD_FUNCTION_IMPL _MD_ExprKindMetadata *
+_MD_MetadataFromExprKind(MD_ExprKind kind)
+{
+    // 0:  Invalid
+    // 12: (unary) - ~ !
+    // 11: . -> () []
+    // 10: * / %
+    // 9:  + -
+    // 8:  << >>
+    // 7:  < <= > >=
+    // 6:  == !=
+    // 5:  (bitwise) &
+    // 4:  ^
+    // 3:  |
+    // 2:  &&
+    // 1:  ||
+    static _MD_ExprKindMetadata metadata[] =
+    {
+        {_MD_ExprKindGroup_Nil,       +0, "NIL",   "",  "" },  // MD_ExprKind_Nil
+        {_MD_ExprKindGroup_Atom,      +0, "NIL",   "",  "" },  // MD_ExprKind_Atom
+        {_MD_ExprKindGroup_Binary,    +11, ".",     "",  "" },  // MD_ExprKind_Dot
+        {_MD_ExprKindGroup_Binary,    +11, "->",    "",  "" },  // MD_ExprKind_Arrow
+        {_MD_ExprKindGroup_PostUnary, +11, "",      "(", ")"},  // MD_ExprKind_Call
+        {_MD_ExprKindGroup_PostUnary, +11, "",      "[", "]"},  // MD_ExprKind_Subscript
+        {_MD_ExprKindGroup_PreUnary,  +12, "",      "*", "" },  // MD_ExprKind_Dereference
+        {_MD_ExprKindGroup_PreUnary,  +12, "",      "&", "" },  // MD_ExprKind_Reference
+        {_MD_ExprKindGroup_Binary,    +9,  "+",     "",  "" },  // MD_ExprKind_Add
+        {_MD_ExprKindGroup_Binary,    +9,  "-",     "",  "" },  // MD_ExprKind_Subtract
+        {_MD_ExprKindGroup_Binary,    +10, "*",     "",  "" },  // MD_ExprKind_Multiply
+        {_MD_ExprKindGroup_Binary,    +10, "/",     "",  "" },  // MD_ExprKind_Divide
+        {_MD_ExprKindGroup_Binary,    +10, "%",     "",  "" },  // MD_ExprKind_Mod
+        {_MD_ExprKindGroup_Binary,    +6,  "==",    "",  "" },  // MD_ExprKind_IsEqual
+        {_MD_ExprKindGroup_Binary,    +6,  "!=",    "",  "" },  // MD_ExprKind_IsNotEqual
+        {_MD_ExprKindGroup_Binary,    +7,  "<",     "",  "" },  // MD_ExprKind_LessThan
+        {_MD_ExprKindGroup_Binary,    +7,  ">",     "",  "" },  // MD_ExprKind_GreaterThan
+        {_MD_ExprKindGroup_Binary,    +7,  "<=",    "",  "" },  // MD_ExprKind_LessThanEqualTo
+        {_MD_ExprKindGroup_Binary,    +7,  ">=",    "",  "" },  // MD_ExprKind_GreaterThanEqualTo
+        {_MD_ExprKindGroup_Binary,    +2,  "&&",    "",  "" },  // MD_ExprKind_BoolAnd
+        {_MD_ExprKindGroup_Binary,    +1,  "||",    "",  "" },  // MD_ExprKind_BoolOr
+        {_MD_ExprKindGroup_PreUnary,  +12, "",      "!", "" },  // MD_ExprKind_BoolNot
+        {_MD_ExprKindGroup_Binary,    +5,  "&",     "",  "" },  // MD_ExprKind_BitAnd
+        {_MD_ExprKindGroup_Binary,    +3,  "|",     "",  "" },  // MD_ExprKind_BitOr
+        {_MD_ExprKindGroup_PreUnary,  +12, "",      "~", "" },  // MD_ExprKind_BitNot
+        {_MD_ExprKindGroup_Binary,    +4,  "^",     "",  "" },  // MD_ExprKind_BitXor
+        {_MD_ExprKindGroup_Binary,    +8,  "<<",    "",  "" },  // MD_ExprKind_LeftShift
+        {_MD_ExprKindGroup_Binary,    +8,  ">>",    "",  "" },  // MD_ExprKind_RightShift
+        {_MD_ExprKindGroup_PreUnary,  +12, "",      "-", "" },  // MD_ExprKind_Negative
+        {_MD_ExprKindGroup_Type,      +0,  "*",     "",  "" },  // MD_ExprKind_Pointer
+        {_MD_ExprKindGroup_Type,      +0,  "",      "[", "]"},  // MD_ExprKind_Array
+    };
+    return &metadata[kind];
+}
+
 MD_FUNCTION_IMPL MD_ExprKind
 MD_PreUnaryExprKindFromNode(MD_Node *node)
 {
     MD_ExprKind kind = MD_ExprKind_Nil;
-#define MD_ExprStr(str, _kind) if(MD_StringMatch(node->string, MD_S8Lit(str), 0)) {kind = _kind; goto end;}
+    // NOTE(rjf): Special-cases for calls/subscripts.
     if(!MD_NodeIsNil(node->first_child))
     {
         if(node->flags & MD_NodeFlag_ParenLeft &&
@@ -1999,14 +2073,20 @@ MD_PreUnaryExprKindFromNode(MD_Node *node)
     }
     else
     {
-        MD_ExprStr("-", MD_ExprKind_Negative);
-        MD_ExprStr("~", MD_ExprKind_BitNot);
-        MD_ExprStr("!", MD_ExprKind_BoolNot);
-        MD_ExprStr("*", MD_ExprKind_Dereference);
-        MD_ExprStr("&", MD_ExprKind_Reference);
+        for(MD_ExprKind kind_it = (MD_ExprKind)0; kind_it < MD_ExprKind_MAX;
+            kind_it = (MD_ExprKind)((int)kind_it + 1))
+        {
+            _MD_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(kind_it);
+            if(metadata->group == _MD_ExprKindGroup_PreUnary)
+            {
+                if(MD_StringMatch(node->string, MD_S8CString(metadata->pre_symbol), 0))
+                {
+                    kind = kind_it;
+                    break;
+                }
+            }
+        }
     }
-    end:;
-#undef MD_ExprStr
     return kind;
 }
 
@@ -2034,92 +2114,30 @@ MD_FUNCTION_IMPL MD_ExprKind
 MD_BinaryExprKindFromNode(MD_Node *node)
 {
     MD_ExprKind kind = MD_ExprKind_Nil;
-#define MD_ExprStr(str, _kind) if(MD_StringMatch(node->string, MD_S8Lit(str), 0)) {kind = _kind; goto end;}
     if(node->kind == MD_NodeKind_Label && MD_NodeIsNil(node->first_child))
     {
-        MD_ExprStr(".",  MD_ExprKind_Dot);
-        MD_ExprStr("->", MD_ExprKind_Arrow);
-        MD_ExprStr("+",  MD_ExprKind_Add);
-        MD_ExprStr("-",  MD_ExprKind_Subtract);
-        MD_ExprStr("*",  MD_ExprKind_Multiply);
-        MD_ExprStr("/",  MD_ExprKind_Divide);
-        MD_ExprStr("%",  MD_ExprKind_Mod);
-        MD_ExprStr("==", MD_ExprKind_IsEqual);
-        MD_ExprStr("!=", MD_ExprKind_IsNotEqual);
-        MD_ExprStr("<",  MD_ExprKind_LessThan);
-        MD_ExprStr(">",  MD_ExprKind_GreaterThan);
-        MD_ExprStr("<=", MD_ExprKind_LessThanEqualTo);
-        MD_ExprStr(">=", MD_ExprKind_GreaterThanEqualTo);
-        MD_ExprStr("&&", MD_ExprKind_BoolAnd);
-        MD_ExprStr("||", MD_ExprKind_BoolOr);
-        MD_ExprStr("!",  MD_ExprKind_BoolNot);
-        MD_ExprStr("&",  MD_ExprKind_BitAnd);
-        MD_ExprStr("|",  MD_ExprKind_BitOr);
-        MD_ExprStr("^",  MD_ExprKind_BitXor);
-        MD_ExprStr("<<", MD_ExprKind_LeftShift);
-        MD_ExprStr(">>", MD_ExprKind_RightShift);
+        for(MD_ExprKind kind_it = (MD_ExprKind)0; kind_it < MD_ExprKind_MAX;
+            kind_it = (MD_ExprKind)((int)kind_it + 1))
+        {
+            _MD_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(kind_it);
+            if(metadata->group == _MD_ExprKindGroup_Binary)
+            {
+                if(MD_StringMatch(node->string, MD_S8CString(metadata->symbol), 0))
+                {
+                    kind = kind_it;
+                    break;
+                }
+            }
+        }
     }
-    end:;
-#undef MD_ExprStr
     return kind;
 }
 
 MD_FUNCTION_IMPL MD_ExprPrec
 MD_ExprPrecFromExprKind(MD_ExprKind kind)
 {
-    // 0:  Invalid
-    // 12: (unary) - ~ !
-    // 11: . -> () []
-    // 10: * / %
-    // 9:  + -
-    // 8:  << >>
-    // 7:  < <= > >= 
-    // 6:  == !=
-    // 5:  (bitwise) &
-    // 4:  ^
-    // 3:  |
-    // 2:  &&
-    // 1:  ||
-    MD_ExprPrec kind_to_prec[] =
-    {
-        +0,  // MD_ExprKind_Nil
-        +0,  // MD_ExprKind_Atom
-        
-        +11, // MD_ExprKind_Dot
-        +11, // MD_ExprKind_Arrow
-        +11, // MD_ExprKind_Call
-        +11, // MD_ExprKind_Subscript
-        +12, // MD_ExprKind_Dereference
-        +12, // MD_ExprKind_Reference
-        
-        +9,  // MD_ExprKind_Add
-        +9,  // MD_ExprKind_Subtract
-        +10, // MD_ExprKind_Multiply
-        +10, // MD_ExprKind_Divide
-        +10, // MD_ExprKind_Mod
-        
-        +6,  // MD_ExprKind_IsEqual
-        +6,  // MD_ExprKind_IsNotEqual
-        +7,  // MD_ExprKind_LessThan
-        +7,  // MD_ExprKind_GreaterThan
-        +7,  // MD_ExprKind_LessThanEqualTo
-        +7,  // MD_ExprKind_GreaterThanEqualTo
-        
-        +2,  // MD_ExprKind_BoolAnd
-        +1,  // MD_ExprKind_BoolOr
-        +12, // MD_ExprKind_BoolNot
-        +5,  // MD_ExprKind_BitAnd
-        +3,  // MD_ExprKind_BitOr
-        +12, // MD_ExprKind_BitNot
-        +4,  // MD_ExprKind_BitXor
-        +8,  // MD_ExprKind_LeftShift
-        +8,  // MD_ExprKind_RightShift
-        
-        +12, // MD_ExprKind_Negative
-        +0,  // MD_ExprKind_Pointer
-        +0,  // MD_ExprKind_Array
-    };
-    return kind_to_prec[kind];
+    _MD_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(kind);
+    return metadata->prec;
 }
 
 MD_FUNCTION_IMPL MD_Expr *
@@ -2476,12 +2494,6 @@ MD_OutputTree(FILE *file, MD_Node *node)
 }
 
 MD_FUNCTION_IMPL void
-MD_OutputExpr(FILE *file, MD_Expr *expr)
-{
-    
-}
-
-MD_FUNCTION_IMPL void
 MD_OutputTree_C_String(FILE *file, MD_Node *node)
 {
     fprintf(file, "\"");
@@ -2522,7 +2534,6 @@ MD_OutputTree_C_Decl(FILE *file, MD_Node *node)
 {
     if(node)
     {
-        // TODO(allen): MD_ParseAsType?
         MD_Expr *type = MD_ParseAsType(node->first_child, node->last_child);
         MD_Output_C_DeclByNameAndType(file, node->string, type);
     }
@@ -2534,6 +2545,21 @@ MD_Output_C_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type)
     MD_OutputType_C_LHS(file, type);
     fprintf(file, " %.*s", MD_StringExpand(name));
     MD_OutputType_C_RHS(file, type);
+}
+
+MD_FUNCTION_IMPL void
+MD_OutputExpr(FILE *file, MD_Expr *expr)
+{
+    if(!MD_NodeIsNil(expr->node))
+    {
+        
+    }
+}
+
+MD_FUNCTION_IMPL void
+MD_OutputExpr_C(FILE *file, MD_Expr *expr)
+{
+    MD_OutputExpr(file, expr);
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_b32
