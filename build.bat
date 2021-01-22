@@ -10,6 +10,7 @@ echo ~~~ Build All Samples ~~~
 cl %compile_flags% ..\samples\old_style_custom_layer.c
 cl %compile_flags% ..\samples\static_site_generator\static_site_generator.c
 cl %compile_flags% ..\samples\output_parse\output_parse.c
+cl %compile_flags% ..\samples\c_code_generation.c
 echo.
 echo ~~~ Build All Tests ~~~
 cl %compile_flags% ..\tests\sanity_tests.c
@@ -47,4 +48,10 @@ pushd output
 popd
 popd
 popd
+popd
+
+echo.
+echo ~~~ Running C Code Generation Sample ~~~
+pushd build
+c_code_generation.exe
 popd

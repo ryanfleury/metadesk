@@ -2375,6 +2375,7 @@ MD_ParseAsType(MD_Node *first, MD_Node *last)
         else if(_MD_NodeParse_ConsumeSet(ctx, &set))
         {
             MD_Expr *t = MD_MakeExpr(set, MD_ExprKind_Array, MD_NilExpr(), MD_NilExpr());
+            t->sub[1] = MD_ParseAsExpr(set->first_child, set->last_child);
             _MD_PushType(t);
         }
         else if(_MD_NodeParse_ConsumeAtom(ctx, &base_type))
@@ -2552,7 +2553,41 @@ MD_OutputExpr(FILE *file, MD_Expr *expr)
 {
     if(!MD_NodeIsNil(expr->node))
     {
-        
+        _MD_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(expr->kind);
+        switch(metadata->group)
+        {
+            case _MD_ExprKindGroup_Atom:
+            {
+                fprintf(file, "%.*s", MD_StringExpand(expr->node->string));
+            }break;
+            
+            case _MD_ExprKindGroup_Binary:
+            {
+                fprintf(file, "(");
+                MD_OutputExpr(file, expr->sub[0]);
+                fprintf(file, " %s ", metadata->symbol);
+                MD_OutputExpr(file, expr->sub[1]);
+                fprintf(file, ")");
+            }break;
+            
+            case _MD_ExprKindGroup_PreUnary:
+            {
+                fprintf(file, "%s", metadata->pre_symbol);
+                fprintf(file, "(");
+                MD_OutputExpr(file, expr->sub[0]);
+                fprintf(file, ")");
+            }break;
+            
+            case _MD_ExprKindGroup_PostUnary:
+            {
+                fprintf(file, "(");
+                MD_OutputExpr(file, expr->sub[0]);
+                fprintf(file, ")");
+                fprintf(file, "%s", metadata->post_symbol);
+            }break;
+            
+            default: break;
+        }
     }
 }
 
@@ -2637,8 +2672,7 @@ MD_OutputType_C_RHS(FILE *file, MD_Expr *type)
                 fprintf(file, ")");
             }
             fprintf(file, "[");
-            // TODO(allen): MD_OutputExpr_C(file type->sub[1]);
-            fprintf(file, "\"C expressions not implemented\"");
+            MD_OutputExpr_C(file, type->sub[1]);
             fprintf(file, "]");
             MD_OutputType_C_RHS(file, type->sub[0]);
         }break;
