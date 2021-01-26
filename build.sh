@@ -22,6 +22,7 @@ echo ~~~ Build All Samples ~~~
 $CC $compile_flags ../samples/old_style_custom_layer.c -o old_style_custom_layer
 $CC $compile_flags ../samples/static_site_generator/static_site_generator.c -o static_site_generator
 $CC $compile_flags ../samples/output_parse/output_parse.c -o output_parse
+$CC $compile_flags ../samples/c_code_generation.c -o c_code_generation
 echo
 echo ~~~ Build All Tests ~~~
 $CC $compile_flags ../tests/sanity_tests.c -o sanity_tests
@@ -32,7 +33,7 @@ popd
 echo
 echo ~~~ Running Sanity Tests ~~~
 pushd build
-sanity_tests
+./sanity_tests
 popd
 
 echo
@@ -47,4 +48,10 @@ echo ~~~ Running Output Parse Sample ~~~
 mkdir -p samples/output_parse/examples/output
 pushd samples/output_parse/examples/output
 ../../../../build/output_parse ../example.md ../example2.md
+popd
+
+echo
+echo ~~~ Running C Code Generation Sample ~~~
+pushd build
+./c_code_generation
 popd

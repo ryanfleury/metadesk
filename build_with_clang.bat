@@ -12,6 +12,7 @@ echo ~~~ Build All Samples ~~~
 clang %compile_flags% ..\samples\old_style_custom_layer.c -o old_style_custom_layer.exe
 clang %compile_flags% ..\samples\static_site_generator\static_site_generator.c -o static_site_generator.exe
 clang %compile_flags% ..\samples\output_parse\output_parse.c -o output_parse.exe
+clang %compile_flags% ..\samples\c_code_generation.c -o c_code_generation.exe
 echo.
 echo ~~~ Build All Tests ~~~
 clang %compile_flags% ..\tests\sanity_tests.c -o sanity_tests.exe
@@ -49,4 +50,10 @@ pushd output
 popd
 popd
 popd
+popd
+
+echo.
+echo ~~~ Running C Code Generation Sample ~~~
+pushd build
+c_code_generation.exe
 popd
