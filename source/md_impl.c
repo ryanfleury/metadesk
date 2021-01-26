@@ -2504,6 +2504,11 @@ MD_OutputTree_C_String(FILE *file, MD_Node *node)
         {
             fprintf(file, "\\n\"\n\"");
         }
+        else if(node->string.str[i] == '\r' &&
+                i+1 < node->string.size && node->string.str[i+1] == '\n')
+        {
+            // NOTE(mal): Step over CR when quoting CRLF newlines
+        }
         else
         {
             fprintf(file, "%c", node->string.str[i]);
@@ -2814,7 +2819,7 @@ MD_FUNCTION_IMPL MD_String8
 MD_LoadEntireFile(MD_String8 filename)
 {
     MD_String8 file_contents = {0};
-    FILE *file = fopen((char*)MD_PushStringCopy(filename).str, "r");
+    FILE *file = fopen((char*)MD_PushStringCopy(filename).str, "rb");
     if(file)
     {
         fseek(file, 0, SEEK_END);
