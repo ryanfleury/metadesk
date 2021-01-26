@@ -974,8 +974,22 @@ MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rul
         slot = _MD_PushArray(_MD_GetCtx(), MD_NodeTableSlot, 1);
         if(slot)
         {
-            slot->next = table->table[index];
-            table->table[index] = slot;
+            slot->next = 0;
+            if(table->table[index])
+            {
+                for(MD_NodeTableSlot *old_slot = table->table[index]; old_slot; old_slot = old_slot->next)
+                {
+                    if(old_slot->next == 0)
+                    {
+                        old_slot->next = slot;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                table->table[index] = slot;
+            }
         }
     }
     
