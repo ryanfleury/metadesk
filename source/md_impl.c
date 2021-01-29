@@ -1786,7 +1786,7 @@ MD_IndexFromNode(MD_Node *node)
     int idx = 0;
     if(node && !MD_NodeIsNil(node))
     {
-        for(MD_Node *last = node->prev; last; last = last->prev, idx += 1);
+        for(MD_Node *last = node->prev; !MD_NodeIsNil(last); last = last->prev, idx += 1);
     }
     return idx;
 }
@@ -1927,7 +1927,7 @@ MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 str)
 {
     const char *kind_name = kind == MD_MessageKind_Error ? "error" : "warning";
     MD_CodeLoc loc = MD_CodeLocFromNode(node);
-    fprintf(stderr, "%.*s(%i:%i): %s: %.*s\n",
+    fprintf(stderr, "%.*s:%i:%i: %s: %.*s\n",
             MD_StringExpand(loc.filename),
             loc.line, loc.column,
             kind_name,
