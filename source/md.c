@@ -7,9 +7,10 @@
 #if MD_OS_WINDOWS
 # include "md_win32.c"
 #elif MD_OS_LINUX
-# include "md_posix.c"
+# include "md_linux.c"
 #else
 # error No default implementation for this OS
+// NOTE(mal): Consider md_posix.c
 #endif
 
 #include "md_malloc.c"

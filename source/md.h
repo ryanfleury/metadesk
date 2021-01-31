@@ -594,11 +594,12 @@ typedef struct MD_FileIter MD_FileIter;
 struct MD_FileIter
 {
     // This is opaque state to store OS-specific file-system iteration data.
-    MD_u64 state;
+    MD_u64 state[2];
 };
 
 //~ Basic Utilities
 #define MD_Assert(c) if (!(c)) { *(volatile MD_u64 *)0 = 0; }
+#define MD_StaticAssert(c,label) MD_u8 MD_static_assert_##label[(c)?(1):(-1)]
 #define MD_ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
 MD_FUNCTION MD_b32 MD_CharIsAlpha(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaUpper(MD_u8 c);

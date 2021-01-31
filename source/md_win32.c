@@ -62,7 +62,7 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
     MD_b32 result = 0;
     
     WIN32_FIND_DATAA find_data = {0};
-    HANDLE state = *(HANDLE *)(&it->state);
+    HANDLE state = *(HANDLE *)(&it->state[0]);
     if(state == 0)
     {
         MD_b32 need_star = 0;
@@ -80,7 +80,7 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
         result = !!FindNextFileA(state, &find_data);
     }
     
-    it->state = *(MD_u64 *)(&state);
+    it->state[0] = *(MD_u64 *)(&state);
     if(result)
     {
         out_info->flags = 0;

@@ -2,27 +2,39 @@
 
 #include <dirent.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+ #include <sys/syscall.h>
 
-#define MD_IMPL_FileIterIncrement MD_POSIX_FileIterIncrement
-typedef struct MD_POSIX_FileIter MD_POSIX_FileIter;
-struct MD_POSIX_FileIter
+// NOTE(mal): To get these constants I need to #define _GNU_SOURCE, which invites non-POSIX behavior I'd rather avoid
+#ifndef O_PATH
+#define O_PATH                 010000000
+#endif
+#define AT_NO_AUTOMOUNT        0x800
+#define AT_SYMLINK_NOFOLLOW    0x100
+
+#define MD_IMPL_FileIterIncrement MD_LINUX_FileIterIncrement
+typedef struct MD_LINUX_FileIter MD_LINUX_FileIter;
+struct MD_LINUX_FileIter
 {
+    int dir_fd;
     DIR *dir;
 };
-MD_StaticAssert(sizeof(MD_POSIX_FileIter) <= sizeof(MD_FileIter), file_iter_size_check);
+MD_StaticAssert(sizeof(MD_LINUX_FileIter) <= sizeof(MD_FileIter), file_iter_size_check);
 
 static MD_b32
-MD_POSIX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo *out_info)
+MD_LINUX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo *out_info)
 {
     MD_b32 result = 0;
 
-    MD_POSIX_FileIter *it = (MD_POSIX_FileIter *)opaque_it;
+    MD_LINUX_FileIter *it = (MD_LINUX_FileIter *)opaque_it;
     if(it->dir == 0)
     {
         it->dir = opendir((char*)path.str);
+        it->dir_fd = open((char *)path.str, O_PATH|O_CLOEXEC);
     }
-    
-    if(it->dir)
+
+    if(it->dir != 0 && it->dir_fd != -1)
     {
         struct dirent *dir_entry = readdir(it->dir);
         if(dir_entry)
@@ -30,14 +42,8 @@ MD_POSIX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo 
             out_info->filename = MD_PushStringF("%s", dir_entry->d_name);
             out_info->flags = 0;
 
-            if(path.size > 1 && path.str[path.size-1] == '/')
-            {
-                path.size -= 1;
-            }
-
-            struct stat st;
-            MD_String8 cfile_path = MD_PushStringF("%.*s/%s", MD_StringExpand(path), dir_entry->d_name);
-            if(stat((char *)cfile_path.str, &st) == 0)
+            struct stat st; 
+            if(fstatat(it->dir_fd, dir_entry->d_name, &st, AT_NO_AUTOMOUNT|AT_SYMLINK_NOFOLLOW) == 0)
             {
                 if((st.st_mode & S_IFMT) == S_IFDIR)
                 {
@@ -47,13 +53,22 @@ MD_POSIX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo 
             }
             result = 1;
         }
-        else
+    }
+
+    if(result == 0)
+    {
+        if(it->dir != 0)
         {
             closedir(it->dir);
             it->dir = 0;
         }
+        if(it->dir_fd != -1)
+        {
+            close(it->dir_fd);
+            it->dir_fd = -1;
+        }
     }
-    
+
     return result;
 }
 
