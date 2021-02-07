@@ -16,6 +16,7 @@
 // - Split out C-related stuff into helper language layers
 // - Helpers for parsing NodeFlags, figuring out which nodes in a set are
 //   separated by a semicolon, something like MD_SeekNodeWithFlags(node) -> node ?
+// - Escaping characters from strings
 
 // NOTE(allen): "Plugin" functionality
 //
@@ -549,6 +550,8 @@ typedef enum MD_ExprKind
     // NOTE(rjf): Type
     MD_ExprKind_Pointer,
     MD_ExprKind_Array,
+    MD_ExprKind_Volatile,
+    MD_ExprKind_Const,
     
     MD_ExprKind_MAX,
 }

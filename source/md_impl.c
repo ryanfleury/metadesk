@@ -1591,15 +1591,26 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
     MD_Node *first = MD_NilNode();
     MD_Node *last = MD_NilNode();
     
-    for(;MD_Parse_Require(ctx, MD_S8Lit("@"));)
+    for(;;)
     {
-        MD_Token name;
-        _MD_MemoryZero(&name, sizeof(name));
-        if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
+        MD_Token next_token = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Comment | MD_TokenGroup_Whitespace);
+        if(MD_StringMatch(next_token.string, MD_S8Lit("@"), 0) &&
+           next_token.kind == MD_TokenKind_Symbol)
         {
-            MD_Node *tag = _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_Tag, name);
-            _MD_ParseSet(ctx, tag, _MD_ParseSetFlag_Paren, &tag->first_child, &tag->last_child);
-            _MD_PushNodeToList(&first, &last, MD_NilNode(), tag);
+            MD_Parse_Bump(ctx, next_token);
+            
+            MD_Token name;
+            _MD_MemoryZero(&name, sizeof(name));
+            if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
+            {
+                MD_Node *tag = _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_Tag, name);
+                _MD_ParseSet(ctx, tag, _MD_ParseSetFlag_Paren, &tag->first_child, &tag->last_child);
+                _MD_PushNodeToList(&first, &last, MD_NilNode(), tag);
+            }
+            else
+            {
+                break;
+            }
         }
         else
         {
@@ -2280,6 +2291,12 @@ _MD_ParseUnaryExpr(_MD_NodeParseCtx *ctx)
         result = MD_MakeExpr(node, MD_ExprKind_Atom, 0, 0);
     }
     
+    // NOTE(rjf): Literal
+    else if(_MD_NodeParse_ConsumeAtom(ctx, &node))
+    {
+        result = MD_MakeExpr(node, MD_ExprKind_Atom, 0, 0);
+    }
+    
     // NOTE(rjf): Negative
     else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("-"), &node))
     {
@@ -2379,11 +2396,22 @@ MD_ParseAsType(MD_Node *first, MD_Node *last)
     MD_Node *set = 0;
     MD_Node *ptr = 0;
     MD_Node *base_type = 0;
+    MD_Node *node = 0;
     for(;;)
     {
         if(_MD_NodeParse_Consume(ctx, MD_S8Lit("*"), &ptr))
         {
             MD_Expr *t = MD_MakeExpr(ptr, MD_ExprKind_Pointer, MD_NilExpr(), MD_NilExpr());
+            _MD_PushType(t);
+        }
+        else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("volatile"), &node))
+        {
+            MD_Expr *t = MD_MakeExpr(node, MD_ExprKind_Volatile, MD_NilExpr(), MD_NilExpr());
+            _MD_PushType(t);
+        }
+        else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("const"), &node))
+        {
+            MD_Expr *t = MD_MakeExpr(node, MD_ExprKind_Const, MD_NilExpr(), MD_NilExpr());
             _MD_PushType(t);
         }
         else if(_MD_NodeParse_ConsumeSet(ctx, &set))
@@ -2658,6 +2686,9 @@ MD_OutputType_C_LHS(FILE *file, MD_Expr *type)
             }
         }break;
         
+        case MD_ExprKind_Volatile: { fprintf(file, "volatile "); }break;
+        case MD_ExprKind_Const:    { fprintf(file, "const "); }break;
+        
         default:
         {
             fprintf(file, "{ unexpected MD_ExprKind (%i) in type info for node \"%.*s\" }",
@@ -2695,6 +2726,9 @@ MD_OutputType_C_RHS(FILE *file, MD_Expr *type)
             fprintf(file, "]");
             MD_OutputType_C_RHS(file, type->sub[0]);
         }break;
+        
+        case MD_ExprKind_Volatile: { fprintf(file, "volatile "); }break;
+        case MD_ExprKind_Const:    { fprintf(file, "const "); }break;
         
         default:
         {}break;

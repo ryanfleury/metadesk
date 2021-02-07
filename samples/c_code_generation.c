@@ -14,6 +14,7 @@ int main(int argument_count, char **arguments)
                                        "  d: F32,\n"
                                        "  e: *[100]F32,\n"
                                        "  f: ([4 + 5]S32),\n"
+                                       "  g: ([FOO + BAR]I32),\n"
                                        "}\n\n");
     MD_Node *code = MD_ParseWholeString(MD_S8Lit("Generated Test Code"), example_code);
     
