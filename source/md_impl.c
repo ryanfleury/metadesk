@@ -1423,9 +1423,11 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     
     // NOTE(rjf): Unnamed Sets
     MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
-    if(MD_Parse_TokenMatch(MD_Parse_PeekSkipSome(ctx, skip_groups), MD_S8Lit("("), 0) ||
-       MD_Parse_TokenMatch(MD_Parse_PeekSkipSome(ctx, skip_groups), MD_S8Lit("{"), 0) ||
-       MD_Parse_TokenMatch(MD_Parse_PeekSkipSome(ctx, skip_groups), MD_S8Lit("["), 0))
+    MD_Token next_token = MD_Parse_PeekSkipSome(ctx, skip_groups);
+    if((MD_Parse_TokenMatch(next_token, MD_S8Lit("("), 0) ||
+        MD_Parse_TokenMatch(next_token, MD_S8Lit("{"), 0) ||
+        MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
+       next_token.kind == MD_TokenKind_Symbol )
     {
         result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_UnnamedSet, MD_S8Lit(""));
         _MD_ParseSet(ctx, result.node,
