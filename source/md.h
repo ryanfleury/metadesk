@@ -694,7 +694,7 @@ MD_FUNCTION void           MD_Parse_BumpNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_LexNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups);
 MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_StringMatchFlags flags);
-MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string);
+MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string, MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token);
 MD_FUNCTION MD_ParseResult MD_ParseOneNode     (MD_String8 filename, MD_String8 contents);
 MD_FUNCTION MD_Node *      MD_ParseWholeString (MD_String8 filename, MD_String8 contents);
