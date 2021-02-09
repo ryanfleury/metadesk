@@ -643,7 +643,6 @@ MD_StringFromNodeKind(MD_NodeKind kind)
         "Nil",
         "File",
         "Label",
-        "UnnamedSet",
         "Tag",
     };
     return MD_S8CString(cstrs[kind]);
@@ -1429,7 +1428,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
        next_token.kind == MD_TokenKind_Symbol )
     {
-        result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_UnnamedSet, MD_S8Lit(""));
+        result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Label, MD_S8Lit(""));
         _MD_ParseSet(ctx, result.node,
                      _MD_ParseSetFlag_Paren   |
                      _MD_ParseSetFlag_Brace   |

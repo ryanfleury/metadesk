@@ -34,7 +34,7 @@ Node {
     }
   }
   Node {
-    Kind: UnnamedSet,
+    Kind: Label,
     Flags: 00001101010000000000000000000000,
     Flag Names: BraceLeft, BraceRight, BeforeComma, AfterComma,
     Node {
@@ -60,7 +60,7 @@ Node {
     }
   }
   Node {
-    Kind: UnnamedSet,
+    Kind: Label,
     Flags: 00001101010000000000000000000000,
     Flag Names: BraceLeft, BraceRight, BeforeComma, AfterComma,
     Tag: @tag_with_params
@@ -110,7 +110,7 @@ Node {
     }
   }
   Node {
-    Kind: UnnamedSet,
+    Kind: Label,
     Flags: 00001101010000000000000000000000,
     Flag Names: BraceLeft, BraceRight, BeforeComma, AfterComma,
     Tag: @tag_with_params
@@ -195,7 +195,7 @@ Node {
 }
 
 Node {
-  Kind: UnnamedSet,
+  Kind: Label,
   Flags: 00001100000000000000000000000000,
   Flag Names: BraceLeft, BraceRight,
   Tag: @tagged_unnamed_set
@@ -216,7 +216,7 @@ Node {
 }
 
 Node {
-  Kind: UnnamedSet,
+  Kind: Label,
   Flags: 00001100000000000000000000000000,
   Flag Names: BraceLeft, BraceRight,
   Tag: @showcase_mixed_set_scoping

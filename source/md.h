@@ -295,7 +295,6 @@ typedef enum MD_NodeKind
     MD_NodeKind_Nil,
     MD_NodeKind_File,
     MD_NodeKind_Label,
-    MD_NodeKind_UnnamedSet,
     MD_NodeKind_Tag,
     MD_NodeKind_MAX,
 }

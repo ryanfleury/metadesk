@@ -126,18 +126,18 @@ int main(void)
     
     Test("Empty Sets")
     {
-        TestResult(MatchParsedWithNode(MD_S8Lit("{}"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
-        TestResult(MatchParsedWithNode(MD_S8Lit("()"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
-        TestResult(MatchParsedWithNode(MD_S8Lit("[]"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
-        TestResult(MatchParsedWithNode(MD_S8Lit("[)"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
-        TestResult(MatchParsedWithNode(MD_S8Lit("(]"), MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("{}"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("()"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("[]"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("[)"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""))));
+        TestResult(MatchParsedWithNode(MD_S8Lit("(]"), MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""))));
     }
     
     Test("Simple Unnamed Sets")
     {
         {
             MD_String8 string = MD_S8Lit("{a, b, c}");
-            MD_Node *tree = MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""));
+            MD_Node *tree = MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("a")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("b")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("c")));
@@ -145,7 +145,7 @@ int main(void)
         }
         {
             MD_String8 string = MD_S8Lit("(1 2 3 4 5)");
-            MD_Node *tree = MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""));
+            MD_Node *tree = MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("1")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("2")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("3")));
@@ -155,7 +155,7 @@ int main(void)
         }
         {
             MD_String8 string = MD_S8Lit("{a}");
-            MD_Node *tree = MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""));
+            MD_Node *tree = MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("a")));
             TestResult(MatchParsedWithNode(string, tree));
         }
@@ -175,7 +175,7 @@ int main(void)
     {
         {
             MD_String8 string = MD_S8Lit("{a b:{1 2 3} c}");
-            MD_Node *tree = MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""));
+            MD_Node *tree = MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("a")));
             {
                 MD_Node *sub = MakeTestNode(MD_NodeKind_Label, MD_S8Lit("b"));
@@ -191,7 +191,7 @@ int main(void)
         {
             MD_String8 string = MD_S8Lit("foo: { (size: u64) -> *void }");
             MD_Node *tree = MakeTestNode(MD_NodeKind_Label, MD_S8Lit("foo"));
-            MD_Node *params = MakeTestNode(MD_NodeKind_UnnamedSet, MD_S8Lit(""));
+            MD_Node *params = MakeTestNode(MD_NodeKind_Label, MD_S8Lit(""));
             MD_Node *size = MakeTestNode(MD_NodeKind_Label, MD_S8Lit("size"));
             MD_PushChild(size, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("u64")));
             MD_PushChild(params, size);
@@ -383,7 +383,7 @@ int main(void)
     Test("Enum Strings")
     {
         TestResult(MD_StringMatch(MD_StringFromNodeKind(MD_NodeKind_Label), MD_S8Lit("Label"), 0));
-        TestResult(MD_StringMatch(MD_StringFromNodeKind(MD_NodeKind_UnnamedSet), MD_S8Lit("UnnamedSet"), 0));
+        TestResult(MD_StringMatch(MD_StringFromNodeKind(MD_NodeKind_Label), MD_S8Lit("Label"), 0));
         MD_String8List list = MD_StringListFromNodeFlags(MD_NodeFlag_CharLiteral | MD_NodeFlag_ParenLeft | MD_NodeFlag_BeforeSemicolon);
         MD_b32 match = 1;
         for(MD_String8Node *node = list.first; node; node = node->next)

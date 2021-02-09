@@ -12,7 +12,7 @@ Node {
     String: x,
     Whole String: x,
     Node {
-      Kind: UnnamedSet,
+      Kind: Label,
       Flags: 00110000000000000000000000000000,
       Flag Names: BracketLeft, BracketRight,
       Node {
