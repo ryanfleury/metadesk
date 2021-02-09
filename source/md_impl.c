@@ -1129,9 +1129,6 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                             }
                         }
                         
-                        // NOTE(rjf): Trim off newline always.
-                        chop_n = 1;
-                        
                         at += 2;
                         token.kind = MD_TokenKind_Comment;
                         MD_TokenizerScan(*at != '\n');
