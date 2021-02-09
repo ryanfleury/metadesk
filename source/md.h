@@ -351,6 +351,10 @@ struct MD_Node
     MD_String8 whole_string;
     MD_u64 string_hash;
     
+    // Comments.
+    MD_String8 comment_before;
+    MD_String8 comment_after;
+    
     // Source code location information.
     MD_String8 filename;
     MD_u8 *file_contents;

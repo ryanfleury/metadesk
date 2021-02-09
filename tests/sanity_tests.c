@@ -399,5 +399,13 @@ int main(void)
         TestResult(match);
     }
     
+    Test("Node Comments")
+    {
+        MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("/*foobar*/ (a b c)"));
+        fprintf(stderr, "\n\"%.*s\"\n", MD_StringExpand(parse.node->comment_before));
+        TestResult(parse.node->kind == MD_NodeKind_Label &&
+                   MD_StringMatch(parse.node->comment_before, MD_S8Lit("foobar"), 0));
+    }
+    
     return 0;
 }

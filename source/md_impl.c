@@ -1087,7 +1087,8 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
     if (first < one_past_last)
     {
         MD_u8 *at = first;
-        MD_u32 skip_chop_n = 0;
+        MD_u32 skip_n = 0;
+        MD_u32 chop_n = 0;
         
 #define MD_TokenizerScan(cond) for (; at < one_past_last && (cond); at += 1)
         
@@ -1114,6 +1115,23 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 {
                     if (at[1] == '/')
                     {
+                        
+                        // NOTE(rjf): Trim off the first //, and a space after it if one is there.
+                        {
+                            if(at+2 < one_past_last &&
+                               at[2] == ' ')
+                            {
+                                skip_n = 3;
+                            }
+                            else
+                            {
+                                skip_n = 2;
+                            }
+                        }
+                        
+                        // NOTE(rjf): Trim off newline always.
+                        chop_n = 1;
+                        
                         at += 2;
                         token.kind = MD_TokenKind_Comment;
                         MD_TokenizerScan(*at != '\n');
@@ -1122,6 +1140,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     {
                         at += 2;
                         token.kind = MD_TokenKind_Comment;
+                        skip_n = chop_n = 2;
                         int counter = 1;
                         for (;at < one_past_last && counter > 0; at += 1)
                         {
@@ -1153,7 +1172,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 token.kind = MD_TokenKind_StringLiteral;
                 if (at + 2 < one_past_last && at[1] == '`' && at[2] == '`')
                 {
-                    skip_chop_n = 3;
+                    skip_n = chop_n = 3;
                     at += 3;
                     MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '`' && at[1] == '`' && at[2] == '`'));
                     at += 3;
@@ -1161,7 +1180,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 else
                 {
                     // TODO(allen): escape sequences?
-                    skip_chop_n = 1;
+                    skip_n = chop_n = 1;
                     at += 1;
                     MD_TokenizerScan(*at != '\n' && *at != '`');
                     if (*at == '`') at += 1;
@@ -1174,7 +1193,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 token.kind = MD_TokenKind_StringLiteral;
                 if (at + 2 < one_past_last && at[1] == '"' && at[2] == '"')
                 {
-                    skip_chop_n = 3;
+                    skip_n = chop_n = 3;
                     at += 3;
                     MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '"' && at[1] == '"' && at[2] == '"'));
                     at += 3;
@@ -1182,7 +1201,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 else
                 {
                     // TODO(allen): escape sequences?
-                    skip_chop_n = 1;
+                    skip_n = chop_n = 1;
                     at += 1;
                     MD_TokenizerScan(*at != '\n' && *at != '"');
                     if (*at == '"') at += 1;
@@ -1194,7 +1213,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 if (at + 2 < one_past_last && at[1] == '\'' && at[2] == '\'')
                 {
                     token.kind = MD_TokenKind_StringLiteral;
-                    skip_chop_n = 3;
+                    skip_n = chop_n = 3;
                     at += 3;
                     MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '\'' && at[1] == '\'' && at[2] == '\''));
                     at += 3;
@@ -1203,7 +1222,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 {
                     token.kind = MD_TokenKind_CharLiteral;
                     // TODO(allen): escape sequences?
-                    skip_chop_n = 1;
+                    skip_n = chop_n = 1;
                     at += 1;
                     MD_TokenizerScan(*at != '\n' && *at != '\'');
                     if (*at == '\'') at += 1;
@@ -1238,7 +1257,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
         }
         
         token.outer_string = MD_S8Range(first, at);
-        token.string = MD_StringSubstring(token.outer_string, skip_chop_n, token.outer_string.size - skip_chop_n);
+        token.string = MD_StringSubstring(token.outer_string, skip_n, token.outer_string.size - chop_n);
         
         ctx->at = at;
     }
@@ -1421,6 +1440,38 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     MD_Node *last_tag = 0;
     _MD_ParseTagList(ctx, &first_tag, &last_tag);
     
+    // NOTE(rjf): Parse the comment preceding this node.
+    MD_String8 comment_before = {0};
+    {
+        MD_Token comment_token = {0};
+        for(;;)
+        {
+            MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
+            if(token.kind == MD_TokenKind_Comment)
+            {
+                comment_token = token;
+                MD_Parse_Bump(ctx, token);
+            }
+            else if(token.kind == MD_TokenKind_Newline)
+            {
+                MD_Parse_Bump(ctx, token);
+                if(MD_Parse_RequireKind(ctx, MD_TokenKind_Newline, 0))
+                {
+                    _MD_MemoryZero(&comment_token, sizeof(comment_token));
+                }
+            }
+            else if(MD_TokenKindIsWhitespace(token.kind))
+            {
+                MD_Parse_Bump(ctx, token);
+            }
+            else
+            {
+                break;
+            }
+        }
+        comment_before = comment_token.string;
+    }
+    
     MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
     MD_Token next_token = MD_Parse_PeekSkipSome(ctx, skip_groups);
     
@@ -1496,6 +1547,35 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     }
     
     end_parse:;
+    
+    // NOTE(rjf): Parse comments after nodes.
+    MD_String8 comment_after = {0};
+    {
+        MD_Token comment_token = {0};
+        for(;;)
+        {
+            MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
+            if(token.kind == MD_TokenKind_Comment)
+            {
+                comment_token = token;
+                MD_Parse_Bump(ctx, token);
+            }
+            else if(token.kind == MD_TokenKind_Newline)
+            {
+                break;
+            }
+            else if(MD_TokenKindIsWhitespace(token.kind))
+            {
+                MD_Parse_Bump(ctx, token);
+            }
+            else
+            {
+                break;
+            }
+        }
+        comment_after = comment_token.string;
+    }
+    
     if(!MD_NodeIsNil(result.node))
     {
         result.bytes_parsed = (MD_u64)(ctx->at - at_first);
@@ -1505,6 +1585,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         {
             tag->parent = result.node;
         }
+        result.node->comment_before = comment_before;
+        result.node->comment_after = comment_after;
     }
     return result;
 }
