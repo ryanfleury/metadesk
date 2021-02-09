@@ -294,6 +294,7 @@ typedef enum MD_NodeKind
 {
     MD_NodeKind_Nil,
     MD_NodeKind_File,
+    MD_NodeKind_Namespace,
     MD_NodeKind_Label,
     MD_NodeKind_Tag,
     MD_NodeKind_MAX,
@@ -485,6 +486,8 @@ struct MD_ParseCtx
     MD_u8 *at;
     MD_String8 filename;
     MD_String8 file_contents;
+    MD_NodeTable namespace_table;
+    MD_Node *selected_namespace;
 };
 
 typedef struct MD_ParseResult MD_ParseResult;

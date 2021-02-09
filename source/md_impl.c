@@ -642,6 +642,7 @@ MD_StringFromNodeKind(MD_NodeKind kind)
     {
         "Nil",
         "File",
+        "Namespace",
         "Label",
         "Tag",
     };
@@ -1420,13 +1421,46 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     MD_Node *last_tag = 0;
     _MD_ParseTagList(ctx, &first_tag, &last_tag);
     
-    // NOTE(rjf): Unnamed Sets
     MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
     MD_Token next_token = MD_Parse_PeekSkipSome(ctx, skip_groups);
-    if((MD_Parse_TokenMatch(next_token, MD_S8Lit("("), 0) ||
-        MD_Parse_TokenMatch(next_token, MD_S8Lit("{"), 0) ||
-        MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
-       next_token.kind == MD_TokenKind_Symbol )
+    
+    // NOTE(rjf): #-things (just namespaces right now, but can be used for other such
+    // 'directives' in the future maybe)
+    if(MD_Parse_Require(ctx, MD_S8Lit("#"), MD_TokenKind_Symbol))
+    {
+        // NOTE(rjf): Namespaces
+        if(MD_Parse_Require(ctx, MD_S8Lit("namespace"), MD_TokenKind_Identifier))
+        {
+            if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &token))
+            {
+                MD_NodeTableSlot *existing_namespace_slot = MD_NodeTable_Lookup(&ctx->namespace_table, token.string);
+                if(existing_namespace_slot == 0)
+                {
+                    MD_Node *ns = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Namespace, token.string);
+                    MD_NodeTable_Insert(&ctx->namespace_table, MD_NodeTableCollisionRule_Overwrite, token.string, ns);
+                }
+                ctx->selected_namespace = existing_namespace_slot->node;
+                goto end_parse;
+            }
+            else
+            {
+                ctx->selected_namespace = 0;
+                goto end_parse;
+            }
+        }
+        
+        // NOTE(rjf): Not a valid hash thing
+        else
+        {
+            goto end_parse;
+        }
+    }
+    
+    // NOTE(rjf): Unnamed Sets
+    else if((MD_Parse_TokenMatch(next_token, MD_S8Lit("("), 0) ||
+             MD_Parse_TokenMatch(next_token, MD_S8Lit("{"), 0) ||
+             MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
+            next_token.kind == MD_TokenKind_Symbol )
     {
         result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Label, MD_S8Lit(""));
         _MD_ParseSet(ctx, result.node,
