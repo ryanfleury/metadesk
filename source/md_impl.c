@@ -1440,7 +1440,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     // NOTE(rjf): Parse the comment preceding this node.
     MD_String8 comment_before = {0};
     {
-        MD_Token comment_token = {0};
+        MD_Token comment_token = MD_ZeroToken();
         for(;;)
         {
             MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
@@ -1548,7 +1548,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     // NOTE(rjf): Parse comments after nodes.
     MD_String8 comment_after = {0};
     {
-        MD_Token comment_token = {0};
+        MD_Token comment_token = MD_ZeroToken();
         for(;;)
         {
             MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
@@ -1649,9 +1649,10 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
             else
             {
                 MD_Token peek = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Whitespace | MD_TokenGroup_Comment);
-                if(MD_Parse_TokenMatch(peek, MD_S8Lit("}"), 0) ||
-                   MD_Parse_TokenMatch(peek, MD_S8Lit(")"), 0) ||
-                   MD_Parse_TokenMatch(peek, MD_S8Lit("]"), 0))
+                if(peek.kind == MD_TokenKind_Symbol &&
+                   (MD_Parse_TokenMatch(peek, MD_S8Lit("}"), 0) ||
+                    MD_Parse_TokenMatch(peek, MD_S8Lit(")"), 0) ||
+                    MD_Parse_TokenMatch(peek, MD_S8Lit("]"), 0)))
                 {
                     goto end_parse;
                 }
