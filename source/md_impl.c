@@ -1131,7 +1131,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                         
                         at += 2;
                         token.kind = MD_TokenKind_Comment;
-                        MD_TokenizerScan(*at != '\n');
+                        MD_TokenizerScan(*at != '\n' && *at != '\r');
                     }
                     else if (at[1] == '*')
                     {
