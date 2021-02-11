@@ -187,6 +187,12 @@
 #define MD_FUNCTION
 #define MD_GLOBAL static
 
+#if MD_LANG_CPP
+# define MD_ZERO_STRUCT {}
+#else
+# define MD_ZERO_STRUCT {0}
+#endif
+
 // NOTE(allen): Review @rjf; Building in C++
 // In order to link to C functions from C++ code, we need to mark them as using
 // C linkage. In particular I mean FindFirstFileA, FindNextFileA right now.

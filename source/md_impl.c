@@ -21,8 +21,8 @@ static MD_Node _md_nil_node =
     &_md_nil_node,         // last_tag
     MD_NodeKind_Nil,       // kind
     0,                     // flags
-    {0},                   // string
-    {0},                   // whole_string
+    MD_ZERO_STRUCT,        // string
+    MD_ZERO_STRUCT,        // whole_string
     0xdeadffffffffffull,
     {(MD_u8*)"`NIL DD NODE`", 13},
     0,
@@ -315,7 +315,7 @@ MD_PushStringCopy(MD_String8 string)
 MD_FUNCTION_IMPL MD_String8
 MD_PushStringFV(char *fmt, va_list args)
 {
-    MD_String8 result = {0};
+    MD_String8 result = MD_ZERO_STRUCT;
     va_list args2;
     va_copy(args2, args);
     MD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
@@ -328,7 +328,7 @@ MD_PushStringFV(char *fmt, va_list args)
 MD_FUNCTION_IMPL MD_String8
 MD_PushStringF(char *fmt, ...)
 {
-    MD_String8 result = {0};
+    MD_String8 result = MD_ZERO_STRUCT;
     va_list args;
     va_start(args, fmt);
     result = MD_PushStringFV(fmt, args);
@@ -380,7 +380,7 @@ MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push)
 MD_FUNCTION_IMPL MD_String8List
 MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits)
 {
-    MD_String8List list = {0};
+    MD_String8List list = MD_ZERO_STRUCT;
     
     MD_u64 split_start = 0;
     for(MD_u64 i = 0; i < string.size; i += 1)
@@ -438,7 +438,7 @@ MD_SplitStringByCharacter(MD_String8 string, MD_u8 character)
 MD_FUNCTION_IMPL MD_String8
 MD_JoinStringList(MD_String8List list)
 {
-    MD_String8 string = {0};
+    MD_String8 string = MD_ZERO_STRUCT;
     string.size = list.total_size;
     string.str = _MD_PushArray(_MD_GetCtx(), MD_u8, string.size);
     MD_u64 write_pos = 0;
@@ -457,7 +457,7 @@ MD_JoinStringListWithSeparator(MD_String8List list, MD_String8 separator)
     {
         return MD_S8Lit("");
     }
-    MD_String8 string = {0};
+    MD_String8 string = MD_ZERO_STRUCT;
     string.size = list.total_size + (list.node_count - 1)*separator.size;
     string.str = _MD_PushArray(_MD_GetCtx(), MD_u8, string.size);
     MD_u64 write_pos = 0;
@@ -511,9 +511,9 @@ MD_CalculateCStringLength(char *cstr)
 MD_FUNCTION_IMPL MD_String8
 MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8 separator)
 {
-    MD_String8 result = {0};
+    MD_String8 result = MD_ZERO_STRUCT;
     
-    MD_String8List words = {0};
+    MD_String8List words = MD_ZERO_STRUCT;
     
     MD_b32 break_on_uppercase = 0;
     {
@@ -529,7 +529,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
     }
     
     MD_b32 making_word = 0;
-    MD_String8 word = {0};
+    MD_String8 word = MD_ZERO_STRUCT;
     
     for(MD_u64 i = 0; i < string.size;)
     {
@@ -674,7 +674,7 @@ MD_StringListFromNodeFlags(MD_NodeFlags flags)
         "CharLiteral",
     };
     
-    MD_String8List list = {0};
+    MD_String8List list = MD_ZERO_STRUCT;
     MD_u64 bits = sizeof(flags) * 8;
     for(MD_u64 i = 0; i < bits && i < MD_ArrayCount(flag_cstrs); i += 1)
     {
@@ -1031,7 +1031,7 @@ MD_TokenKindIsRegular(MD_TokenKind kind)
 MD_FUNCTION_IMPL MD_ParseCtx
 MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents)
 {
-    MD_ParseCtx ctx = {0};
+    MD_ParseCtx ctx = MD_ZERO_STRUCT;
     ctx.first_root = ctx.last_root = MD_NilNode();
     ctx.at = contents.str;
     ctx.file_contents = contents;
@@ -1427,7 +1427,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
 {
     MD_u8 *at_first = ctx->at;
     
-    MD_ParseResult result = {0};
+    MD_ParseResult result = MD_ZERO_STRUCT;
     result.node = MD_NilNode();
     
     MD_Token token;
@@ -1438,9 +1438,9 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     _MD_ParseTagList(ctx, &first_tag, &last_tag);
     
     // NOTE(rjf): Parse the comment preceding this node.
-    MD_String8 comment_before = {0};
+    MD_String8 comment_before = MD_ZERO_STRUCT;
     {
-        MD_Token comment_token = MD_ZeroToken();
+        MD_Token comment_token = MD_ZERO_STRUCT;
         for(;;)
         {
             MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
@@ -1546,9 +1546,9 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     end_parse:;
     
     // NOTE(rjf): Parse comments after nodes.
-    MD_String8 comment_after = {0};
+    MD_String8 comment_after = MD_ZERO_STRUCT;
     {
-        MD_Token comment_token = MD_ZeroToken();
+        MD_Token comment_token = MD_ZERO_STRUCT;
         for(;;)
         {
             MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
@@ -2853,7 +2853,7 @@ MD_OutputType_C_RHS(FILE *file, MD_Expr *type)
 MD_FUNCTION_IMPL MD_CommandLine
 MD_CommandLine_Start(int argument_count, char **arguments)
 {
-    MD_CommandLine cmdln = {0};
+    MD_CommandLine cmdln = MD_ZERO_STRUCT;
     cmdln.arguments = _MD_PushArray(_MD_GetCtx(), MD_String8, argument_count-1);
     for(int i = 1; i < argument_count; i += 1)
     {
@@ -2981,7 +2981,7 @@ MD_CommandLine_Increment(MD_CommandLine *cmdln, MD_String8 **string_ptr)
 MD_FUNCTION_IMPL MD_String8
 MD_LoadEntireFile(MD_String8 filename)
 {
-    MD_String8 file_contents = {0};
+    MD_String8 file_contents = MD_ZERO_STRUCT;
     FILE *file = fopen((char*)MD_PushStringCopy(filename).str, "rb");
     if(file)
     {

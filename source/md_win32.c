@@ -61,7 +61,7 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
 {
     MD_b32 result = 0;
     
-    WIN32_FIND_DATAA find_data = {0};
+    WIN32_FIND_DATAA find_data = MD_ZERO_STRUCT;
     HANDLE state = *(HANDLE *)(&it->state[0]);
     if(state == 0)
     {
