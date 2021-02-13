@@ -1197,10 +1197,17 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 }
                 else
                 {
-                    // TODO(allen): escape sequences?
                     skip_n = chop_n = 1;
                     at += 1;
-                    MD_TokenizerScan(*at != '\n' && *at != '"');
+
+                    // NOTE(mal): Minimal escaping. Treats \\ and \" as atoms. Returns the unescaped string.
+                    while(at < one_past_last)
+                    {
+                        if(*at == '"' || *at == '\n') break;
+                        else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == '"' || at[1] == '\\')) at += 2;
+                        else at += 1;
+                    }
+
                     if (*at == '"') at += 1;
                 }
             }break;
@@ -1218,10 +1225,17 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 else
                 {
                     token.kind = MD_TokenKind_CharLiteral;
-                    // TODO(allen): escape sequences?
                     skip_n = chop_n = 1;
                     at += 1;
-                    MD_TokenizerScan(*at != '\n' && *at != '\'');
+
+                    // NOTE(mal): Minimal escaping. Treats \\ \' as atoms. Returns the unescaped string.
+                    while(at < one_past_last)
+                    {
+                        if(*at == '\'' || *at == '\n') break;
+                        else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == '\'' || at[1] == '\\')) at += 2;
+                        else at += 1;
+                    }
+
                     if (*at == '\'') at += 1;
                 }
             }break;
