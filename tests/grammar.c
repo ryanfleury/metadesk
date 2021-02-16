@@ -137,7 +137,7 @@ static void PrintRule(MD_Node *rule)
 typedef enum AllowedOperationFlags AllowedOperationFlags;
 enum AllowedOperationFlags
 {
-    AllowedOperationFlag_Leaf   = 1<<0,
+    AllowedOperationFlag_Fill   = 1<<0,
     AllowedOperationFlag_Tag    = 1<<1,
 };
 
@@ -160,6 +160,45 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
 
         if(expand)
         {
+            MD_Node *node_to_tag = 0;
+            MD_b32 is_markup = 0;
+            AllowedOperationFlags new_flags = 0;
+            for(MD_EachNode(tag_node, rule_element->first_tag)){
+                if(MD_StringMatch(tag_node->string, MD_S8Lit("child"), 0))
+                {
+                    cur_node = NewChild(cur_node);
+                    allowed &= ~AllowedOperationFlag_Tag; // NOTE(mal): Tag parameters are not tags
+                }
+                else if(MD_StringMatch(tag_node->string, MD_S8Lit("sibling"), 0))
+                {
+                    cur_node = NewChild(cur_node->parent);
+                }
+                else if(MD_StringMatch(tag_node->string, MD_S8Lit("fill"), 0))
+                {
+                    new_flags |= AllowedOperationFlag_Fill;
+                }
+                else if(MD_StringMatch(tag_node->string, MD_S8Lit("tag"), 0))
+                {
+                    new_flags |= AllowedOperationFlag_Tag;
+                    node_to_tag = cur_node;
+                    cur_node = NewChild(0);
+                    cur_node->kind = MD_NodeKind_Tag;
+                }
+                else if(MD_StringMatch(tag_node->string, MD_S8Lit(OPTIONAL_TAG), 0))
+                {
+                }
+                else if(MD_StringMatch(tag_node->string, MD_S8Lit("markup"), 0))
+                {
+                    is_markup = 1;
+                }
+                else
+                {
+                    MD_Assert(!"Not implemented");
+                }
+            }
+
+            allowed |= new_flags;
+
             MD_b32 has_children = !MD_NodeIsNil(rule_element->first_child);
             if(has_children)
             {
@@ -186,18 +225,10 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                     MD_String8 character = MD_PushStringF("%c", c);
                     MD_PushStringToList(out_strings, character);
 
-                    if(allowed & AllowedOperationFlag_Leaf)
+                    if(allowed & (AllowedOperationFlag_Fill|AllowedOperationFlag_Tag))
                     {
                         Extend(&cur_node->whole_string, c);
-                        if(!MD_NodeHasTag(rule_element, MD_S8Lit("delimiter")))
-                        {
-                            Extend(&cur_node->string, c);
-                        }
-                    }
-                    else if(allowed & AllowedOperationFlag_Tag)
-                    {
-                        Extend(&cur_node->whole_string, c);
-                        if(c != '@')
+                        if(!is_markup)
                         {
                             Extend(&cur_node->string, c);
                         }
@@ -205,47 +236,20 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 }
                 else        // NOTE(mal): Non-terminal production
                 {
-                    MD_Node *node_to_tag = 0;
-                    if(MD_NodeHasTag(rule_element, MD_S8Lit("child")))
-                    {
-                        cur_node = NewChild(cur_node);
-                    }
-                    else if(MD_NodeHasTag(rule_element, MD_S8Lit("sibling")))
-                    {
-                        cur_node = NewChild(cur_node->parent);
-                    }
-                    else if(MD_NodeHasTag(rule_element, MD_S8Lit("leaf")))
-                    {
-                        allowed |= AllowedOperationFlag_Leaf;
-                    }
-                    else if(MD_NodeHasTag(rule_element, MD_S8Lit("tag")))
-                    {
-                        allowed |= AllowedOperationFlag_Tag;
-                        node_to_tag = cur_node;
-                        cur_node = NewChild(0);
-                        cur_node->kind = MD_NodeKind_Tag;
-                    }
 
                     MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->node;
                     MD_Assert(production);
-
                     ExpandProduction(production, out_strings, cur_node, allowed);
-                    if(node_to_tag)
-                    {
-                        MD_PushTag(node_to_tag, cur_node);
-                        cur_node = node_to_tag;
-                    }
-
-                    if(MD_NodeHasTag(rule_element, MD_S8Lit("leaf")))
-                    {
-                        allowed &= ~AllowedOperationFlag_Leaf;
-                    }
-                    else if(MD_NodeHasTag(rule_element, MD_S8Lit("tag")))
-                    {
-                        allowed &= ~AllowedOperationFlag_Tag;
-                    }
                 }
             }
+
+            if(node_to_tag)
+            {
+                MD_PushTag(node_to_tag, cur_node);
+                cur_node = node_to_tag;
+            }
+
+            allowed &= ~new_flags;
         }
     }
 }
@@ -411,11 +415,15 @@ int main(int argument_count, char **arguments)
     }
 
     // NOTE(mal): Check for root production
-    MD_Node* file_production = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"))->node;
-    if(!file_production)
+    MD_Node* file_production = 0;
     {
-        fprintf(stderr, "Error: Grammar file does not specify \"file\" production\n");
-        goto error;
+        MD_NodeTableSlot *file_production_slot = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"));
+        if(!file_production_slot)
+        {
+            fprintf(stderr, "Error: Grammar file does not specify \"file\" production\n");
+            goto error;
+        }
+        file_production = file_production_slot->node;
     }
 
     // NOTE(mal): Check that all branches lead to terminal nodes
@@ -442,8 +450,11 @@ int main(int argument_count, char **arguments)
 
     MD_Node* node = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"))->node;
     MD_u32 test_count = 1000;
-    for(int i = 0; i < test_count; ++i){
+    for(int i = 0; i < test_count; ++i)
+    {
         MD_String8List expanded_list = {0};
+
+        //if(i == 25) BP;
 
         // NOTE(mal): Generate a random MD file
         MD_Node *file_control_node = NewChild(0);
@@ -463,7 +474,6 @@ int main(int argument_count, char **arguments)
             MD_OutputTree(stdout, file_node);
             printf("Grammar:\n");
             MD_OutputTree(stdout, file_control_node); printf("\n");
-
             return -1;
         }
     }
