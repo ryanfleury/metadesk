@@ -478,7 +478,7 @@ MD_I64FromString(MD_String8 string)
 {
     char str[64];
     _MD_WriteStringToBuffer(string, sizeof(str), str);
-    return atoll(str);
+    return strtoll(str, 0, 0);
 }
 
 MD_FUNCTION_IMPL MD_f64
@@ -1199,7 +1199,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 {
                     skip_n = chop_n = 1;
                     at += 1;
-
+                    
                     // NOTE(mal): Minimal escaping. Treats \\ and \" as atoms. Returns the unescaped string.
                     while(at < one_past_last)
                     {
@@ -1207,7 +1207,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                         else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == '"' || at[1] == '\\')) at += 2;
                         else at += 1;
                     }
-
+                    
                     if (*at == '"') at += 1;
                 }
             }break;
@@ -1227,7 +1227,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     token.kind = MD_TokenKind_CharLiteral;
                     skip_n = chop_n = 1;
                     at += 1;
-
+                    
                     // NOTE(mal): Minimal escaping. Treats \\ \' as atoms. Returns the unescaped string.
                     while(at < one_past_last)
                     {
@@ -1235,7 +1235,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                         else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == '\'' || at[1] == '\\')) at += 2;
                         else at += 1;
                     }
-
+                    
                     if (*at == '\'') at += 1;
                 }
             }break;
