@@ -5,17 +5,16 @@
  * - Pipe signs indicate mutually exclusive alternatives
  * - Square quotes denote optional rules
  * - Character literals are terminal productions
- * - Tags indicate which way the productions attach to the generated tree (@child, @sibling, @fill, @tag)
- *   and miscellaneous semantics (@markup)
+ * - Tags indicate which way the productions attach to the generated tree (@child, @sibling, @tag)
+ *   and miscellaneous semantics (@fill, @markup)
  */
 
 file            : [@child set_list]
-set_list        : tagged_named_set [' ' @sibling set_list]
-tagged_named_set: { [tag_list] set }
+set_list        : { [tag_list] set [' ' @sibling set_list] }
                                         // TODO(mal): Accept other open/close tokens
-set             : @fill leaf | @fill identifier ':' @child @fill leaf | [@fill identifier ':'] '{' [@child set_list] '}'
 tag_list        : '@' @tag tag ' ' [tag_list]
 tag             : identifier [@markup '(' [@child set_list] @markup ')']
+set             : @fill leaf | @fill identifier ':' @child @fill leaf | [@fill identifier ':'] '{' [@child set_list] '}'
 leaf            : identifier | integer_literal | char_literal | string_literal  // TODO(mal): Also symbol_label
 identifier      : alpha [alphanumeric]  // TODO(mal): I think we should allow leading underscores
 alphanumeric    : alpha [alphanumeric] | digit [alphanumeric] | '_' [alphanumeric]

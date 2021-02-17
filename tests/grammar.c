@@ -343,6 +343,30 @@ static MD_b32 EqualTrees(MD_Node *a, MD_Node *b)
     return result;
 }
 
+typedef struct Test Test;
+struct Test
+{
+    MD_Node *file_control_node;
+    MD_String8List expanded_list;
+};
+
+
+int TestCompare(const void *a_, const void *b_)
+{
+    int result = 1;
+
+    Test *a = (Test *) a_;
+    Test *b = (Test *) b_;
+    if(a->expanded_list.total_size < b->expanded_list.total_size)
+    {
+        result = -1;
+    }
+
+    return result;
+}
+
+
+
 int main(int argument_count, char **arguments)
 {
     MD_Node *grammar = MD_ParseWholeFile(MD_S8Lit("tests/grammar.md"));
@@ -449,32 +473,48 @@ int main(int argument_count, char **arguments)
     globals.random_series = &random_series;
 
     MD_Node* node = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"))->node;
+
+
     MD_u32 test_count = 1000;
+    Test *tests = (Test *) calloc(test_count, sizeof(Test));
+    for(MD_u32 i = 0; i < test_count;)
+    {
+        tests[i].file_control_node = NewChild(0);
+        tests[i].file_control_node->kind = MD_NodeKind_File;
+        // NOTE(mal): Generate a random MD file
+        ExpandProduction(node, &tests[i].expanded_list, tests[i].file_control_node, 0);
+        // NOTE(mal): Accept any non-empty file
+        if(tests[i].expanded_list.total_size)
+        {
+            ++i;
+        }
+    }
+
+    // NOTE(mal): Sort tests based on length
+    qsort(tests, test_count, sizeof(Test), TestCompare);
+
+    MD_u32 i_test = 0;
     for(int i = 0; i < test_count; ++i)
     {
-        MD_String8List expanded_list = {0};
-
-        //if(i == 25) BP;
-
-        // NOTE(mal): Generate a random MD file
-        MD_Node *file_control_node = NewChild(0);
-        file_control_node->kind = MD_NodeKind_File;
-        ExpandProduction(node, &expanded_list, file_control_node, 0);
-        MD_String8 expanded = MD_JoinStringList(expanded_list);
-
-        MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), expanded);
-        file_node->string = file_node->whole_string = (MD_String8){0};
-
-        printf("Test %d: ", i);
-        printf("> %.*s <\n", MD_StringExpand(expanded));
-        if(!EqualTrees(file_node, file_control_node))
+        if(tests[i].expanded_list.total_size > 0)
         {
-            printf("\nFailed test %d\n", i);
-            printf("MD:\n");
-            MD_OutputTree(stdout, file_node);
-            printf("Grammar:\n");
-            MD_OutputTree(stdout, file_control_node); printf("\n");
-            return -1;
+            MD_String8 expanded = MD_JoinStringList(tests[i].expanded_list);
+            MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), expanded);
+            file_node->string = file_node->whole_string = (MD_String8){0};
+
+            if(!EqualTrees(file_node, tests[i].file_control_node))
+            {
+                printf("\nFailed test %d\n", i_test);
+                printf("> %.*s <\n", MD_StringExpand(expanded));
+                printf("MD:\n");
+                MD_OutputTree(stdout, file_node);
+                printf("Grammar:\n");
+                MD_OutputTree(stdout, tests[i].file_control_node); printf("\n");
+                BP;
+                return -1;
+            }
+
+            ++i_test;
         }
     }
 
