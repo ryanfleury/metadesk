@@ -9,14 +9,21 @@
  *   and miscellaneous semantics (@fill, @markup)
  */
 
-file            : [@child set_list]
-set_list        : { [tag_list] set [' ' @sibling set_list] }
+file                 : [@child file_set_list]
+file_set_list        : { [tag_list] set [file_set_separator @sibling file_set_list] }
+file_set_separator   : ' ' | '\n'
+
+// TODO(mal): Unify file_set_separator and set_separator by allowing ',' and ';' everywhere
+set_list        : { [tag_list] set [set_separator @sibling file_set_list] }
+set_separator   : ' ' | '\n' | ',' | ';'
                                         // TODO(mal): Accept other open/close tokens
 tag_list        : '@' @tag tag ' ' [tag_list]
 tag             : identifier [@markup '(' [@child set_list] @markup ')']
-set             : @fill leaf | @fill identifier ':' @child @fill leaf | [@fill identifier ':'] '{' [@child set_list] '}'
+set             : @fill leaf | @fill identifier ':' @child @fill leaf | [@fill identifier ':'] set_open [@child set_list] set_close
+set_open        : '{' | '[' | '('
+set_close       : '}' | ']' | ')'
 leaf            : identifier | integer_literal | char_literal | string_literal  // TODO(mal): Also symbol_label
-identifier      : alpha [alphanumeric]  // TODO(mal): I think we should allow leading underscores
+identifier      : alpha [alphanumeric] | '_' [alphanumeric]
 alphanumeric    : alpha [alphanumeric] | digit [alphanumeric] | '_' [alphanumeric]
 
 integer_literal : { ['-'] natural_literal }
@@ -60,13 +67,7 @@ symbol_colon    : ':'
 
 
 /*
-    // NOTE(mal): I think this one should work too, but MD only allows newlines as top-level construct separators
-    file            : [@child set_list]
-    set_list        : set [',' @sibling set_list]
-    set             : @fill element | '{' [@child set_list] '}'
-    element         : 'A'
-
-    // NOTE(mal): This is the simplest grammar that works
+    // NOTE(mal): This is the simplest subset of the grammar that works
     file            : [@child set_list]
     set_list        : set ['\n' @sibling set_list]
     set             : @fill element | '{' [@child set_list] '}'

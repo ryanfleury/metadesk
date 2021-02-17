@@ -212,9 +212,10 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                     if(rule_element->string.size == 2 && rule_element->string.str[0] == '\\')
                     {
                         switch(rule_element->string.str[1]){
-                          case '\\': c = '\\';  break;
-                          case '\'': c = '\'';  break;
-                          case '"':  c = '\"';  break;
+                          case '\\': c = '\\'; break;
+                          case '\'': c = '\''; break;
+                          case '"':  c = '\"'; break;
+                          case 'n':  c = '\n'; break;
                         }
                     }
                     else
@@ -349,8 +350,6 @@ struct Test
     MD_Node *file_control_node;
     MD_String8List expanded_list;
 };
-
-
 int TestCompare(const void *a_, const void *b_)
 {
     int result = 1;
@@ -364,8 +363,6 @@ int TestCompare(const void *a_, const void *b_)
 
     return result;
 }
-
-
 
 int main(int argument_count, char **arguments)
 {
@@ -418,7 +415,6 @@ int main(int argument_count, char **arguments)
     for(MD_EachNode(production, productions->first_child))
     {
         printf("%.*s: \n", MD_StringExpand(production->string));
-
         for(MD_EachNode(rule, production->first_child))
         {
             printf("    ");
@@ -502,6 +498,7 @@ int main(int argument_count, char **arguments)
             MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), expanded);
             file_node->string = file_node->whole_string = (MD_String8){0};
 
+            // printf("> %.*s <\n", MD_StringExpand(expanded));
             if(!EqualTrees(file_node, tests[i].file_control_node))
             {
                 printf("\nFailed test %d\n", i_test);
@@ -510,7 +507,6 @@ int main(int argument_count, char **arguments)
                 MD_OutputTree(stdout, file_node);
                 printf("Grammar:\n");
                 MD_OutputTree(stdout, tests[i].file_control_node); printf("\n");
-                BP;
                 return -1;
             }
 
