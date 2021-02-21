@@ -1700,7 +1700,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                     child->flags |= MD_NodeFlag_BeforeSemicolon;
                     next_child_flags |= MD_NodeFlag_AfterSemicolon;
                 }
-                result |= !!MD_Parse_Require(ctx, MD_S8Lit("\n"), MD_TokenKind_Newline);
+                result |= (MD_Parse_PeekSkipSome(ctx, 0).kind == MD_TokenKind_Newline);
                 if(result && terminate_with_separator)
                 {
                     goto end_parse;
