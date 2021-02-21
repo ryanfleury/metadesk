@@ -2,6 +2,9 @@
 #include "md.c"
 #include <stdlib.h>     
 
+#define DEBUG_RULES_AFTER_TRANSFORMATIONS 0
+#define DEBUG_PRINT_GENERATED_TESTS 1
+
 // NOTE: https://www.pcg-random.org/download.html
 typedef struct RandomSeries{
     MD_u64 state; // NOTE: RNG state.  All values are possible.
@@ -78,6 +81,9 @@ static MD_Node * NewChild(MD_Node *parent)
 
 #define OPTIONAL_TAG "optional"
 
+// TODO(mal): Use data table instead of smuggling depth as file_contents
+#define GET_DEPTH(node) ((MD_u64)((node)->file_contents))
+#define SET_DEPTH(node, v) (node)->file_contents = (MD_u8 *)(v);
 static void PrintRule(MD_Node *rule)
 {
     MD_b32 is_literal_char = rule->flags & MD_NodeFlag_CharLiteral;
@@ -110,6 +116,7 @@ static void PrintRule(MD_Node *rule)
         for(MD_EachNode(rule_element, rule->first_child))
         {
             PrintRule(rule_element);
+            printf(" (%lu) ", (unsigned long)GET_DEPTH(rule_element));
 
             if(!MD_NodeIsNil(rule_element->next))
             {
@@ -141,14 +148,16 @@ enum AllowedOperationFlags
     AllowedOperationFlag_Tag    = 1<<1,
 };
 
-static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, AllowedOperationFlags allowed);
+static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
+                             AllowedOperationFlags allowed, MD_u32 max_depth, MD_u32 depth);
 
 static void Extend(MD_String8 *s, char c)
 {
     *s = MD_PushStringF("%.*s%c", MD_StringExpand(*s), c);
 }
 
-static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_node, AllowedOperationFlags allowed)
+static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_node, AllowedOperationFlags allowed,
+                       MD_u32 max_depth, MD_u32 depth)
 {
     for(MD_EachNode(rule_element, rule->first_child))
     {
@@ -156,12 +165,19 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
         if(MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG)))
         {
             expand = rand_U32(globals.random_series)%2;
+
+            if(expand)
+            {
+                if(GET_DEPTH(rule_element) + depth >= max_depth)
+                {
+                    expand = 0;
+                }
+            }
         }
 
         if(expand)
         {
             MD_Node *node_to_tag = 0;
-            MD_b32 is_markup = 0;
             AllowedOperationFlags new_flags = 0;
             for(MD_EachNode(tag_node, rule_element->first_tag)){
                 if(MD_StringMatch(tag_node->string, MD_S8Lit("child"), 0))
@@ -187,10 +203,6 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 else if(MD_StringMatch(tag_node->string, MD_S8Lit(OPTIONAL_TAG), 0))
                 {
                 }
-                else if(MD_StringMatch(tag_node->string, MD_S8Lit("markup"), 0))
-                {
-                    is_markup = 1;
-                }
                 else
                 {
                     MD_Assert(!"Not implemented");
@@ -202,7 +214,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
             MD_b32 has_children = !MD_NodeIsNil(rule_element->first_child);
             if(has_children)
             {
-                ExpandRule(rule_element, out_strings, cur_node, allowed);
+                ExpandRule(rule_element, out_strings, cur_node, allowed, max_depth, depth+1);
             }
             else
             {
@@ -226,21 +238,17 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                     MD_String8 character = MD_PushStringF("%c", c);
                     MD_PushStringToList(out_strings, character);
 
-                    if(allowed & (AllowedOperationFlag_Fill|AllowedOperationFlag_Tag))
+                    if(allowed & (AllowedOperationFlag_Fill))
                     {
                         Extend(&cur_node->whole_string, c);
-                        if(!is_markup)
-                        {
-                            Extend(&cur_node->string, c);
-                        }
+                        Extend(&cur_node->string, c);
                     }
                 }
                 else        // NOTE(mal): Non-terminal production
                 {
-
                     MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->node;
                     MD_Assert(production);
-                    ExpandProduction(production, out_strings, cur_node, allowed);
+                    ExpandProduction(production, out_strings, cur_node, allowed, max_depth, depth+1);
                 }
             }
 
@@ -255,12 +263,20 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
     }
 }
 
-static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, AllowedOperationFlags allowed)
+static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
+                             AllowedOperationFlags allowed, MD_u32 max_depth, MD_u32 depth)
 {
     MD_i64 rule_count = MD_ChildCountFromNode(production);
-    int rule_number = rand_U32(globals.random_series)%rule_count;
-    MD_Node *rule = MD_ChildFromIndex(production, rule_number);
-    ExpandRule(rule, out, cur_node, allowed);
+
+    MD_Assert(GET_DEPTH(production)+depth <= max_depth);
+
+    MD_Node *rule = 0;
+    do{
+        int rule_number = rand_U32(globals.random_series)%rule_count;
+        rule = MD_ChildFromIndex(production, rule_number);
+    }while(GET_DEPTH(rule)+depth > max_depth);
+
+    ExpandRule(rule, out, cur_node, allowed, max_depth, depth);
 }
 
 static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
@@ -318,12 +334,13 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
     return result;
 }
 
+// TODO: use MD_NodeDeepMatch instead
 static MD_b32 EqualTrees(MD_Node *a, MD_Node *b);
 static MD_b32 EqualList(MD_Node *a, MD_Node *b)
 {
     MD_b32 result = 1;
 
-    while(!MD_NodeIsNil(a) && !MD_NodeIsNil(b))
+    while(!MD_NodeIsNil(a) || !MD_NodeIsNil(b))
     {
         if(!EqualTrees(a, b))
         {
@@ -344,23 +361,109 @@ static MD_b32 EqualTrees(MD_Node *a, MD_Node *b)
     return result;
 }
 
+static MD_String8 EscapeNewlines(MD_String8 s)
+{
+    MD_String8 result = s;
+
+    MD_u32 newline_count = 0;
+    for(MD_u8 *c = s.str; c < s.str + s.size; ++c)
+    {
+        newline_count += (*c == '\n');
+    }
+
+    if(newline_count)
+    {
+        result.size = s.size + newline_count;
+        result.str = calloc(result.size+1, sizeof(MD_u8));
+        for(MD_u8 *dest = result.str, *orig = s.str; orig < s.str + s.size; ++orig, ++dest)
+        {
+            if(*orig == '\n')
+            {
+                *dest++ = '\\';
+                *dest = 'n';
+            }
+            else
+            {
+                *dest = *orig;
+            }
+        }
+    }
+
+    return result;
+}
+
 typedef struct Test Test;
 struct Test
 {
-    MD_Node *file_control_node;
-    MD_String8List expanded_list;
+    MD_String8 input;
+    MD_Node *expected_output;
+    Test *next;
 };
-int TestCompare(const void *a_, const void *b_)
-{
-    int result = 1;
 
-    Test *a = (Test *) a_;
-    Test *b = (Test *) b_;
-    if(a->expanded_list.total_size < b->expanded_list.total_size)
+// TODO(mal): Use data table instead of smuggling depth as file_contents
+#define GET_DEPTH(node) ((MD_u64)((node)->file_contents))
+#define SET_DEPTH(node, v) (node)->file_contents = (MD_u8 *)(v);
+static void ComputeElementDepth(MD_Node *re)
+{
+    MD_u64 result = 0;
+    MD_b32 has_children = !MD_NodeIsNil(re->first_child);
+    if(has_children)
+    {
+        for(MD_EachNode(sub_re, re->first_child))
+        {
+            ComputeElementDepth(sub_re);
+            MD_u64 depth = GET_DEPTH(sub_re);
+            if(result < depth)
+            {
+                result = depth;
+            }
+        }
+    }
+    else
+    {
+        if(re->flags & MD_NodeFlag_CharLiteral)   // NOTE(mal): Terminal production
+        {
+            result = 1;
+        }
+        else
+        {
+            MD_Node * production = MD_NodeTable_Lookup(globals.production_table, re->string)->node;
+            result = GET_DEPTH(production)+1;
+        }
+    }
+
+    SET_DEPTH(re, result);
+}
+
+
+// NOTE(mal): Compares first by size then alphabetically
+static int StringCompare(MD_String8 a, MD_String8 b)
+{
+    int result = 0;
+    if(a.size < b.size)
     {
         result = -1;
     }
-
+    else if(a.size > b.size)
+    {
+        result = 1;
+    }
+    else
+    {
+        for(MD_u64 i = 0; i < a.size; ++i)
+        {
+            if(a.str[i] < b.str[i])
+            {
+                result = -1;
+                break;
+            }
+            else if(a.str[i] > b.str[i])
+            {
+                result = 1;
+                break;
+            }
+        }
+    }
     return result;
 }
 
@@ -410,20 +513,6 @@ int main(int argument_count, char **arguments)
         }
     }
 
-    // NOTE(mal): Debug rules after transformations
-#if 0
-    for(MD_EachNode(production, productions->first_child))
-    {
-        printf("%.*s: \n", MD_StringExpand(production->string));
-        for(MD_EachNode(rule, production->first_child))
-        {
-            printf("    ");
-            PrintRule(rule);
-            printf("\n");
-        }
-    }
-#endif
-
     // NOTE(mal): Build production hash table
     MD_NodeTable production_table_ = {0};
     globals.production_table = &production_table_;
@@ -465,53 +554,153 @@ int main(int argument_count, char **arguments)
         }
     }
 
-    RandomSeries random_series = rand_seed(0, 0);  // NOTE(mal): Reproduceable
-    globals.random_series = &random_series;
-
-    MD_Node* node = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"))->node;
-
-
-    MD_u32 test_count = 1000;
-    Test *tests = (Test *) calloc(test_count, sizeof(Test));
-    for(MD_u32 i = 0; i < test_count;)
+    // NOTE(mal): Compute depth of productions, rules, rule elements
+    MD_b32 progress = 1;
+    while(progress)
     {
-        tests[i].file_control_node = NewChild(0);
-        tests[i].file_control_node->kind = MD_NodeKind_File;
-        // NOTE(mal): Generate a random MD file
-        ExpandProduction(node, &tests[i].expanded_list, tests[i].file_control_node, 0);
-        // NOTE(mal): Accept any non-empty file
-        if(tests[i].expanded_list.total_size)
+        progress = 0;
+        for(MD_EachNode(production, productions->first_child))
         {
-            ++i;
+            MD_u64 min_rule_depth = 0xffffffffffffffff;
+            for(MD_EachNode(rule, production->first_child))
+            {
+                MD_u64 max_rule_element_depth = 0;
+                MD_u64 max_mandatory_rule_element_depth = 0;
+                for(MD_EachNode(rule_element, rule->first_child))
+                {
+                    ComputeElementDepth(rule_element);
+                    MD_u64 depth = GET_DEPTH(rule_element);
+
+                    if(!MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG)))
+                    {
+                        MD_u64 depth = 0;
+                        MD_Assert(MD_NodeIsNil(rule_element->first_child));
+                        if(!(rule_element->flags & MD_NodeFlag_CharLiteral))
+                        {
+                            MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->node;
+                            depth = GET_DEPTH(production);
+                        }
+                        depth += 1;
+
+                        if(depth > max_mandatory_rule_element_depth)
+                        {
+                            max_mandatory_rule_element_depth = depth;
+                        }
+                    }
+
+                    if(depth > max_rule_element_depth)
+                    {
+                        max_rule_element_depth = depth;
+                    }
+                }
+
+                if(max_mandatory_rule_element_depth > GET_DEPTH(rule))
+                {
+                    progress = 1;
+                    SET_DEPTH(rule, max_mandatory_rule_element_depth);
+                }
+
+                if(max_mandatory_rule_element_depth < min_rule_depth)
+                {
+                    min_rule_depth = max_mandatory_rule_element_depth;
+                }
+            }
+
+            if(min_rule_depth > GET_DEPTH(production))
+            {
+                progress = 1;
+                SET_DEPTH(production, min_rule_depth);
+            }
         }
     }
 
-    // NOTE(mal): Sort tests based on length
-    qsort(tests, test_count, sizeof(Test), TestCompare);
-
-    MD_u32 i_test = 0;
-    for(int i = 0; i < test_count; ++i)
+#if DEBUG_RULES_AFTER_TRANSFORMATIONS
+    for(MD_EachNode(production, productions->first_child))
     {
-        if(tests[i].expanded_list.total_size > 0)
+        printf("%.*s (min %lu): \n", MD_StringExpand(production->string), GET_DEPTH(production));
+        for(MD_EachNode(rule, production->first_child))
         {
-            MD_String8 expanded = MD_JoinStringList(tests[i].expanded_list);
-            MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), expanded);
-            file_node->string = file_node->whole_string = (MD_String8){0};
+            printf("    ");
+            PrintRule(rule);
+            printf(" (max %lu)", GET_DEPTH(rule));
+            printf("\n");
+        }
+    }
+#endif
 
-            // printf("> %.*s <\n", MD_StringExpand(expanded));
-            if(!EqualTrees(file_node, tests[i].file_control_node))
+    RandomSeries random_series = rand_seed(0, 0);  // NOTE(mal): Reproduceable
+    globals.random_series = &random_series;
+    MD_Node* file_production_node = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"))->node;
+
+    // NOTE(mal): Generate test_count unique tests, sorted by complexity
+    MD_u32 test_count = 1000;
+    MD_u32 max_production_depth = 30;
+    Test *first_test = calloc(1, sizeof(Test));
+    first_test->expected_output = NewChild(0);
+    first_test->expected_output->kind = MD_NodeKind_File;
+    for(MD_u32 i_test = 1; i_test < test_count;)
+    {
+        Test test = {0};
+        test.expected_output = NewChild(0);
+        test.expected_output->kind = MD_NodeKind_File;
+
+        // static int loop = 0; ++loop; if(loop == 893) BP; 
+
+        MD_String8List string_list = {0};
+        // NOTE(mal): Generate a random MD file
+        ExpandProduction(file_production_node, &string_list, test.expected_output, 0, max_production_depth, 0);
+        test.input = MD_JoinStringList(string_list);
+        // if(MD_StringMatch(test.input, MD_S8Lit("A:A:A A\n"), 0)) BP;
+
+        Test *prev = 0;
+        for(Test *cur = first_test; cur; cur = cur->next)
+        {
+            int comp = StringCompare(test.input, cur->input);
+            if(comp > 0)
             {
-                printf("\nFailed test %d\n", i_test);
-                printf("> %.*s <\n", MD_StringExpand(expanded));
-                printf("MD:\n");
-                MD_OutputTree(stdout, file_node);
-                printf("Grammar:\n");
-                MD_OutputTree(stdout, tests[i].file_control_node); printf("\n");
-                return -1;
+                prev = cur;
             }
+            else if(comp < 0)
+            {
+                break;
+            }
+            else
+            {
+                prev = 0;           // NOTE(mal): Repeat node
+            }
+        }
 
+        if(prev)
+        {
+            Test *stored_test = calloc(1, sizeof(Test));
+            *stored_test = test;
+            stored_test->next = prev->next;
+            prev->next = stored_test;
             ++i_test;
         }
+    }
+
+    MD_u32 i_test = 0;
+    for(Test *test = first_test; test; test = test->next)
+    {
+        MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), test->input);
+        file_node->string = file_node->whole_string = (MD_String8){0};
+
+#if DEBUG_PRINT_GENERATED_TESTS
+        printf("> %.*s <\n", MD_StringExpand(EscapeNewlines(test->input)));
+#endif
+        if(!EqualTrees(file_node, test->expected_output))
+        {
+            printf("\nFailed test %d\n", i_test);
+            printf("> %.*s <\n", MD_StringExpand(test->input));
+            printf("MD:\n");
+            MD_OutputTree(stdout, file_node);
+            printf("Grammar:\n");
+            MD_OutputTree(stdout, test->expected_output); printf("\n");
+            return -1;
+        }
+
+        ++i_test;
     }
 
     printf("Passed %d tests\n", test_count);
