@@ -1733,7 +1733,11 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
             {
                 MD_Node *tag = _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_Tag, name);
-                _MD_ParseSet(ctx, tag, _MD_ParseSetFlag_Paren, &tag->first_child, &tag->last_child);
+                MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
+                if(MD_StringMatch(token.string, MD_S8Lit("("), 0))
+                {
+                    _MD_ParseSet(ctx, tag, _MD_ParseSetFlag_Paren, &tag->first_child, &tag->last_child);
+                }
                 _MD_PushNodeToList(&first, &last, MD_NilNode(), tag);
             }
             else
