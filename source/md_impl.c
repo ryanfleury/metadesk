@@ -1076,6 +1076,21 @@ MD_Parse_BumpNext(MD_ParseCtx *ctx)
     MD_Parse_Bump(ctx, MD_Parse_LexNext(ctx));
 }
 
+MD_FUNCTION_IMPL MD_u8 *
+MD_TokenizerScanEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
+{
+    while(at < one_past_last)
+    {
+        if(*at == c || *at == '\n') break;
+        else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == c || at[1] == '\\')) at += 2;
+        else at += 1;
+    }
+
+    if (*at == c) at += 1;
+
+    return at;
+}
+
 MD_FUNCTION_IMPL MD_Token
 MD_Parse_LexNext(MD_ParseCtx *ctx)
 {
@@ -1176,11 +1191,9 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 }
                 else
                 {
-                    // TODO(allen): escape sequences?
                     skip_n = chop_n = 1;
                     at += 1;
-                    MD_TokenizerScan(*at != '\n' && *at != '`');
-                    if (*at == '`') at += 1;
+                    at = MD_TokenizerScanEscaped(at, one_past_last, '`');
                 }
             }break;
             
@@ -1199,16 +1212,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 {
                     skip_n = chop_n = 1;
                     at += 1;
-                    
-                    // NOTE(mal): Minimal escaping. Treats \\ and \" as atoms. Returns the unescaped string.
-                    while(at < one_past_last)
-                    {
-                        if(*at == '"' || *at == '\n') break;
-                        else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == '"' || at[1] == '\\')) at += 2;
-                        else at += 1;
-                    }
-                    
-                    if (*at == '"') at += 1;
+                    at = MD_TokenizerScanEscaped(at, one_past_last, '"');
                 }
             }break;
             
@@ -1227,23 +1231,14 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     token.kind = MD_TokenKind_CharLiteral;
                     skip_n = chop_n = 1;
                     at += 1;
-                    
-                    // NOTE(mal): Minimal escaping. Treats \\ \' as atoms. Returns the unescaped string.
-                    while(at < one_past_last)
-                    {
-                        if(*at == '\'' || *at == '\n') break;
-                        else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == '\'' || at[1] == '\\')) at += 2;
-                        else at += 1;
-                    }
-                    
-                    if (*at == '\'') at += 1;
+                    at = MD_TokenizerScanEscaped(at, one_past_last, '\'');
                 }
             }break;
             
             // NOTE(allen): Identifiers, Numbers, Operators
             default:
             {
-                if (MD_CharIsAlpha(*at))
+                if (MD_CharIsAlpha(*at) || *at == '_')
                 {
                     token.kind = MD_TokenKind_Identifier;
                     at += 1;
