@@ -141,22 +141,23 @@ static void PrintRule(MD_Node *rule)
     }
 }
 
-typedef enum AllowedOperationFlags AllowedOperationFlags;
-enum AllowedOperationFlags
+typedef enum OperationFlags OperationFlags;
+enum OperationFlags
 {
-    AllowedOperationFlag_Fill   = 1<<0,
-    AllowedOperationFlag_Tag    = 1<<1,
+    OperationFlag_Fill   = 1<<0,
+    OperationFlag_Markup = 1<<1,
+    OperationFlag_Tag    = 1<<2,
 };
-
-static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
-                             AllowedOperationFlags allowed, MD_u32 max_depth, MD_u32 depth);
 
 static void Extend(MD_String8 *s, char c)
 {
     *s = MD_PushStringF("%.*s%c", MD_StringExpand(*s), c);
 }
 
-static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_node, AllowedOperationFlags allowed,
+static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
+                             OperationFlags op_flags, MD_u32 max_depth, MD_u32 depth);
+
+static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_node, OperationFlags op_flags,
                        MD_u32 max_depth, MD_u32 depth)
 {
     for(MD_EachNode(rule_element, rule->first_child))
@@ -178,12 +179,12 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
         if(expand)
         {
             MD_Node *node_to_tag = 0;
-            AllowedOperationFlags new_flags = 0;
+            OperationFlags old_op_flags = op_flags;
             for(MD_EachNode(tag_node, rule_element->first_tag)){
                 if(MD_StringMatch(tag_node->string, MD_S8Lit("child"), 0))
                 {
                     cur_node = NewChild(cur_node);
-                    allowed &= ~AllowedOperationFlag_Tag; // NOTE(mal): Tag parameters are not tags
+                    op_flags &= ~OperationFlag_Tag; // NOTE(mal): Tag parameters are not tags
                 }
                 else if(MD_StringMatch(tag_node->string, MD_S8Lit("sibling"), 0))
                 {
@@ -191,14 +192,18 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 }
                 else if(MD_StringMatch(tag_node->string, MD_S8Lit("fill"), 0))
                 {
-                    new_flags |= AllowedOperationFlag_Fill;
+                    op_flags |= OperationFlag_Fill;
                 }
                 else if(MD_StringMatch(tag_node->string, MD_S8Lit("tag"), 0))
                 {
-                    new_flags |= AllowedOperationFlag_Tag;
+                    op_flags |= OperationFlag_Tag;
                     node_to_tag = cur_node;
                     cur_node = NewChild(0);
                     cur_node->kind = MD_NodeKind_Tag;
+                }
+                else if(MD_StringMatch(tag_node->string, MD_S8Lit("markup"), 0))
+                {
+                    op_flags |= OperationFlag_Markup;
                 }
                 else if(MD_StringMatch(tag_node->string, MD_S8Lit(OPTIONAL_TAG), 0))
                 {
@@ -209,12 +214,10 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 }
             }
 
-            allowed |= new_flags;
-
             MD_b32 has_children = !MD_NodeIsNil(rule_element->first_child);
             if(has_children)
             {
-                ExpandRule(rule_element, out_strings, cur_node, allowed, max_depth, depth+1);
+                ExpandRule(rule_element, out_strings, cur_node, op_flags, max_depth, depth+1);
             }
             else
             {
@@ -238,17 +241,20 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                     MD_String8 character = MD_PushStringF("%c", c);
                     MD_PushStringToList(out_strings, character);
 
-                    if(allowed & (AllowedOperationFlag_Fill))
+                    if(op_flags & OperationFlag_Fill)
                     {
                         Extend(&cur_node->whole_string, c);
-                        Extend(&cur_node->string, c);
+                        if(!(op_flags & OperationFlag_Markup))
+                        {
+                            Extend(&cur_node->string, c);
+                        }
                     }
                 }
                 else        // NOTE(mal): Non-terminal production
                 {
                     MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->node;
                     MD_Assert(production);
-                    ExpandProduction(production, out_strings, cur_node, allowed, max_depth, depth+1);
+                    ExpandProduction(production, out_strings, cur_node, op_flags, max_depth, depth+1);
                 }
             }
 
@@ -258,13 +264,13 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 cur_node = node_to_tag;
             }
 
-            allowed &= ~new_flags;
+            op_flags = old_op_flags;
         }
     }
 }
 
 static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
-                             AllowedOperationFlags allowed, MD_u32 max_depth, MD_u32 depth)
+                             OperationFlags op_flags, MD_u32 max_depth, MD_u32 depth)
 {
     MD_i64 rule_count = MD_ChildCountFromNode(production);
 
@@ -276,7 +282,7 @@ static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *
         rule = MD_ChildFromIndex(production, rule_number);
     }while(GET_DEPTH(rule)+depth > max_depth);
 
-    ExpandRule(rule, out, cur_node, allowed, max_depth, depth);
+    ExpandRule(rule, out, cur_node, op_flags, max_depth, depth);
 }
 
 static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
@@ -334,28 +340,27 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
     return result;
 }
 
-// TODO: use MD_NodeDeepMatch instead
 static MD_b32 EqualTrees(MD_Node *a, MD_Node *b);
 static MD_b32 EqualList(MD_Node *a, MD_Node *b)
 {
     MD_b32 result = 1;
-
     while(!MD_NodeIsNil(a) || !MD_NodeIsNil(b))
     {
         if(!EqualTrees(a, b))
         {
             result = 0;
+            break;
         }
         a = a->next;
         b = b->next;
     }
-
     return result;
 }
 static MD_b32 EqualTrees(MD_Node *a, MD_Node *b)
 {
-    MD_b32 result = (a->kind == b->kind && MD_StringMatch(a->string, b->string, 0) && 
-                     MD_StringMatch(a->string, b->string, 0));
+    MD_b32 result = (a->kind == b->kind && 
+                     MD_StringMatch(a->string, b->string, 0) && 
+                     MD_StringMatch(a->whole_string, b->whole_string, 0));
     result &= EqualList(a->first_tag, b->first_tag);
     result &= EqualList(a->first_child, b->first_child);
     return result;
@@ -434,7 +439,6 @@ static void ComputeElementDepth(MD_Node *re)
 
     SET_DEPTH(re, result);
 }
-
 
 // NOTE(mal): Compares first by size then alphabetically
 static int StringCompare(MD_String8 a, MD_String8 b)
@@ -537,11 +541,15 @@ int main(int argument_count, char **arguments)
 
     // NOTE(mal): Check that all branches lead to terminal nodes
     MD_NodeTable visited_productions = {0};
-    MD_Node *non_terminal_production = FindNonTerminalProduction(file_production, &visited_productions);
-    if(non_terminal_production)
+
+    for(MD_EachNode(production, productions->first_child))
     {
-        fprintf(stderr, "Error: Non-terminal production \"%.*s\"\n", MD_StringExpand(non_terminal_production->string));
-        goto error;
+        MD_Node *non_terminal_production = FindNonTerminalProduction(production, &visited_productions);
+        if(non_terminal_production)
+        {
+            fprintf(stderr, "Error: Non-terminal production \"%.*s\"\n", MD_StringExpand(non_terminal_production->string));
+            goto error;
+        }
     }
 
     // NOTE(mal): Check that all productions are reachable
@@ -644,13 +652,10 @@ int main(int argument_count, char **arguments)
         test.expected_output = NewChild(0);
         test.expected_output->kind = MD_NodeKind_File;
 
-        // static int loop = 0; ++loop; if(loop == 893) BP; 
-
         MD_String8List string_list = {0};
         // NOTE(mal): Generate a random MD file
         ExpandProduction(file_production_node, &string_list, test.expected_output, 0, max_production_depth, 0);
         test.input = MD_JoinStringList(string_list);
-        // if(MD_StringMatch(test.input, MD_S8Lit("A:A:A A\n"), 0)) BP;
 
         Test *prev = 0;
         for(Test *cur = first_test; cur; cur = cur->next)
@@ -699,7 +704,6 @@ int main(int argument_count, char **arguments)
             MD_OutputTree(stdout, test->expected_output); printf("\n");
             return -1;
         }
-
         ++i_test;
     }
 
