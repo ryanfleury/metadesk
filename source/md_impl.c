@@ -1763,15 +1763,33 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
     MD_Node *root = MD_MakeNodeFromString(MD_NodeKind_File, filename, contents.str, contents.str, MD_PushStringF("`DD Parsed From \"%.*s\"`", MD_StringExpand(filename)));
     if(contents.size > 0)
     {
+        // NOTE(mal): Parse the content of the file as the inside of a set
         MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, contents);
-        for(MD_u64 i = 0; i < contents.size;)
+        MD_NodeFlags next_child_flags = 0;
+        for(MD_u64 child_idx = 0;; child_idx += 1)
         {
             MD_ParseResult parse = _MD_ParseOneNode(&ctx);
-            _MD_PushNodeToList(&root->first_child, &root->last_child, root, parse.node);
-            i += parse.bytes_parsed;
-            if(parse.bytes_parsed == 0)
+            MD_Node *child = parse.node;
+            child->flags |= next_child_flags;
+            next_child_flags = 0;
+            if(MD_NodeIsNil(child))
             {
                 break;
+            }
+            else
+            {
+                _MD_PushNodeToList(&root->first_child, &root->last_child, root, child);
+            }
+
+            if(MD_Parse_Require(&ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
+            {
+                child->flags |= MD_NodeFlag_BeforeComma;
+                next_child_flags |= MD_NodeFlag_AfterComma;
+            }
+            else if(MD_Parse_Require(&ctx, MD_S8Lit(";"), MD_TokenKind_Symbol))
+            {
+                child->flags |= MD_NodeFlag_BeforeSemicolon;
+                next_child_flags |= MD_NodeFlag_AfterSemicolon;
             }
         }
     }
