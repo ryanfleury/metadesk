@@ -43,28 +43,28 @@ Node {
   Tag: @test_tag
   Node {
     Kind: Label,
-    Flags: 00000000000100000000000000000000,
-    Flag Names: Identifier,
+    Flags: 00000001000100000000000000000000,
+    Flag Names: BeforeComma, Identifier,
     String: y,
     Whole String: y,
     Node {
       Kind: Label,
-      Flags: 00000001000100000000000000000000,
-      Flag Names: BeforeComma, Identifier,
+      Flags: 00000000000100000000000000000000,
+      Flag Names: Identifier,
       String: float,
       Whole String: float,
     }
   }
   Node {
     Kind: Label,
-    Flags: 00000000000100000000000000000000,
-    Flag Names: Identifier,
+    Flags: 00000001010100000000000000000000,
+    Flag Names: BeforeComma, AfterComma, Identifier,
     String: z,
     Whole String: z,
     Node {
       Kind: Label,
-      Flags: 00000001000100000000000000000000,
-      Flag Names: BeforeComma, Identifier,
+      Flags: 00000000000100000000000000000000,
+      Flag Names: Identifier,
       String: i32,
       Whole String: i32,
     }

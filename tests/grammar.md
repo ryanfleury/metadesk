@@ -11,56 +11,76 @@
 
 //// Arbitrarily deep tree, possibly empty
 // file            : [@child set]
-// set             : '{' [@child set] '}' | set [' ' @sibling set]
+// set             : '{' [@child set] '}' | set [separator @sibling set]
+// separator       : ' ' | '\n' | ',' | ';'
 
 //// Labeled leaves
 // file            : [@child set]
-// set             : @fill 'A' | '{' [@child set] '}' | set [' ' @sibling set]
+// set             : @fill 'A' | '{' [@child set] '}' | set [separator @sibling set]
+// separator       : ' ' | '\n' | ',' | ';'
 
-//// Labels also on internal nodes ('iset' is an implicitly separated set)
+//// Labeled internal nodes
 // file            : [@child set]
-// set             : @fill 'A' [':' @child iset '\n'] | [@fill 'A' ':'] scoped_set | set [' ' @sibling set]
-// iset            : @fill 'A' [iset_tail]
-// iset_tail       : ':' @child iset | ' ' @sibling iset | ':'  scoped_set | ' ' @sibling scoped_set
+// set             : @fill 'A' | [@fill 'A' ':'] scoped_set | set [separator @sibling set]
+// separator       : ' ' | '\n' | ',' | ';'
 // scoped_set      : '{' [@child set] '}'
+
+//// Unscoped tests (feels like there should be an easier way to express this)
+// file            : general_set
+// general_set     : { [@child set] | [@child uns_set] }
+// set             : @fill 'A' | set [sep1 @sibling set] | scoped_set | uns_set sep2 @sibling set
+// uns_set         : @fill 'A' [uns_set_tail]
+// uns_set_tail    : ':' @child uns_set | ' ' @sibling uns_set | ':'  scoped_set | ' ' @sibling scoped_set
+// scoped_set      : '{' general_set '}'
+// sep1            : ' ' | '\n' | ',' | ';'
+// sep2            : '\n'| ',' | ';'
 
 //// Tags
-// file            : [@child set]
+// file            : general_set
+// general_set     : { [@child set] | [@child uns_set] }
 // set             : {[tag_list] untagged_set}
-// iset            : {[tag_list] untagged_iset}
+// uns_set         : {[tag_list] untagged_uns_set}
 // tag_list        : '@' @tag tag ' ' [tag_list]
-// tag             : @fill 'T'['(' [@child set] ')']
-// untagged_set    : @fill 'A' [':' @child iset '\n'] | [@fill 'A' ':'] scoped_set | set [' ' @sibling set]
-// untagged_iset   : @fill 'A' [iset_tail]
-// iset_tail       : ':' @child iset | ' ' @sibling iset | ':'  scoped_set | ' ' @sibling scoped_set
-// scoped_set      : '{' [@child set] '}'
+// tag             : @fill 'T'['(' general_set ')']
+// untagged_set    : @fill 'A' | set [sep1 @sibling set] | scoped_set | uns_set sep2 @sibling set
+// untagged_uns_set: @fill 'A' [uns_set_tail]
+// uns_set_tail    : ':' @child uns_set | ' ' @sibling uns_set | ':'  scoped_set | ' ' @sibling scoped_set
+// scoped_set      : '{' general_set '}'
+// sep1            : ' ' | '\n' | ',' | ';'
+// sep2            : '\n'| ',' | ';'
 
 //// Alternative scope markers
-// file            : [@child set]
+// file            : general_set
+// general_set     : { [@child set] | [@child uns_set] }
 // set             : {[tag_list] untagged_set}
-// iset            : {[tag_list] untagged_iset}
+// uns_set         : {[tag_list] untagged_uns_set}
 // tag_list        : '@' @tag tag ' ' [tag_list]
-// tag             : @fill 'T'['(' [@child set] ')']
-// untagged_set    : @fill 'A' [':' @child iset '\n'] | [@fill 'A' ':'] scoped_set | set [' ' @sibling set]
-// untagged_iset   : @fill 'A' [iset_tail]
-// iset_tail       : ':' @child iset | ' ' @sibling iset | ':'  scoped_set | ' ' @sibling scoped_set
-// scoped_set      : '{' [@child set] '}' | scope_beg [@child set] scope_end
-// scope_beg       : '(' | '['
-// scope_end       : ')' | ']'
+// tag             : @fill 'T'['(' general_set ')']
+// untagged_set    : @fill 'A' | set [sep1 @sibling set] | scoped_set | uns_set sep2 @sibling set
+// untagged_uns_set: @fill 'A' [uns_set_tail]
+// uns_set_tail    : ':' @child uns_set | ' ' @sibling uns_set | ':'  scoped_set | ' ' @sibling scoped_set
+// scoped_set      : '{' general_set '}' | alt_scope_beg general_set alt_scope_end
+// alt_scope_beg   : '(' | '['
+// alt_scope_end   : ')' | ']'
+// sep1            : ' ' | '\n' | ',' | ';'
+// sep2            : '\n'| ',' | ';'
 
 //// Identifiers
-// file            : [@child set]
+// file            : general_set
+// general_set     : { [@child set] | [@child uns_set] }
 // set             : {[tag_list] untagged_set}
-// iset            : {[tag_list] untagged_iset}
+// uns_set         : {[tag_list] untagged_uns_set}
 // tag_list        : '@' @tag tag ' ' [tag_list]
-// tag             : @fill id['(' [@child set] ')']
-// untagged_set    : @fill 'A' [':' @child iset '\n'] | [@fill 'A' ':'] scoped_set | set [' ' @sibling set]
-// untagged_iset   : @fill 'A' [iset_tail]
-// iset_tail       : ':' @child iset | ' ' @sibling iset | ':'  scoped_set | ' ' @sibling scoped_set
-// scoped_set      : '{' [@child set] '}' | scope_beg [@child set] scope_end
-// scope_beg       : '(' | '['
-// scope_end       : ')' | ']'
-// id              : alpha [alphanumeric]
+// tag             : @fill id['(' general_set ')']
+// untagged_set    : @fill 'A' | set [sep1 @sibling set] | scoped_set | uns_set sep2 @sibling set
+// untagged_uns_set: @fill 'A' [uns_set_tail]
+// uns_set_tail    : ':' @child uns_set | ' ' @sibling uns_set | ':'  scoped_set | ' ' @sibling scoped_set
+// scoped_set      : '{' general_set '}' | alt_scope_beg general_set alt_scope_end
+// alt_scope_beg   : '(' | '['
+// alt_scope_end   : ')' | ']'
+// sep1            : ' ' | '\n' | ',' | ';'
+// sep2            : '\n'| ',' | ';'
+// id              : alpha [alphanumeric] | '_' [alphanumeric]
 // alphanumeric    : alpha [alphanumeric] | digit [alphanumeric] | '_' [alphanumeric]
 // alpha           : lowercase | uppercase
 // lowercase       : 'a'|'b'|'c'|'d'|'e'|'f'|'g'|'h'|'i'|'j'|'k'|'l'|'m'|'n'|'o'|'p'|'q'|'r'|'s'|'t'|'u'|'v'|'w'|'z'|'y'|'z'
@@ -68,17 +88,20 @@
 // digit           : '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9'
 
 //// General labels
-file            : [@child set]
+file            : general_set
+general_set     : { [@child set] | [@child uns_set] }
 set             : {[tag_list] untagged_set}
-iset            : {[tag_list] untagged_iset}
+uns_set         : {[tag_list] untagged_uns_set}
 tag_list        : '@' @tag tag ' ' [tag_list]
-tag             : @fill id['(' [@child set] ')']
-untagged_set    : @fill label [':' @child iset '\n'] | [@fill label ':'] scoped_set | set [' ' @sibling set]
-untagged_iset   : @fill label [iset_tail]
-iset_tail       : ':' @child iset | ' ' @sibling iset | ':'  scoped_set | ' ' @sibling scoped_set
-scoped_set      : '{' [@child set] '}' | scope_beg [@child set] scope_end
-scope_beg       : '(' | '['
-scope_end       : ')' | ']'
+tag             : @fill id['(' general_set ')']
+untagged_set    : @fill label | set [sep1 @sibling set] | scoped_set | uns_set sep2 @sibling set
+untagged_uns_set: @fill label [uns_set_tail]
+uns_set_tail    : ':' @child uns_set | ' ' @sibling uns_set | ':'  scoped_set | ' ' @sibling scoped_set
+scoped_set      : '{' general_set '}' | alt_scope_beg general_set alt_scope_end
+alt_scope_beg   : '(' | '['
+alt_scope_end   : ')' | ']'
+sep1            : ' ' | '\n' | ',' | ';'
+sep2            : '\n'| ',' | ';'
 id              : alpha [alphanumeric] | '_' [alphanumeric]
 alphanumeric    : alpha [alphanumeric] | digit [alphanumeric] | '_' [alphanumeric]
 alpha           : lowercase | uppercase

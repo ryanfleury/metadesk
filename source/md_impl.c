@@ -1683,20 +1683,29 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
             // NOTE(rjf): Separators.
             {
                 MD_b32 result = 0;
-                if(MD_Parse_Require(ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
+                if(terminate_with_separator)
                 {
-                    result |= 1;
+                    MD_Token next_token = MD_Parse_PeekSkipSome(ctx, 0);
+                    if(next_token.kind == MD_TokenKind_Newline ||
+                       (next_token.kind == MD_TokenKind_Symbol &&
+                        (MD_StringMatch(next_token.string, MD_S8Lit(","), 0) ||
+                         MD_StringMatch(next_token.string, MD_S8Lit(";"), 0))))
+                    {
+                        result = 1;
+                    }
+                }
+                else if(MD_Parse_Require(ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
+                {
                     child->flags |= MD_NodeFlag_BeforeComma;
                     next_child_flags |= MD_NodeFlag_AfterComma;
                 }
                 else if(MD_Parse_Require(ctx, MD_S8Lit(";"), MD_TokenKind_Symbol))
                 {
-                    result |= 1;
                     child->flags |= MD_NodeFlag_BeforeSemicolon;
                     next_child_flags |= MD_NodeFlag_AfterSemicolon;
                 }
-                result |= (MD_Parse_PeekSkipSome(ctx, 0).kind == MD_TokenKind_Newline);
-                if(result && terminate_with_separator)
+
+                if(result)
                 {
                     goto end_parse;
                 }
