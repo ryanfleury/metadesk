@@ -357,7 +357,7 @@ MakeDateString(MD_Node *date)
                 "January", "February", "March", "April", "May", "June", "July", "August",
                 "September", "October", "November", "December",
             };
-            int month_idx = MD_I64FromString(month->string)-1;
+            int month_idx = MD_I64FromString(month->string, 10)-1;
             if(month_idx >= 0 && month_idx < sizeof(month_names)/sizeof(month_names[0]))
             {
                 result = MD_PushStringF("%.*s %s %.*s",

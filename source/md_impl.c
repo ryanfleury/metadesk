@@ -474,11 +474,11 @@ MD_JoinStringListWithSeparator(MD_String8List list, MD_String8 separator)
 }
 
 MD_FUNCTION_IMPL MD_i64
-MD_I64FromString(MD_String8 string)
+MD_I64FromString(MD_String8 string, MD_u32 radix)
 {
     char str[64];
     _MD_WriteStringToBuffer(string, sizeof(str), str);
-    return strtoll(str, 0, 0);
+    return strtoll(str, 0, radix);
 }
 
 MD_FUNCTION_IMPL MD_f64
@@ -2601,7 +2601,7 @@ MD_EvaluateExpr_I64(MD_Expr *expr)
         _MD_BinaryOp(Multiply, *);
         _MD_BinaryOp(Divide,   /);
 #undef _MD_BinaryOp
-        case MD_ExprKind_Atom: { result = MD_I64FromString(expr->node->string); }break;
+        case MD_ExprKind_Atom: { result = MD_I64FromString(expr->node->string, 10); }break;
         default: break;
     }
     return result;
@@ -2960,7 +2960,7 @@ MD_CommandLine_FlagIntegers(MD_CommandLine *cmdln, MD_String8 string, int out_co
             {
                 for(int out_idx = 0; out_idx < out_count; out_idx += 1)
                 {
-                    out[out_idx] = MD_I64FromString(cmdln->arguments[i+out_idx+1]);
+                    out[out_idx] = MD_I64FromString(cmdln->arguments[i+out_idx+1], 10);
                     cmdln->arguments[i+out_idx+1].str = 0;
                     cmdln->arguments[i+out_idx+1].size = 0;
                 }
