@@ -75,13 +75,10 @@ void recurse(MD_Node *node, int indent)
 {
     for(int i = 0; i < indent; i++) printf(" ");
 
-    char *kind;
-    switch(node->kind) {
-    case(MD_NodeKind_Label): kind = "Label"; break;
-    case(MD_NodeKind_Tag): kind = "Tag"; break;
-    case(MD_NodeKind_File): kind = "File"; break;
-    }
-    printf("- %s %.*s\n", kind, MD_StringExpand(node->string));
+    MD_String8 kind = MD_StringFromNodeKind(node->kind);
+    printf("- %.*s %.*s\n",
+           MD_StringExpand(kind),
+           MD_StringExpand(node->string));
 
     for(MD_EachNode(tag, node->first_tag)) recurse(tag, indent + 2);
     for(MD_EachNode(child, node->first_child)) recurse(child, indent + 2);
