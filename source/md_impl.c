@@ -1461,7 +1461,11 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             else if(token.kind == MD_TokenKind_Newline)
             {
                 MD_Parse_Bump(ctx, token);
-                if(MD_Parse_RequireKind(ctx, MD_TokenKind_Newline, 0))
+                if(MD_Parse_RequireKind(ctx, MD_TokenKind_Comment, &comment_token))
+                {
+                    // NOTE(mal): If more than one comment, use the last comment
+                }
+                else if(MD_Parse_RequireKind(ctx, MD_TokenKind_Newline, 0))
                 {
                     _MD_MemoryZero(&comment_token, sizeof(comment_token));
                 }
