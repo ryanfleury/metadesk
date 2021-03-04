@@ -144,9 +144,10 @@ static void PrintRule(MD_Node *rule)
 typedef enum OperationFlags OperationFlags;
 enum OperationFlags
 {
-    OperationFlag_Fill   = 1<<0,
-    OperationFlag_Markup = 1<<1,
-    OperationFlag_Tag    = 1<<2,
+    OperationFlag_Fill          = 1<<0,
+    OperationFlag_Markup        = 1<<1,
+    OperationFlag_Tag           = 1<<2,
+    OperationFlag_PreComment    = 1<<3,
 };
 
 static void Extend(MD_String8 *s, char c)
@@ -160,6 +161,7 @@ static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *
 static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_node, OperationFlags op_flags,
                        MD_u32 max_depth, MD_u32 depth)
 {
+    MD_String8 pre_comment = {0};
     for(MD_EachNode(rule_element, rule->first_child))
     {
         MD_b32 expand = 1;
@@ -179,6 +181,8 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
         if(expand)
         {
             MD_Node *node_to_tag = 0;
+            MD_Node *node_to_precomment = 0;
+            MD_String8 precomment = {0};
             OperationFlags old_op_flags = op_flags;
             for(MD_EachNode(tag_node, rule_element->first_tag)){
                 if(MD_StringMatch(tag_node->string, MD_S8Lit("child"), 0))
@@ -204,6 +208,12 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 else if(MD_StringMatch(tag_node->string, MD_S8Lit("markup"), 0))
                 {
                     op_flags |= OperationFlag_Markup;
+                }
+                else if(MD_StringMatch(tag_node->string, MD_S8Lit("pre_comment"), 0))
+                {
+                    op_flags |= OperationFlag_PreComment;
+                    node_to_precomment = cur_node;
+                    cur_node = NewChild(0); // NOTE(mal): Only used to store the comment, won't be linked as a node
                 }
                 else if(MD_StringMatch(tag_node->string, MD_S8Lit(OPTIONAL_TAG), 0))
                 {
@@ -262,6 +272,12 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
             {
                 MD_PushTag(node_to_tag, cur_node);
                 cur_node = node_to_tag;
+            }
+
+            if(node_to_precomment)
+            {
+                node_to_precomment->comment_before = cur_node->string;
+                cur_node = node_to_precomment;
             }
 
             op_flags = old_op_flags;
@@ -363,6 +379,7 @@ static MD_b32 EqualTrees(MD_Node *a, MD_Node *b)
                      MD_StringMatch(a->whole_string, b->whole_string, 0));
     result &= EqualList(a->first_tag, b->first_tag);
     result &= EqualList(a->first_child, b->first_child);
+    result &= MD_StringMatch(a->comment_before, b->comment_before, 0);
     return result;
 }
 
