@@ -1569,6 +1569,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             {
                 comment_token = token;
                 MD_Parse_Bump(ctx, token);
+                break;
             }
             else if(token.kind == MD_TokenKind_Newline)
             {
