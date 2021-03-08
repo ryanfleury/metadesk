@@ -36,6 +36,11 @@ string_literal_items            : string_literal_item [string_literal_items]
 string_literal_item             : ascii_no_backslash_no_quotes | '\'' | '\\' ascii
 symbol_label                    : '~'|'!'|'%'|'^'|'&'|'*'|'+'|'-'|'/'|'|'|'<'|'>'|'$'|'='|'.'|'?'|'$'
 
+/* What follows is a range of annotated grammars that can be used to generate
+ * tests of increasing complexity and completeness to check against MetaDesk.
+ * To run them, uncomment them one by one and run the build/grammar test.
+ */
+
 //// Arbitrarily deep tree, possibly empty
 // file                : [@child set_list]
 // set_list            : '{' [@child set_list] '}' [separator @sibling set_list]
@@ -60,18 +65,12 @@ symbol_label                    : '~'|'!'|'%'|'^'|'&'|'*'|'+'|'-'|'/'|'|'|'<'|'>
 //// Tags
 // file                : [@child set_list]
 // set_list            : scoped_set [separator @sibling set_list] | unscoped_set [unscoped_separator @sibling set_list]
-// scoped_set          : {[tag_list] '{' [@child set_list] '}'}
+// scoped_set          : {[tag_list] untagged_scoped_set}
+// untagged_scoped_set : '{' [@child set_list] '}'
 // unscoped_set        : {[tag_list] @fill 'A' [unscoped_set_tail]}
 // tag_list            : '@' @tag tag ' ' [tag_list]
 // tag                 : @fill 'T'['(' [@child set_list] ')']
-// // unscoped_set_tail   : ':' @child unscoped_set | ' ' @sibling unscoped_set | ':' @child scoped_set | ' ' @sibling scoped_set
-// unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | set_tail_hack | ' ' @sibling scoped_set}
-//                       // NOTE(mal): Ideally the set_tail_hack should be captured by the simpler
-//                       //            ':' @child scoped_set
-//                       //            but there's a quirk in the grammar. 
-//                       //            In "A:{}", A has no children but in "A:@T{}", it has one tagged children, 
-//                       //            which means that *the presence of tags* introduces the child
-// set_tail_hack       : ':' [@child tag_list] '{' '}' | ':' @child [tag_list] '{' @child set_list '}'
+// unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | ':' untagged_scoped_set | ' ' @sibling scoped_set}
 
 //// Alternative scope markers
 // file                : [@child set_list]
@@ -81,12 +80,7 @@ symbol_label                    : '~'|'!'|'%'|'^'|'&'|'*'|'+'|'-'|'/'|'|'|'<'|'>
 // unscoped_set        : {[tag_list] @fill 'A' [unscoped_set_tail]}
 // tag_list            : '@' @tag tag ' ' [tag_list]
 // tag                 : @fill 'T'['(' [@child set_list] ')']
-// unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | set_tail_hack | ' ' @sibling scoped_set}
-// set_tail_hack       : {':' [@child tag_list] '{' '}' | 
-//                        ':' @child [tag_list] '{' @child set_list '}' | 
-//                        ':' [@child tag_list] alt_scope_beg alt_scope_end | 
-//                        ':' @child [tag_list] alt_scope_beg @child set_list alt_scope_end
-//                       }
+// unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | ':' untagged_scoped_set | ' ' @sibling scoped_set}
 
 //// General tags and labels
 file                : [@child set_list]
@@ -96,29 +90,27 @@ untagged_scoped_set : '{' [@child set_list] '}' | alt_scope_beg [@child set_list
 unscoped_set        : {[tag_list] @fill label [unscoped_set_tail]}
 tag_list            : '@' @tag tag ' ' [tag_list]
 tag                 : @fill id['(' [@child set_list] ')']
-unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | set_tail_hack | ' ' @sibling scoped_set}
-set_tail_hack       : {':' [@child tag_list] '{' '}' | 
-                       ':' @child [tag_list] '{' @child set_list '}' | 
-                       ':' [@child tag_list] alt_scope_beg alt_scope_end | 
-                       ':' @child [tag_list] alt_scope_beg @child set_list alt_scope_end
-                      }
+unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | ':' untagged_scoped_set | ' ' @sibling scoped_set}
 
-//// Comments before 
-//// TODO: This needs some work to make sure that "a /* comment_before_b */ b" can't be generated
-////                                     but that "a /* comment_after_a  */ b" can
-// file                : [@child set_list]
-// set_list            : scoped_set [separator @sibling set_list] | unscoped_set [unscoped_separator @sibling set_list]
-// scoped_set          : {[tag_list] [@pre_comment pre_comment] untagged_scoped_set}
-// pre_comment         : '/' '/' [' '] [@fill c_code_content] '\n' | '/' '*' [@fill cpp_code_content] '*' '/'
-// c_code_content      : 'c''o''m''m''e''n''t' // TODO: Arbitrary strings, including C-style comments, as long as /* */ pairs are balanced
-// cpp_code_content    : 'c''o''m''m''e''n''t' // TODO: Arbitrary strings that don't start with space
-// untagged_scoped_set : '{' [@child set_list] '}' | alt_scope_beg [@child set_list] alt_scope_end
-// unscoped_set        : {[tag_list] @fill label [unscoped_set_tail]}
-// tag_list            : '@' @tag tag ' ' [tag_list]
-// tag                 : @fill id['(' [@child set_list] ')']
-// unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | set_tail_hack | ' ' @sibling scoped_set}
-// set_tail_hack       : {':' [@child tag_list] '{' '}' | 
-//                        ':' @child [tag_list] '{' @child set_list '}' | 
-//                        ':' [@child tag_list] alt_scope_beg alt_scope_end | 
-//                        ':' @child [tag_list] alt_scope_beg @child set_list alt_scope_end
-//                       }
+/* Comments
+ * Comments around nodes are accessible to the user. Here's how they behave:
+ * - The text inside a comment immediatly following a node is stored as the 
+ *   comment_after member of that node. No newlines can happen between a 
+ *   node and its after_comment.
+ * - The text inside a comment preceding a node is stored as the 
+ *   comment_before of that node _unless_ it is already the comment_after 
+ *   of another node. One newline between the comment and the node is 
+ *   obviously necessary in the case of C++-style comments and it's also
+ *   allowed for C-style comments.
+ * - If the first character inside a C++-style comment is a space, it's
+ *   omitted from the stored string
+ *
+ * The semantically annotated Backus-Naur form that we're using is not a 
+ * good fit to describe the grammar of comments.
+ * To prevent the comment in "a /* comment */ b" from being interpreted as 
+ * a comment_before of "b", instead of what it is (a comment_after of "a"),
+ * we would have to complicate the grammar by introducing several extra 
+ * productions with this specific purpose in mind.
+ * The sensitivity of whitespace in the attachment of comments to nodes is
+ * also cumbersome to express in BNF.
+ */
