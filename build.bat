@@ -11,6 +11,7 @@ cl %compile_flags% ..\samples\old_style_custom_layer.c
 cl %compile_flags% ..\samples\static_site_generator\static_site_generator.c
 cl %compile_flags% ..\samples\output_parse\output_parse.c
 cl %compile_flags% ..\samples\c_code_generation.c
+cl %compile_flags% ..\samples\node_errors\node_errors.c
 echo.
 echo ~~~ Build All Tests ~~~
 cl %compile_flags% ..\tests\sanity_tests.c
@@ -55,4 +56,10 @@ echo.
 echo ~~~ Running C Code Generation Sample ~~~
 pushd build
 c_code_generation.exe
+popd
+
+echo.
+echo ~~~ Running Error Generation Sample ~~~
+pushd build
+node_errors.exe %~dp0\samples\node_errors\node_errors.md
 popd
