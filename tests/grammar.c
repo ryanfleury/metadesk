@@ -141,13 +141,12 @@ static void PrintRule(MD_Node *rule)
     }
 }
 
-typedef enum OperationFlags OperationFlags;
-enum OperationFlags
+typedef enum OperationFlags
 {
     OperationFlag_Fill          = 1<<0,
     OperationFlag_Markup        = 1<<1,
     OperationFlag_Tag           = 1<<2,
-};
+} OperationFlags;
 
 static void Extend(MD_String8 *s, char c)
 {

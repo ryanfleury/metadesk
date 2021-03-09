@@ -13,6 +13,7 @@ clang %compile_flags% ..\samples\old_style_custom_layer.c -o old_style_custom_la
 clang %compile_flags% ..\samples\static_site_generator\static_site_generator.c -o static_site_generator.exe
 clang %compile_flags% ..\samples\output_parse\output_parse.c -o output_parse.exe
 clang %compile_flags% ..\samples\c_code_generation.c -o c_code_generation.exe
+clang %compile_flags% ..\samples\node_errors\node_errors.c -o node_errors.exe
 echo.
 echo ~~~ Build All Tests ~~~
 clang %compile_flags% ..\tests\sanity_tests.c -o sanity_tests.exe
@@ -57,4 +58,10 @@ echo.
 echo ~~~ Running C Code Generation Sample ~~~
 pushd build
 c_code_generation.exe
+popd
+
+echo.
+echo ~~~ Running Error Generation Sample ~~~
+pushd build
+node_errors.exe %~dp0\samples\node_errors\node_errors.md
 popd
