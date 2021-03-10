@@ -111,6 +111,13 @@ MD_CharIsSymbol(MD_u8 c)
 }
 
 MD_FUNCTION_IMPL MD_b32
+MD_CharIsReservedSymbol(MD_u8 c)
+{
+    return (c == '{' || c == '}' || c == '(' || c == ')' ||
+            c == '[' || c == ']' || c == '#');
+}
+
+MD_FUNCTION_IMPL MD_b32
 MD_CharIsSpace(MD_u8 c)
 {
     return c == ' ' || c == '\r' || c == '\t' || c == '\f' || c == '\v';
@@ -1091,6 +1098,23 @@ MD_TokenizerScanEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
     return at;
 }
 
+MD_PRIVATE_FUNCTION_IMPL MD_u32
+_MD_ComputeTextLiteralChop(MD_u32 bytes_to_skip, MD_u8 *beg, MD_u8 *end)
+{
+    // NOTE(mal): By counting the bytes to chop off text literals and encoding exact token.string and
+    //            token.outer_string we delegate the responsibility of generating errors to the parser
+    //            That way, we can avoid generating errors during peeks and save them for actual token
+    //            consumption. That allows predictable error ordering.
+    MD_u32 result = 0;
+    MD_u8 *skip_end = beg + bytes_to_skip;
+    MD_u8 *chop_beg = end - bytes_to_skip;
+    if(skip_end <= chop_beg && MD_StringMatch(MD_S8(beg, bytes_to_skip), MD_S8(chop_beg, bytes_to_skip), 0))
+    {
+        result = bytes_to_skip;
+    }
+    return result;
+}
+
 MD_FUNCTION_IMPL MD_Token
 MD_Parse_LexNext(MD_ParseCtx *ctx)
 {
@@ -1184,17 +1208,18 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 token.kind = MD_TokenKind_StringLiteral;
                 if (at + 2 < one_past_last && at[1] == '`' && at[2] == '`')
                 {
-                    skip_n = chop_n = 3;
+                    skip_n = 3;
                     at += 3;
                     MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '`' && at[1] == '`' && at[2] == '`'));
                     at += 3;
                 }
                 else
                 {
-                    skip_n = chop_n = 1;
+                    skip_n = 1;
                     at += 1;
                     at = MD_TokenizerScanEscaped(at, one_past_last, '`');
                 }
+                chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
             }break;
             
             // NOTE(allen): Strings
@@ -1203,17 +1228,18 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 token.kind = MD_TokenKind_StringLiteral;
                 if (at + 2 < one_past_last && at[1] == '"' && at[2] == '"')
                 {
-                    skip_n = chop_n = 3;
+                    skip_n = 3;
                     at += 3;
                     MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '"' && at[1] == '"' && at[2] == '"'));
                     at += 3;
                 }
                 else
                 {
-                    skip_n = chop_n = 1;
+                    skip_n = 1;
                     at += 1;
                     at = MD_TokenizerScanEscaped(at, one_past_last, '"');
                 }
+                chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
             }break;
             
             case '\'':
@@ -1221,7 +1247,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 if (at + 2 < one_past_last && at[1] == '\'' && at[2] == '\'')
                 {
                     token.kind = MD_TokenKind_StringLiteral;
-                    skip_n = chop_n = 3;
+                    skip_n = 3;
                     at += 3;
                     MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '\'' && at[1] == '\'' && at[2] == '\''));
                     at += 3;
@@ -1229,10 +1255,11 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 else
                 {
                     token.kind = MD_TokenKind_CharLiteral;
-                    skip_n = chop_n = 1;
+                    skip_n = 1;
                     at += 1;
                     at = MD_TokenizerScanEscaped(at, one_past_last, '\'');
                 }
+                chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
             }break;
             
             // NOTE(allen): Identifiers, Numbers, Operators
@@ -1362,15 +1389,62 @@ MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token)
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_Error(MD_ParseCtx *ctx, char *fmt, ...)
+MD_PRIVATE_FUNCTION_IMPL MD_CodeLoc
+_MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 * file_contents, MD_u8 *at)
 {
-    MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
-    error->filename = ctx->filename;
-    va_list args;
-    va_start(args, fmt);
-    error->string = MD_PushStringFV(fmt, args);
-    va_end(args);
+    MD_CodeLoc loc;
+    loc.filename = filename;
+    loc.line = 1;
+    loc.column = 1;
+    for(MD_u64 i = 0; file_contents[i]; i += 1)
+    {
+        if(file_contents[i] == '\n')
+        {
+            loc.line += 1;
+            loc.column = 1;
+        }
+        else
+        {
+            loc.column += 1;
+        }
+        if(file_contents + i >= at)
+        {
+            break;
+        }
+    }
+    return loc;
+}
+
+MD_PRIVATE_FUNCTION_IMPL void
+_MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char *fmt, ...)
+{
+    if(!ctx->catastrophic_error) // NOTE(mal): Can't trust parsing errors after first catastrophic error
+    {
+        MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
+        error->node = node;
+        error->catastrophic = catastrophic;
+        error->location = _MD_CodeLocFromFileOffset(ctx->filename, ctx->file_contents.str, at-1);
+        error->filename = ctx->filename;
+        va_list args;
+        va_start(args, fmt);
+        error->string = MD_PushStringFV(fmt, args);
+        va_end(args);
+
+        if(ctx->last_error)
+        {
+            ctx->last_error->next = error;
+            ctx->last_error = error;
+        }
+        else
+        {
+            ctx->first_error = ctx->last_error = error;
+        }
+
+        if(catastrophic)
+        {
+            ctx->catastrophic_error = 1;
+        }
+    }
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
@@ -1429,6 +1503,16 @@ _MD_SetNodeFlagsByToken(MD_Node *node, MD_Token token)
     Flag(MD_TokenKind_StringLiteral,  MD_NodeFlag_StringLiteral);
     Flag(MD_TokenKind_CharLiteral,    MD_NodeFlag_CharLiteral);
 #undef Flag
+}
+
+MD_PRIVATE_FUNCTION_IMPL MD_b32
+_MD_StringLiteralIsBalanced(MD_Token token)
+{
+    MD_b32 result = 0;
+    MD_u64 front_len = token.string.str - token.outer_string.str;
+    MD_u64 back_len  = (token.outer_string.str + token.outer_string.size) - (token.string.str + token.string.size);
+    result = (front_len == back_len);
+    return result;
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_ParseResult
@@ -1542,6 +1626,31 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     {
         result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
         _MD_SetNodeFlagsByToken(result.node, token);
+
+        if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
+        {
+            if(!_MD_StringLiteralIsBalanced(token))
+            {
+                _MD_Error(ctx, result.node, at_first, 1, "Unbalanced text literal \"%.*s\"",
+                          MD_StringExpand(token.outer_string));
+            }
+        }
+        else if(token.kind == MD_TokenKind_Symbol && token.string.size == 1 && MD_CharIsReservedSymbol(token.string.str[0]))
+        {
+            MD_u8 c = token.string.str[0];
+            const char *error_message = 0;
+            if(c == '}' || c == ']' || c == ')')
+            {
+                error_message = "Unbalanced";
+            }
+            else
+            {
+                error_message = "Unexpected reserved symbol";
+            }
+
+            _MD_Error(ctx, result.node, at_first, 1, "%s \"%c\"", error_message, c);
+        }
+
         // NOTE(rjf): Children
         if(MD_Parse_Require(ctx, MD_S8Lit(":"), MD_TokenKind_Symbol))
         {
@@ -1587,9 +1696,10 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         comment_after = comment_token.string;
     }
     
+    result.bytes_parsed = (MD_u64)(ctx->at - at_first);
+
     if(!MD_NodeIsNil(result.node))
     {
-        result.bytes_parsed = (MD_u64)(ctx->at - at_first);
         result.node->first_tag = first_tag;
         result.node->last_tag = last_tag;
         for(MD_Node *tag = first_tag; !MD_NodeIsNil(tag); tag = tag->next)
@@ -1671,13 +1781,21 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                     goto end_parse;
                 }
             }
-            
+
             MD_ParseResult parse = _MD_ParseOneNode(ctx);
             MD_Node *child = parse.node;
             child->flags |= next_child_flags;
             next_child_flags = 0;
             if(MD_NodeIsNil(child))
             {
+                if(brace || paren || bracket)
+                {
+                    char delimiter_char = 0;
+                    if(brace) delimiter_char = '{';
+                    else if(paren) delimiter_char = '(';
+                    else if(bracket) delimiter_char = '[';
+                    _MD_Error(ctx, parse.node, ctx->at - parse.bytes_parsed, 1, "Unbalanced \"%c\"", delimiter_char);
+                }
                 goto end_parse;
             }
             else
@@ -1771,9 +1889,10 @@ MD_ParseOneNode(MD_String8 filename, MD_String8 contents)
     return _MD_ParseOneNode(&ctx);
 }
 
-MD_FUNCTION MD_Node *
+MD_FUNCTION MD_ParseResult
 MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
 {
+    MD_ParseResult result = MD_ZERO_STRUCT;
     MD_Node *root = MD_MakeNodeFromString(MD_NodeKind_File, filename, contents.str, contents.str, MD_PushStringF("`DD Parsed From \"%.*s\"`", MD_StringExpand(filename)));
     if(contents.size > 0)
     {
@@ -1806,11 +1925,14 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                 next_child_flags |= MD_NodeFlag_AfterSemicolon;
             }
         }
+        result.bytes_parsed = (MD_u64)(ctx.at - contents.str);
+        result.first_error = ctx.first_error;
     }
-    return root;
+    result.node = root;
+    return result;
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseWholeFile(MD_String8 filename)
 {
     return MD_ParseWholeString(filename, MD_LoadEntireFile(filename));
@@ -2020,26 +2142,7 @@ MD_NodeHasTag(MD_Node *node, MD_String8 tag_string)
 MD_FUNCTION_IMPL MD_CodeLoc
 MD_CodeLocFromNode(MD_Node *node)
 {
-    MD_CodeLoc loc;
-    loc.filename = node->filename;
-    loc.line = 1;
-    loc.column = 1;
-    for(MD_u64 i = 0; node->file_contents[i]; i += 1)
-    {
-        if(node->file_contents[i] == '\n')
-        {
-            loc.line += 1;
-            loc.column = 1;
-        }
-        else
-        {
-            loc.column += 1;
-        }
-        if(node->file_contents + i == node->at)
-        {
-            break;
-        }
-    }
+    MD_CodeLoc loc = _MD_CodeLocFromFileOffset(node->filename, node->file_contents, node->at);
     return loc;
 }
 
@@ -2142,6 +2245,17 @@ MD_NodeWarningF(MD_Node *node, char *fmt, ...)
     va_start(args, fmt);
     MD_NodeWarning(node, MD_PushStringFV(fmt, args));
     va_end(args);
+}
+
+MD_FUNCTION_IMPL void
+MD_OutputError(FILE *f, MD_Error *error)
+{
+    const char *kind_name = "error";
+    fprintf(stderr, "%.*s:%i:%i: %s: %.*s\n",
+            MD_StringExpand(error->location.filename),
+            error->location.line, error->location.column,
+            kind_name,
+            MD_StringExpand(error->string));
 }
 
 MD_GLOBAL MD_Expr _md_nil_expr =

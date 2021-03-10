@@ -473,7 +473,7 @@ static int StringCompare(MD_String8 a, MD_String8 b)
 
 int main(int argument_count, char **arguments)
 {
-    MD_Node *grammar = MD_ParseWholeFile(MD_S8Lit("tests/grammar.md"));
+    MD_Node *grammar = MD_ParseWholeFile(MD_S8Lit("tests/grammar.md")).node;
 
     // NOTE(mal): In order to get a BNF-like syntax, I feed the MD output through two transformations:
     //            1) Tag []-style sets as optional 
@@ -688,7 +688,7 @@ int main(int argument_count, char **arguments)
     MD_u32 i_test = 0;
     for(Test *test = first_test; test; test = test->next)
     {
-        MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), test->input);
+        MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), test->input).node;
         file_node->string = file_node->whole_string = (MD_String8){0};
 
 #if DEBUG_PRINT_GENERATED_TESTS

@@ -24,6 +24,7 @@ $CC $compile_flags ../samples/static_site_generator/static_site_generator.c -o s
 $CC $compile_flags ../samples/output_parse/output_parse.c -o output_parse
 $CC $compile_flags ../samples/c_code_generation.c -o c_code_generation
 $CC $compile_flags ../samples/node_errors/node_errors.c -o node_errors
+$CC $compile_flags ../samples/syntax_errors/syntax_errors.c -o syntax_errors
 echo
 echo ~~~ Build All Tests ~~~
 $CC $compile_flags ../tests/sanity_tests.c -o sanity_tests
@@ -58,9 +59,15 @@ pushd build
 ./c_code_generation
 popd
 
-echo.
+echo
 echo ~~~ Running Error Generation Sample ~~~
 pushd build
 ./node_errors ../samples/node_errors/node_errors.md
+popd
+
+echo
+echo ~~~ Running Syntax Error Detection and Reporting Sample ~~~
+pushd build
+./syntax_errors ../samples/syntax_errors/*.md
 popd
 

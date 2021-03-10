@@ -482,6 +482,8 @@ struct MD_Error
     MD_String8 string;
     MD_String8 filename;
     MD_Node *node;
+    MD_b32 catastrophic;
+    MD_CodeLoc location;
 };
 
 typedef struct MD_ParseCtx MD_ParseCtx;
@@ -496,6 +498,7 @@ struct MD_ParseCtx
     MD_String8 file_contents;
     MD_NodeTable namespace_table;
     MD_Node *selected_namespace;
+    MD_b32 catastrophic_error;
 };
 
 typedef struct MD_ParseResult MD_ParseResult;
@@ -619,6 +622,7 @@ MD_FUNCTION MD_b32 MD_CharIsAlphaUpper(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaLower(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsDigit(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsSymbol(MD_u8 c);
+MD_FUNCTION MD_b32 MD_CharIsReservedSymbol(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsSpace(MD_u8 c);
 MD_FUNCTION MD_u8  MD_CharToUpper(MD_u8 c);
 MD_FUNCTION MD_u8  MD_CharToLower(MD_u8 c);
@@ -707,8 +711,8 @@ MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string
 MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string, MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token);
 MD_FUNCTION MD_ParseResult MD_ParseOneNode     (MD_String8 filename, MD_String8 contents);
-MD_FUNCTION MD_Node *      MD_ParseWholeString (MD_String8 filename, MD_String8 contents);
-MD_FUNCTION MD_Node *      MD_ParseWholeFile   (MD_String8 filename);
+MD_FUNCTION MD_ParseResult MD_ParseWholeString (MD_String8 filename, MD_String8 contents);
+MD_FUNCTION MD_ParseResult MD_ParseWholeFile   (MD_String8 filename);
 
 //~ Tree/List Building
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
@@ -745,6 +749,7 @@ MD_FUNCTION void MD_NodeWarning(MD_Node *node, MD_String8 str);
 MD_FUNCTION void MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, ...);
 MD_FUNCTION void MD_NodeErrorF(MD_Node *node, char *fmt, ...);
 MD_FUNCTION void MD_NodeWarningF(MD_Node *node, char *fmt, ...);
+MD_FUNCTION void MD_OutputError(FILE *f, MD_Error *error);
 
 //~ Tree Comparison/Verification
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags);

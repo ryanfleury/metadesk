@@ -16,7 +16,7 @@ int main(int argument_count, char **arguments)
                                        "  f: ([4 + 5]S32),\n"
                                        "  g: ([FOO + BAR]I32),\n"
                                        "}\n\n");
-    MD_Node *code = MD_ParseWholeString(MD_S8Lit("Generated Test Code"), example_code);
+    MD_Node *code = MD_ParseWholeString(MD_S8Lit("Generated Test Code"), example_code).node;
     
     printf("Source Metadesk Code:\n");
     printf("%.*s\n\n", MD_StringExpand(example_code));

@@ -51,7 +51,7 @@ int main(int argument_count, char **arguments)
     SiteInfo site_info = {0};
     {
         printf("Parsing site metadata at \"%.*s\"...\n", MD_StringExpand(site_info_path));
-        MD_Node *site_info_file = MD_ParseWholeFile(site_info_path);
+        MD_Node *site_info_file = MD_ParseWholeFile(site_info_path).node;
         site_info = ParseSiteInfo(site_info_file);
     }
     
@@ -74,7 +74,7 @@ int main(int argument_count, char **arguments)
                 MD_String8 path = MD_PushStringF("%.*s/%.*s",
                                                  MD_StringExpand(folder),
                                                  MD_StringExpand(file_info.filename));
-                MD_PushSibling(&first_root, &last_root, MD_NilNode(), MD_ParseWholeFile(path));
+                MD_PushSibling(&first_root, &last_root, MD_NilNode(), MD_ParseWholeFile(path).node);
             }
         }
     }
