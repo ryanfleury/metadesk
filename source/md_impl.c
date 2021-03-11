@@ -1678,6 +1678,19 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
                          _MD_ParseSetFlag_Implicit,
                          &result.node->first_child,
                          &result.node->last_child);
+
+            // NOTE(mal): Generate error for tags in positions such us "label:@tag {children}"
+            // in posi
+            MD_Node *fc = result.node->first_child;
+            if(fc == result.node->last_child && !MD_NodeIsNil(fc->first_tag) && // NOTE(mal): One child. Tagged.
+               fc->kind == MD_NodeKind_Label && fc->whole_string.size == 0)     // NOTE(mal): Unlabeled set
+            {
+                MD_Node *tag = fc->first_tag;
+                // NOTE(mal): @rjf: I'm assuming that tag->string falls inside the ctx->file_contents string
+                //                  Can I do that? It's the easiest way to get the error offset.
+                MD_u8 *tag_at = tag->string.str;
+                _MD_Error(ctx, tag, tag_at, 0, "Invalid position for tag \"%.*s\"", MD_StringExpand(tag->string));
+            }
         }
         goto end_parse;
     }
