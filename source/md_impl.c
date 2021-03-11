@@ -1396,7 +1396,7 @@ _MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 * file_contents, MD_u8 *at)
     loc.filename = filename;
     loc.line = 1;
     loc.column = 1;
-    for(MD_u64 i = 0; file_contents[i]; i += 1)
+    for(MD_u64 i = 0; file_contents+i < at && file_contents[i]; i += 1)
     {
         if(file_contents[i] == '\n')
         {
@@ -1406,10 +1406,6 @@ _MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 * file_contents, MD_u8 *at)
         else
         {
             loc.column += 1;
-        }
-        if(file_contents + i >= at)
-        {
-            break;
         }
     }
     return loc;
@@ -1423,7 +1419,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char 
         MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
         error->node = node;
         error->catastrophic = catastrophic;
-        error->location = _MD_CodeLocFromFileOffset(ctx->filename, ctx->file_contents.str, at-1);
+        error->location = _MD_CodeLocFromFileOffset(ctx->filename, ctx->file_contents.str, at);
         error->filename = ctx->filename;
         va_list args;
         va_start(args, fmt);
@@ -1631,7 +1627,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         {
             if(!_MD_StringLiteralIsBalanced(token))
             {
-                _MD_Error(ctx, result.node, at_first, 1, "Unbalanced text literal \"%.*s\"",
+                _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 1, "Unbalanced text literal \"%.*s\"",
                           MD_StringExpand(token.outer_string));
             }
         }
@@ -1648,7 +1644,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
                 error_message = "Unexpected reserved symbol";
             }
 
-            _MD_Error(ctx, result.node, at_first, 1, "%s \"%c\"", error_message, c);
+            _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 1, "%s \"%c\"", error_message, c);
         }
 
         // NOTE(rjf): Children
@@ -1746,6 +1742,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
     // NOTE(rjf): Parse children.
     if(brace || paren || bracket || terminate_with_separator)
     {
+        MD_u8 *at_before_children = ctx->at;
         MD_NodeFlags next_child_flags = 0;
         for(MD_u64 child_idx = 0;; child_idx += 1)
         {
@@ -1794,7 +1791,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                     if(brace) delimiter_char = '{';
                     else if(paren) delimiter_char = '(';
                     else if(bracket) delimiter_char = '[';
-                    _MD_Error(ctx, parse.node, ctx->at - parse.bytes_parsed, 1, "Unbalanced \"%c\"", delimiter_char);
+                    _MD_Error(ctx, parse.node, at_before_children-1, 1, "Unbalanced \"%c\"", delimiter_char);
                 }
                 goto end_parse;
             }
