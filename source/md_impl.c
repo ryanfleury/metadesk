@@ -2,6 +2,7 @@
 
 #define MD_FUNCTION_IMPL MD_FUNCTION
 #define MD_PRIVATE_FUNCTION_IMPL MD_FUNCTION_IMPL
+#define _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN 20
 
 //~
 
@@ -202,7 +203,7 @@ MD_StringPrefix(MD_String8 str, MD_u64 size)
 MD_FUNCTION_IMPL MD_String8
 MD_StringSuffix(MD_String8 str, MD_u64 size)
 {
-    return MD_StringSubstring(str, str.size - size, size);
+    return MD_StringSubstring(str, str.size - size, str.size);
 }
 
 MD_FUNCTION_IMPL MD_b32
@@ -1511,6 +1512,21 @@ _MD_StringLiteralIsBalanced(MD_Token token)
     return result;
 }
 
+MD_PRIVATE_FUNCTION_IMPL MD_b32
+_MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
+{
+
+    MD_b32 result = 1;
+
+    MD_String8 inner = comment_token.string;
+    MD_String8 outer = comment_token.outer_string;
+    MD_b32 incorrect = (MD_StringMatch(MD_StringPrefix(outer, 2), MD_S8Lit("/*"), 0) &&   // C-style comment
+                        (!MD_StringMatch(MD_StringSuffix(outer, 2), MD_S8Lit("*/"), 0) || // Unfinished
+                         inner.str + inner.size +2 != outer.str + outer.size));           // Internally unbalanced
+    result = !incorrect;
+    return result;
+}
+
 MD_PRIVATE_FUNCTION_IMPL MD_ParseResult
 _MD_ParseOneNode(MD_ParseCtx *ctx)
 {
@@ -1560,6 +1576,11 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             }
         }
         comment_before = comment_token.string;
+        if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
+        {
+            _MD_Error(ctx, result.node, ctx->at-comment_token.outer_string.size, 1, "Unterminated comment \"%.*s\"",
+                      MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
+        }
     }
     
     MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
@@ -1627,8 +1648,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         {
             if(!_MD_StringLiteralIsBalanced(token))
             {
-                _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 1, "Unbalanced text literal \"%.*s\"",
-                          MD_StringExpand(token.outer_string));
+                _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 1, "Unterminated text literal \"%.*s\"",
+                          MD_StringExpand(MD_StringPrefix(token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
             }
         }
         else if(token.kind == MD_TokenKind_Symbol && token.string.size == 1 && MD_CharIsReservedSymbol(token.string.str[0]))
@@ -1690,6 +1711,11 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             }
         }
         comment_after = comment_token.string;
+        if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
+        {
+            _MD_Error(ctx, result.node, ctx->at-comment_token.outer_string.size, 1, "Unterminated comment \"%.*s\"",
+                      MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
+        }
     }
     
     result.bytes_parsed = (MD_u64)(ctx->at - at_first);
