@@ -1415,26 +1415,51 @@ _MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 * file_contents, MD_u8 *at)
 MD_PRIVATE_FUNCTION_IMPL void
 _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char *fmt, ...)
 {
-    if(!ctx->catastrophic_error) // NOTE(mal): Can't trust parsing errors after first catastrophic error
+    MD_CodeLoc error_loc = _MD_CodeLocFromFileOffset(ctx->filename, ctx->file_contents.str, at);
+
+    // NOTE(mal): Sort errors. We traverse the whole list assuming there won't be many of them.
+    //            We could drop a prev pointer into MD_Error and start from ctx->last_error to make it faster
+    MD_Error *prev_error = 0;
+    for(MD_Error *e = ctx->first_error; e; e = e->next)
+    {
+        if(e->location.line < error_loc.line ||
+           (e->location.line == error_loc.line && e->location.column < error_loc.column))
+        {
+            prev_error = e;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    // NOTE(mal): Ignore errors after first catastrophic error
+    if(!ctx->catastrophic_error || !prev_error || prev_error->catastrophic == 0)
     {
         MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
         error->node = node;
         error->catastrophic = catastrophic;
-        error->location = _MD_CodeLocFromFileOffset(ctx->filename, ctx->file_contents.str, at);
+        error->location = error_loc;
         error->filename = ctx->filename;
         va_list args;
         va_start(args, fmt);
         error->string = MD_PushStringFV(fmt, args);
         va_end(args);
 
-        if(ctx->last_error)
+        if(prev_error)
         {
-            ctx->last_error->next = error;
-            ctx->last_error = error;
+            error->next = prev_error->next;
+            prev_error->next = error;
         }
         else
         {
-            ctx->first_error = ctx->last_error = error;
+            error->next = ctx->first_error;
+            ctx->first_error = error;
+        }
+
+        if(!ctx->last_error || ctx->last_error == prev_error)
+        {
+            ctx->last_error = error;
         }
 
         if(catastrophic)
@@ -1679,8 +1704,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
                          &result.node->first_child,
                          &result.node->last_child);
 
-            // NOTE(mal): Generate error for tags in positions such us "label:@tag {children}"
-            // in posi
+            // NOTE(mal): Generate error for tags in positions such as "label:@tag {children}"
             MD_Node *fc = result.node->first_child;
             if(fc == result.node->last_child && !MD_NodeIsNil(fc->first_tag) && // NOTE(mal): One child. Tagged.
                fc->kind == MD_NodeKind_Label && fc->whole_string.size == 0)     // NOTE(mal): Unlabeled set
