@@ -405,9 +405,6 @@ struct Test
     Test *next;
 };
 
-// TODO(mal): Use data table instead of smuggling depth as file_contents
-#define GET_DEPTH(node) ((MD_u64)((node)->file_contents))
-#define SET_DEPTH(node, v) (node)->file_contents = (MD_u8 *)(v);
 static void ComputeElementDepth(MD_Node *re)
 {
     MD_u64 result = 0;

@@ -114,8 +114,9 @@ MD_CharIsSymbol(MD_u8 c)
 MD_FUNCTION_IMPL MD_b32
 MD_CharIsReservedSymbol(MD_u8 c)
 {
-    return (c == '{' || c == '}' || c == '(' || c == ')' ||
-            c == '[' || c == ']' || c == '#');
+    return (c == '{' || c == '}' || c == '(' || c == ')' || c == '\\' ||
+            c == '[' || c == ']' || c == '#' || c == ',' || c == ';'  ||
+            c == ':' || c == '@');
 }
 
 MD_FUNCTION_IMPL MD_b32
@@ -1611,40 +1612,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
     MD_Token next_token = MD_Parse_PeekSkipSome(ctx, skip_groups);
     
-    // NOTE(rjf): #-things (just namespaces right now, but can be used for other such
-    // 'directives' in the future maybe)
-    if(MD_Parse_Require(ctx, MD_S8Lit("#"), MD_TokenKind_Symbol))
-    {
-        // NOTE(rjf): Namespaces
-        if(MD_Parse_Require(ctx, MD_S8Lit("namespace"), MD_TokenKind_Identifier))
-        {
-            if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &token))
-            {
-                MD_NodeTableSlot *existing_namespace_slot = MD_NodeTable_Lookup(&ctx->namespace_table, token.string);
-                if(existing_namespace_slot == 0)
-                {
-                    MD_Node *ns = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Namespace, token.string);
-                    MD_NodeTable_Insert(&ctx->namespace_table, MD_NodeTableCollisionRule_Overwrite, token.string, ns);
-                }
-                ctx->selected_namespace = existing_namespace_slot->node;
-                goto end_parse;
-            }
-            else
-            {
-                ctx->selected_namespace = 0;
-                goto end_parse;
-            }
-        }
-        
-        // NOTE(rjf): Not a valid hash thing
-        else
-        {
-            goto end_parse;
-        }
-    }
-    
     // NOTE(rjf): Unnamed Sets
-    else if((MD_Parse_TokenMatch(next_token, MD_S8Lit("("), 0) ||
+    if((MD_Parse_TokenMatch(next_token, MD_S8Lit("("), 0) ||
              MD_Parse_TokenMatch(next_token, MD_S8Lit("{"), 0) ||
              MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
             next_token.kind == MD_TokenKind_Symbol )
@@ -1680,17 +1649,14 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         else if(token.kind == MD_TokenKind_Symbol && token.string.size == 1 && MD_CharIsReservedSymbol(token.string.str[0]))
         {
             MD_u8 c = token.string.str[0];
-            const char *error_message = 0;
             if(c == '}' || c == ']' || c == ')')
             {
-                error_message = "Unbalanced";
+                _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 1, "Unbalanced \"%c\"", c);
             }
             else
             {
-                error_message = "Unexpected reserved symbol";
+                _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 0, "Unexpected reserved symbol \"%c\"", c);
             }
-
-            _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 1, "%s \"%c\"", error_message, c);
         }
 
         // NOTE(rjf): Children
@@ -1915,8 +1881,7 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
         {
             MD_Parse_Bump(ctx, next_token);
             
-            MD_Token name;
-            _MD_MemoryZero(&name, sizeof(name));
+            MD_Token name = MD_ZERO_STRUCT;
             if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
             {
                 MD_Node *tag = _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_Tag, name);
@@ -1929,6 +1894,10 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             }
             else
             {
+                MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
+                _MD_Error(ctx, 0, token.outer_string.str, 0,
+                          "Tag \"%.*s\" is not a proper identifier", MD_StringExpand(token.outer_string));
+                // NOTE(mal): There are reasons to consume the non-tag token, but also to leave it.
                 break;
             }
         }
@@ -1949,6 +1918,12 @@ MD_ParseOneNode(MD_String8 filename, MD_String8 contents)
     return _MD_ParseOneNode(&ctx);
 }
 
+// TODO(mal): Make this public once the full story for namespaces is in place
+MD_PRIVATE_FUNCTION_IMPL void
+_MD_InsertToNamespace(MD_Node *ns, MD_Node *node)
+{
+}
+
 MD_FUNCTION MD_ParseResult
 MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
 {
@@ -1961,6 +1936,39 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
         MD_NodeFlags next_child_flags = 0;
         for(MD_u64 child_idx = 0;; child_idx += 1)
         {
+            // NOTE(rjf): #-things (just namespaces right now, but can be used for other such
+            // 'directives' in the future maybe)
+            if(MD_Parse_Require(&ctx, MD_S8Lit("#"), MD_TokenKind_Symbol))
+            {
+                // NOTE(rjf): Namespaces
+                if(MD_Parse_Require(&ctx, MD_S8Lit("namespace"), MD_TokenKind_Identifier))
+                {
+                    MD_Token token = MD_ZERO_STRUCT;
+                    if(MD_Parse_RequireKind(&ctx, MD_TokenKind_Identifier, &token))
+                    {
+                        MD_NodeTableSlot *existing_namespace_slot = MD_NodeTable_Lookup(&ctx.namespace_table, token.string);
+                        if(existing_namespace_slot == 0)
+                        {
+                            MD_Node *ns = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_Namespace, token.string);
+                            MD_NodeTable_Insert(&ctx.namespace_table, MD_NodeTableCollisionRule_Overwrite, token.string, ns);
+                            existing_namespace_slot = MD_NodeTable_Lookup(&ctx.namespace_table, token.string);
+                        }
+                        ctx.selected_namespace = existing_namespace_slot->node;
+                    }
+                    else
+                    {
+                        ctx.selected_namespace = 0;
+                    }
+                }
+                // NOTE(rjf): Not a valid hash thing
+                else
+                {
+                    MD_Token token = MD_Parse_PeekSkipSome(&ctx, 0);
+                    _MD_Error(&ctx, 0, ctx.at, 0, "Invalid hash directive \"%.*s\"",
+                              MD_StringExpand(token.outer_string));
+                }
+            }
+
             MD_ParseResult parse = _MD_ParseOneNode(&ctx);
             MD_Node *child = parse.node;
             child->flags |= next_child_flags;
@@ -1972,6 +1980,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
             else
             {
                 _MD_PushNodeToList(&root->first_child, &root->last_child, root, child);
+                _MD_InsertToNamespace(ctx.selected_namespace, child);
             }
 
             if(MD_Parse_Require(&ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
