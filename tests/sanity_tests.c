@@ -444,8 +444,44 @@ int main(void)
                            MD_StringMatch(parse.node->comment_after, MD_S8Lit(""), 0));
             }
         }
-        
     }
-    
+
+    Test("Syntax Errors")
+    {
+        struct { char *s; int columns[2]; } tests[] = {
+            {"{", {1}},
+            {"}", {1}},
+            {"'", {1}},
+            {"a:'''\nmulti-line text literal", {3}},
+            {"/* foo", {1}},
+            {"label:@tag {1, 2, 3} /* /* unterminated comment */", {8, 22}},
+            {"#include <stdio.h>", {2}},
+            {"@\"tag\" node", {2}},
+            {"{a,,#b}", {4, 5}},
+        };
+
+        int max_error_count = MD_ArrayCount(tests[0].columns);
+
+        for(int i_test = 0; i_test < MD_ArrayCount(tests); ++i_test)
+        {
+            MD_ParseResult parse = MD_ParseWholeString(MD_S8Lit("test.md"), MD_S8CString(tests[i_test].s));
+
+            MD_b32 columns_match = 1;
+            {
+                MD_Error *e = parse.first_error;
+                for(int i_error = 0; i_error < max_error_count && tests[i_test].columns[i_error]; ++i_error)
+                {
+                    if(!e || e->location.column != tests[i_test].columns[i_error])
+                    {
+                        columns_match = 0;
+                        break;
+                    }
+                    e = e->next;
+                }
+            }
+            TestResult(columns_match);
+        }
+    }
+
     return 0;
 }

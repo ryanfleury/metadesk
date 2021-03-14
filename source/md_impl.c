@@ -1106,7 +1106,7 @@ _MD_ComputeTextLiteralChop(MD_u32 bytes_to_skip, MD_u8 *beg, MD_u8 *end)
     // NOTE(mal): By counting the bytes to chop off text literals and encoding exact token.string and
     //            token.outer_string we delegate the responsibility of generating errors to the parser
     //            That way, we can avoid generating errors during peeks and save them for actual token
-    //            consumption. That allows predictable error ordering.
+    //            consumption. That allows more predictable error ordering.
     MD_u32 result = 0;
     MD_u8 *skip_end = beg + bytes_to_skip;
     MD_u8 *chop_beg = end - bytes_to_skip;
@@ -1178,7 +1178,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     {
                         at += 2;
                         token.kind = MD_TokenKind_Comment;
-                        skip_n = chop_n = 2;
+                        skip_n = 2;
                         int counter = 1;
                         for (;at < one_past_last && counter > 0; at += 1)
                         {
@@ -1195,6 +1195,10 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                                     counter += 1;
                                 }
                             }
+                        }
+                        if(counter == 0)
+                        {
+                            chop_n = 2;
                         }
                     }
                 }
@@ -1438,7 +1442,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char 
     if(!ctx->catastrophic_error || !prev_error || prev_error->catastrophic == 0)
     {
         MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
-        error->node = node;
+        error->node = node ? node : MD_NilNode();
         error->catastrophic = catastrophic;
         error->location = error_loc;
         error->filename = ctx->filename;
@@ -1547,8 +1551,7 @@ _MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
     MD_String8 inner = comment_token.string;
     MD_String8 outer = comment_token.outer_string;
     MD_b32 incorrect = (MD_StringMatch(MD_StringPrefix(outer, 2), MD_S8Lit("/*"), 0) &&   // C-style comment
-                        (!MD_StringMatch(MD_StringSuffix(outer, 2), MD_S8Lit("*/"), 0) || // Unfinished
-                         inner.str + inner.size +2 != outer.str + outer.size));           // Internally unbalanced
+                        (inner.str != outer.str + 2 || inner.str + inner.size != outer.str + outer.size - 2)); // Internally unbalanced
     result = !incorrect;
     return result;
 }
@@ -1560,6 +1563,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     
     MD_ParseResult result = MD_ZERO_STRUCT;
     result.node = MD_NilNode();
+
+    MD_Error *ctx_last_error = ctx->last_error;
     
     MD_Token token;
     _MD_MemoryZero(&token, sizeof(token));
@@ -1722,7 +1727,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     }
     
     result.bytes_parsed = (MD_u64)(ctx->at - at_first);
-
+    result.first_error = ctx_last_error ? ctx_last_error->next : 0;
     if(!MD_NodeIsNil(result.node))
     {
         result.node->first_tag = first_tag;

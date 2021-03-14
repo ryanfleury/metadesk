@@ -12,7 +12,6 @@ cl %compile_flags% ..\samples\static_site_generator\static_site_generator.c
 cl %compile_flags% ..\samples\output_parse\output_parse.c
 cl %compile_flags% ..\samples\c_code_generation.c
 cl %compile_flags% ..\samples\node_errors\node_errors.c
-cl %compile_flags% ..\samples\syntax_errors\syntax_errors.c
 echo.
 echo ~~~ Build All Tests ~~~
 cl %compile_flags% ..\tests\sanity_tests.c
@@ -63,10 +62,4 @@ echo.
 echo ~~~ Running Error Generation Sample ~~~
 pushd build
 node_errors.exe %~dp0\samples\node_errors\node_errors.md
-popd
-
-echo.
-echo ~~~ Running Syntax Error Detection and Reporting Sample ~~~
-pushd build
-for /f "tokens=*" %%f in ('dir /s/b ..\samples\syntax_errors\*.md ^| sort') do syntax_errors.exe %%f
 popd
