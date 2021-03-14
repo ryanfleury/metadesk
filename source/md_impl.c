@@ -1292,6 +1292,12 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     token.kind = MD_TokenKind_Symbol;
                     at += 1;
                 }
+
+                else
+                {
+                    token.kind = MD_TokenKind_NonASCII;
+                    at += 1;
+                }
             }break;
         }
         
@@ -1688,6 +1694,12 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             }
         }
         goto end_parse;
+    }
+
+    else if(MD_Parse_RequireKind(ctx, MD_TokenKind_NonASCII,     &token))
+    {
+        result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
+        _MD_Error(ctx, result.node, ctx->at-1, 0, "Non-ASCII character %d", token.string.str[0]);
     }
     
     end_parse:;

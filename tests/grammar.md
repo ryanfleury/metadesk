@@ -34,7 +34,7 @@ symbol_no_backslash_no_quotes_2 : ';'|'<'|'='|'>'|'?'|'@'|'['|']'|'^'|'_'|'{'|'|
 string_literal                  : @markup '"' [string_literal_items] @markup '"' | @markup '`' [string_literal_items] @markup '`'
 string_literal_items            : string_literal_item [string_literal_items]
 string_literal_item             : ascii_no_backslash_no_quotes | '\'' | '\\' ascii
-symbol_label                    : '~'|'!'|'%'|'^'|'&'|'*'|'+'|'-'|'/'|'|'|'<'|'>'|'$'|'='|'.'|'?'|'$'
+symbol_label                    : '~'|'!'|'%'|'^'|'&'|'*'|'+'|'-'|'/'|'|'|'<'|'>'|'$'|'='|'.'|'?'|'_'
 
 /* What follows is a range of annotated grammars that can be used to generate
  * tests of increasing complexity and completeness to check against MetaDesk.

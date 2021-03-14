@@ -451,6 +451,10 @@ typedef enum MD_TokenKind
     MD_TokenKind_Whitespace,
     MD_TokenKind_Newline,
     MD_TokenKind_WhitespaceMax,
+
+    MD_TokenKind_NonASCII,
+    // Provisional category to deal with single characters > 127
+    // while we don't support encodings other than ASCII
     
     MD_TokenKind_MAX,
 }

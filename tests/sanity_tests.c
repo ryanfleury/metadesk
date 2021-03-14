@@ -455,9 +455,9 @@ int main(void)
             {"a:'''\nmulti-line text literal", {3}},
             {"/* foo", {1}},
             {"label:@tag {1, 2, 3} /* /* unterminated comment */", {8, 22}},
-            {"#include <stdio.h>", {2}},
             {"@\"tag\" node", {2}},
-            {"{a,,#b}", {4, 5}},
+            {"{a,,#b,}", {4, 5}},
+            {"foo""\x80""bar", {4}},
         };
 
         int max_error_count = MD_ArrayCount(tests[0].columns);
@@ -477,6 +477,11 @@ int main(void)
                         break;
                     }
                     e = e->next;
+                }
+
+                if(e && e->next)
+                {
+                    columns_match = 0;
                 }
             }
             TestResult(columns_match);
