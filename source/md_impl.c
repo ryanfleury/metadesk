@@ -485,9 +485,38 @@ MD_JoinStringListWithSeparator(MD_String8List list, MD_String8 separator)
 MD_FUNCTION_IMPL MD_i64
 MD_I64FromString(MD_String8 string, MD_u32 radix)
 {
-    char str[64];
-    _MD_WriteStringToBuffer(string, sizeof(str), str);
-    return strtoll(str, 0, radix);
+    MD_Assert(2 <= radix && radix <= 16);
+    
+    static MD_u8 char_to_value[] = {
+        0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+        0x08,0x09,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+        0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,
+        0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+    };
+    
+    // get the sign
+    MD_i64 sign = +1;
+    MD_u64 i =  0;
+    if (string.size > 0){
+        if (string.str[i] == '-'){
+            i = 1;
+            sign = -1;
+        }
+        if (string.str[i] == '+'){
+            i = 1;
+        }
+    }
+    
+    // get the value
+    MD_i64 value = 0;
+    for (;i < string.size; i += 1){
+        value *= radix;
+        MD_u8 c = string.str[i];
+        value += char_to_value[(c - 0x30)&0x1F];
+    }
+    value *= sign;
+    
+    return(value);
 }
 
 MD_FUNCTION_IMPL MD_f64
@@ -1094,9 +1123,9 @@ MD_TokenizerScanEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
         else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == c || at[1] == '\\')) at += 2;
         else at += 1;
     }
-
+    
     if (*at == c) at += 1;
-
+    
     return at;
 }
 
@@ -1292,7 +1321,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     token.kind = MD_TokenKind_Symbol;
                     at += 1;
                 }
-
+                
                 else
                 {
                     token.kind = MD_TokenKind_NonASCII;
@@ -1427,7 +1456,7 @@ MD_PRIVATE_FUNCTION_IMPL void
 _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char *fmt, ...)
 {
     MD_CodeLoc error_loc = _MD_CodeLocFromFileOffset(ctx->filename, ctx->file_contents.str, at);
-
+    
     // NOTE(mal): Sort errors. We traverse the whole list assuming there won't be many of them.
     //            We could drop a prev pointer into MD_Error and start from ctx->last_error to make it faster
     MD_Error *prev_error = 0;
@@ -1443,7 +1472,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char 
             break;
         }
     }
-
+    
     // NOTE(mal): Ignore errors after first catastrophic error
     if(!ctx->catastrophic_error || !prev_error || prev_error->catastrophic == 0)
     {
@@ -1456,7 +1485,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char 
         va_start(args, fmt);
         error->string = MD_PushStringFV(fmt, args);
         va_end(args);
-
+        
         if(prev_error)
         {
             error->next = prev_error->next;
@@ -1467,12 +1496,12 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char 
             error->next = ctx->first_error;
             ctx->first_error = error;
         }
-
+        
         if(!ctx->last_error || ctx->last_error == prev_error)
         {
             ctx->last_error = error;
         }
-
+        
         if(catastrophic)
         {
             ctx->catastrophic_error = 1;
@@ -1551,9 +1580,9 @@ _MD_StringLiteralIsBalanced(MD_Token token)
 MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
 {
-
+    
     MD_b32 result = 1;
-
+    
     MD_String8 inner = comment_token.string;
     MD_String8 outer = comment_token.outer_string;
     MD_b32 incorrect = (MD_StringMatch(MD_StringPrefix(outer, 2), MD_S8Lit("/*"), 0) &&   // C-style comment
@@ -1569,7 +1598,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     
     MD_ParseResult result = MD_ZERO_STRUCT;
     result.node = MD_NilNode();
-
+    
     MD_Error *ctx_last_error = ctx->last_error;
     
     MD_Token token;
@@ -1625,9 +1654,9 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     
     // NOTE(rjf): Unnamed Sets
     if((MD_Parse_TokenMatch(next_token, MD_S8Lit("("), 0) ||
-             MD_Parse_TokenMatch(next_token, MD_S8Lit("{"), 0) ||
-             MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
-            next_token.kind == MD_TokenKind_Symbol )
+        MD_Parse_TokenMatch(next_token, MD_S8Lit("{"), 0) ||
+        MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
+       next_token.kind == MD_TokenKind_Symbol )
     {
         result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Label, MD_S8Lit(""));
         _MD_ParseSet(ctx, result.node,
@@ -1648,7 +1677,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     {
         result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
         _MD_SetNodeFlagsByToken(result.node, token);
-
+        
         if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
         {
             if(!_MD_StringLiteralIsBalanced(token))
@@ -1669,7 +1698,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
                 _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 0, "Unexpected reserved symbol \"%c\"", c);
             }
         }
-
+        
         // NOTE(rjf): Children
         if(MD_Parse_Require(ctx, MD_S8Lit(":"), MD_TokenKind_Symbol))
         {
@@ -1680,7 +1709,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
                          _MD_ParseSetFlag_Implicit,
                          &result.node->first_child,
                          &result.node->last_child);
-
+            
             // NOTE(mal): Generate error for tags in positions such as "label:@tag {children}"
             MD_Node *fc = result.node->first_child;
             if(fc == result.node->last_child && !MD_NodeIsNil(fc->first_tag) && // NOTE(mal): One child. Tagged.
@@ -1695,7 +1724,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         }
         goto end_parse;
     }
-
+    
     else if(MD_Parse_RequireKind(ctx, MD_TokenKind_NonASCII,     &token))
     {
         result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
@@ -1824,7 +1853,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                     goto end_parse;
                 }
             }
-
+            
             MD_ParseResult parse = _MD_ParseOneNode(ctx);
             MD_Node *child = parse.node;
             child->flags |= next_child_flags;
@@ -1870,7 +1899,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                     child->flags |= MD_NodeFlag_BeforeSemicolon;
                     next_child_flags |= MD_NodeFlag_AfterSemicolon;
                 }
-
+                
                 if(result)
                 {
                     goto end_parse;
@@ -1985,7 +2014,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                               MD_StringExpand(token.outer_string));
                 }
             }
-
+            
             MD_ParseResult parse = _MD_ParseOneNode(&ctx);
             MD_Node *child = parse.node;
             child->flags |= next_child_flags;
@@ -1999,7 +2028,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                 _MD_PushNodeToList(&root->first_child, &root->last_child, root, child);
                 _MD_InsertToNamespace(ctx.selected_namespace, child);
             }
-
+            
             if(MD_Parse_Require(&ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
             {
                 child->flags |= MD_NodeFlag_BeforeComma;
