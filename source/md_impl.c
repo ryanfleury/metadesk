@@ -432,18 +432,6 @@ MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits)
     return list;
 }
 
-MD_FUNCTION_IMPL MD_String8List
-MD_SplitStringByString(MD_String8 string, MD_String8 split)
-{
-    return MD_SplitString(string, 1, &split);
-}
-
-MD_FUNCTION_IMPL MD_String8List
-MD_SplitStringByCharacter(MD_String8 string, MD_u8 character)
-{
-    return MD_SplitStringByString(string, MD_S8(&character, 1));
-}
-
 MD_FUNCTION_IMPL MD_String8
 MD_JoinStringList(MD_String8List list)
 {

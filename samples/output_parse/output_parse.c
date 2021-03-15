@@ -69,7 +69,7 @@ int main(int argument_count, char **arguments)
     
     for(MD_EachNode(root, first))
     {
-        MD_String8 code_filename = MD_TrimExtension(MD_TrimFolder(root->filename));
+        MD_String8 code_filename = MD_ChopExtension(MD_SkipFolder(root->filename));
         MD_String8 info_filename = MD_PushStringF("parsed_%.*s.txt", MD_StringExpand(code_filename));
         printf("Parse Input -> Output: %.*s -> %.*s\n", MD_StringExpand(code_filename), MD_StringExpand(info_filename));
         

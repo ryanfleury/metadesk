@@ -655,8 +655,8 @@ MD_FUNCTION MD_u64         MD_FindSubstring(MD_String8 str, MD_String8 substring
                                             MD_u64 start_pos, MD_StringMatchFlags flags);
 MD_FUNCTION MD_u64         MD_FindLastSubstring(MD_String8 str, MD_String8 substring, MD_StringMatchFlags flags);
 
-MD_FUNCTION MD_String8     MD_TrimExtension(MD_String8 string);
-MD_FUNCTION MD_String8     MD_TrimFolder(MD_String8 string);
+MD_FUNCTION MD_String8     MD_ChopExtension(MD_String8 string);
+MD_FUNCTION MD_String8     MD_SkipFolder(MD_String8 string);
 MD_FUNCTION MD_String8     MD_ExtensionFromPath(MD_String8 string);
 MD_FUNCTION MD_String8     MD_FolderFromPath(MD_String8 string);
 
