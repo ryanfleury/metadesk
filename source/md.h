@@ -375,7 +375,7 @@ struct MD_CodeLoc
     int column;
 };
 
-//~ Warning Levels
+//~ Message Levels
 
 typedef enum MD_MessageKind
 {
@@ -749,8 +749,6 @@ MD_FUNCTION void MD_NodeError(MD_Node *node, MD_String8 str);
 MD_FUNCTION void MD_NodeWarning(MD_Node *node, MD_String8 str);
 MD_FUNCTION void MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, ...);
 MD_FUNCTION void MD_NodeErrorF(MD_Node *node, char *fmt, ...);
-MD_FUNCTION void MD_NodeWarningF(MD_Node *node, char *fmt, ...);
-MD_FUNCTION void MD_OutputError(FILE *f, MD_Error *error);
 
 //~ Tree Comparison/Verification
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags);
