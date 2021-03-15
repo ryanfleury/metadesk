@@ -451,7 +451,7 @@ typedef enum MD_TokenKind
     MD_TokenKind_Whitespace,
     MD_TokenKind_Newline,
     MD_TokenKind_WhitespaceMax,
-
+    
     MD_TokenKind_NonASCII,
     // Provisional category to deal with single characters > 127
     // while we don't support encodings other than ASCII
@@ -668,13 +668,10 @@ MD_FUNCTION MD_String8     MD_PushStringF(char *fmt, ...);
 
 MD_FUNCTION void           MD_PushStringToList(MD_String8List *list, MD_String8 string);
 MD_FUNCTION void           MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push);
-// TODO(rjf): Just simplify to a single splitter
 MD_FUNCTION MD_String8List MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits);
-MD_FUNCTION MD_String8List MD_SplitStringByString(MD_String8 string, MD_String8 split);
-MD_FUNCTION MD_String8List MD_SplitStringByCharacter(MD_String8 string, MD_u8 character);
+// TODO(allen): single joiner with MD_StringJoin optional parameter
 MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list);
 MD_FUNCTION MD_String8     MD_JoinStringListWithSeparator(MD_String8List list, MD_String8 separator);
-// TODO(rjf): Radix
 MD_FUNCTION MD_i64         MD_I64FromString(MD_String8 string, MD_u32 radix);
 MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_HashString(MD_String8 string);
