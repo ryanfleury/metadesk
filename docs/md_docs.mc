@@ -55,8 +55,8 @@
 @enum MD_NodeKind: {
     Nil,
     File,
+    Namespace,
     Label,
-    UnnamedSet,
     Tag,
     MAX,
 };
@@ -108,6 +108,10 @@
  whole_string: MD_String8,
  string_hash: MD_u64,
 
+ // Comments.
+ comment_before: MD_String8,
+ comment_after: MD_String8,
+ 
  // Source code location information.
  filename: MD_String8,
  file_contents: *MD_u8,
@@ -118,36 +122,36 @@
 //~ Code Location Info.
 
 @struct MD_CodeLoc: {
-    filename: MD_String8,
-    line: MD_u32,
-    column: MD_u32,
+ filename: MD_String8,
+ line: MD_u32,
+ column: MD_u32,
 };
 
 ////////////////////////////////
-//~ Warning Levels
+//~ Message Levels
 
 @enum MD_MessageKind: {
-    Error,
-    Warning,
+ Error,
+ Warning,
 }
 
 ////////////////////////////////
 //~ String-To-Node table
 
 @enum MD_NodeTableCollisionRule: {
-    Chain,
-    Overwrite,
+ Chain,
+ Overwrite,
 }
 
 @struct MD_NodeTableSlot: {
-    next: *MD_NodeTableSlot,
-    hash: MD_u64,
-    node: *MD_Node,
+ next: *MD_NodeTableSlot,
+ hash: MD_u64,
+ node: *MD_Node,
 };
 
 @struct MD_NodeTable: {
-    table_size: MD_u64,
-    table: **MD_NodeTableSlot,
+ table_size: MD_u64,
+ table: **MD_NodeTableSlot,
 };
 
 ////////////////////////////////
@@ -194,6 +198,8 @@
  Newline,
  WhitespaceMax,
 
+ MD_TokenKind_NonASCII,
+
  MAX,
 };
 
@@ -215,40 +221,40 @@
 //~ Parsing State
 
 @struct MD_Error: {
-    next: *MD_Error;
-    string: MD_String8;
-    filename: MD_String8;
-    node: *MD_Node;
+ next: *MD_Error,
+ string: MD_String8,
+ filename: MD_String8,
+ node: *MD_Node,
+ catastrophic: MD_b32,
+ location: MD_CodeLoc,
 };
 
 @struct MD_ParseCtx: {
-    first_root: *MD_Node,
-    last_root: *MD_Node,
-    first_error: *MD_Error,
-    last-error: *MD_Error,
-    at: *MD_u8,
-    filename: MD_String8,
-    file_contents: MD_String8,
+ first_root: *MD_Node,
+ last_root: *MD_Node,
+ first_error: *MD_Error,
+ last_error: *MD_Error,
+ at: *MD_u8,
+ filename: MD_String8,
+ file_contents: MD_String8,
+ namespace_table: MD_NodeTable,
+ selected_namespace: *MD_Node,
+ catastrophic_error: MD_b32,
 };
 
 @struct MD_ParseResult: {
-    node: *MD_Node;
-    first_error: *MD_Error;
-    bytes_parse: MD_u64;
+ node: *MD_Node;
+ first_error: *MD_Error;
+ bytes_parse: MD_u64;
 };
 
 ////////////////////////////////
 //~ Expression and Type-Expression parser helper types.
 
-@enum MD_ExprKind: {
- // VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
- // it is kept in-sync with the MD_ExprPrecFromExprKind and the following
- // functions:
- //
- // MD_BinaryExprKindFromNode
- // MD_PreUnaryExprKindFromNode
- // MD_PostUnaryExprKindFromNode
+// VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
+// it is kept in-sync with the MD_ExprPrecFromExprKind function.
 
+@enum MD_ExprKind: {
  Nil,
 
  // NOTE(rjf): Atom
@@ -296,9 +302,11 @@
  // NOTE(rjf): Type
  Pointer,
  Array,
-
+ Volatile,
+ Const,
+ 
  MAX,
-}
+};
 
 @typedef(MD_i32) MD_ExprPrec;
 
@@ -326,21 +334,23 @@
  Directory,
 };
 
-
 @struct MD_FileInfo: {
  flags: MD_FileFlags;
  filename: MD_String8;
  file_size: MD_u64;
 };
 
-@struct MD_FileIter: {
- state: MD_u64,
-};
+@opaque
+@struct MD_FileIter: {};
 
 ////////////////////////////////
 //~ Basic Utilities
 
 @macro MD_Assert: {
+ c,
+};
+
+@macro MD_StaticAssert: {
  c,
 };
 
@@ -372,6 +382,11 @@
 };
 
 @func MD_CharIsSymbol: {
+ c: MD_u8,
+ return: MD_b32,
+};
+
+@func MD_CharIsReservedSymbol: {
  c: MD_u8,
  return: MD_b32,
 };
@@ -493,18 +508,18 @@
 };
 
 
-@func MD_String8     MD_PushStringCopy: {
+@func MD_PushStringCopy: {
  string: MD_String8,
  return: MD_String8,
 };
 
-@func MD_String8     MD_PushStringFV: {
+@func MD_PushStringFV: {
  fmt: *char,
  args: va_list,
  return: MD_String8,
 };
 
-@func MD_String8     MD_PushStringF: {
+@func MD_PushStringF: {
  fmt: *char,
  "...",
  return: MD_String8,
@@ -719,12 +734,12 @@
 @func MD_ParseWholeString: {
  filename: MD_String8,
  contents: MD_String8,
- return: *MD_Node,
+ return: MD_ParseResult,
 };
 
 @func MD_ParseWholeFile: {
  filename: MD_String8,
- return: *MD_Node,
+ return: MD_ParseResult,
 };
 
 ////////////////////////////////
@@ -781,7 +796,7 @@
  first: *MD_Node,
  last: *MD_Node,
  string: MD_String8,
- return: MD_Node,
+ return: *MD_Node,
 };
 
 @func MD_NodeFromIndex: {
@@ -851,20 +866,6 @@
 
 @func MD_TagCountFromNode: {
  node: *MD_Node,
- return: MD_i64,
-};
-
-@func MD_ChildCountFromNodeAndString: {
- node: *MD_Node,
- string: MD_String8,
- flags: MD_StringMatchFlags,
- return: MD_i64,
-};
-
-@func MD_TagCountFromNodeAndString: {
- node: *MD_Node,
- string: MD_String8,
- flags: MD_StringMatchFlags,
  return: MD_i64,
 };
 
@@ -984,11 +985,6 @@
  node: *MD_Node,
 };
 
-@func MD_OutputExpr: {
- file: *FILE,
- expr: *MD_Expr,
-};
-
 ////////////////////////////////
 //~ C Language Generation
 
@@ -1010,6 +1006,21 @@
 @func MD_Output_C_DeclByNameAndType: {
  file: *FILE,
  name: MD_String8,
+ type: *MD_Expr,
+};
+
+@func MD_OutputExpr: {
+ file: *FILE,
+ expr: *MD_Expr,
+};
+
+@func MD_OutputExpr_C: {
+ file: *FILE,
+ expr: *MD_Expr,
+};
+
+@func MD_OutputType: {
+ file: *FILE,
  type: *MD_Expr,
 };
 

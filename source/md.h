@@ -621,6 +621,8 @@ struct MD_FileIter
 #define MD_Assert(c) if (!(c)) { *(volatile MD_u64 *)0 = 0; }
 #define MD_StaticAssert(c,label) MD_u8 MD_static_assert_##label[(c)?(1):(-1)]
 #define MD_ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
+
+//~ Characters
 MD_FUNCTION MD_b32 MD_CharIsAlpha(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaUpper(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaLower(MD_u8 c);
@@ -698,7 +700,6 @@ MD_FUNCTION MD_NodeTableSlot *MD_NodeTable_Lookup(MD_NodeTable *table, MD_String
 MD_FUNCTION MD_b32            MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rule, MD_String8 string, MD_Node *node);
 
 //~ Parsing
-MD_FUNCTION MD_Token       MD_ZeroToken(void);
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
@@ -738,17 +739,12 @@ MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
 MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
-MD_FUNCTION MD_i64     MD_ChildCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_StringMatchFlags flags);
-MD_FUNCTION MD_i64     MD_TagCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_StringMatchFlags flags);
 // NOTE(rjf): For-Loop Helper
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
 
 //~ Error/Warning Helpers
 MD_FUNCTION void MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION void MD_NodeError(MD_Node *node, MD_String8 str);
-MD_FUNCTION void MD_NodeWarning(MD_Node *node, MD_String8 str);
 MD_FUNCTION void MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, ...);
-MD_FUNCTION void MD_NodeErrorF(MD_Node *node, char *fmt, ...);
 
 //~ Tree Comparison/Verification
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags);
@@ -770,6 +766,8 @@ MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_StringMatc
 
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
+
+//~ C Language Generation
 MD_FUNCTION void MD_OutputTree_C_String(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_OutputTree_C_Struct(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_OutputTree_C_Decl(FILE *file, MD_Node *node);
@@ -780,6 +778,7 @@ MD_FUNCTION void MD_OutputType(FILE *file, MD_Expr *expr);
 MD_FUNCTION void MD_OutputType_C_LHS(FILE *file, MD_Expr *type);
 MD_FUNCTION void MD_OutputType_C_RHS(FILE *file, MD_Expr *type);
 
+// TODO(allen): needs another pass
 //~ Command Line Argument Helper
 MD_FUNCTION MD_CommandLine MD_CommandLine_Start(int argument_count, char **arguments);
 MD_FUNCTION MD_b32         MD_CommandLine_Flag(MD_CommandLine *cmdln, MD_String8 string);

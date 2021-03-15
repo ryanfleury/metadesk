@@ -1028,14 +1028,6 @@ MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rul
     return !!slot;
 }
 
-MD_FUNCTION_IMPL MD_Token
-MD_ZeroToken(void)
-{
-    MD_Token token;
-    _MD_MemoryZero(&token, sizeof(token));
-    return token;
-}
-
 MD_FUNCTION_IMPL MD_b32
 MD_TokenKindIsWhitespace(MD_TokenKind kind)
 {
@@ -2312,32 +2304,11 @@ MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 str)
 }
 
 MD_FUNCTION_IMPL void
-MD_NodeError(MD_Node *node, MD_String8 str)
-{
-    MD_NodeMessage(node, MD_MessageKind_Error, str);
-}
-
-MD_FUNCTION_IMPL void
-MD_NodeWarning(MD_Node *node, MD_String8 str)
-{
-    MD_NodeMessage(node, MD_MessageKind_Warning, str);
-}
-
-MD_FUNCTION_IMPL void
 MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
     MD_NodeMessage(node, kind ,MD_PushStringFV(fmt, args));
-    va_end(args);
-}
-
-MD_FUNCTION_IMPL void
-MD_NodeErrorF(MD_Node *node, char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    MD_NodeError(node, MD_PushStringFV(fmt, args));
     va_end(args);
 }
 
