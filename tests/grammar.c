@@ -36,7 +36,7 @@ static RandomSeries rand_seed(MD_u64 initstate, MD_u64 initseq)
 MD_GLOBAL struct
 {
     RandomSeries *random_series;
-    MD_NodeTable *production_table;
+    MD_Map *production_table;
 } globals = {0};
 
 static void TagSquareBracketSetsAsOptional(MD_Node *node, MD_Node *optional_tag)
@@ -82,8 +82,8 @@ static MD_Node * NewChild(MD_Node *parent)
 #define OPTIONAL_TAG "optional"
 
 #define GET_DEPTH(depth_map, node) ((MD_u64)MD_PtrMap_Lookup(depth_map, node)->value)
-#define SET_DEPTH(depth_map, node, depth) MD_PtrMap_Insert(depth_map, MD_NodeTableCollisionRule_Overwrite, node, (void *)(depth))
-static void PrintRule(MD_PtrMap *depth_map, MD_Node *rule)
+#define SET_DEPTH(depth_map, node, depth) MD_PtrMap_Insert(depth_map, MD_MapCollisionRule_Overwrite, node, (void *)(depth))
+static void PrintRule(MD_Map *depth_map, MD_Node *rule)
 {
     MD_b32 is_literal_char = rule->flags & MD_NodeFlag_CharLiteral;
 
@@ -153,11 +153,11 @@ static void Extend(MD_String8 *s, char c)
 }
 
 static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
-                             OperationFlags op_flags, MD_PtrMap *depth_map,
+                             OperationFlags op_flags, MD_Map *depth_map,
                              MD_u32 max_depth, MD_u32 depth);
 
 static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_node, OperationFlags op_flags,
-                       MD_PtrMap *depth_map, MD_u32 max_depth, MD_u32 depth)
+                       MD_Map *depth_map, MD_u32 max_depth, MD_u32 depth)
 {
     for(MD_EachNode(rule_element, rule->first_child))
     {
@@ -269,7 +269,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
 }
 
 static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
-                             OperationFlags op_flags, MD_PtrMap *depth_map,
+                             OperationFlags op_flags, MD_Map *depth_map,
                              MD_u32 max_depth, MD_u32 depth)
 {
     MD_i64 rule_count = MD_ChildCountFromNode(production);
@@ -285,7 +285,7 @@ static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *
     ExpandRule(rule, out, cur_node, op_flags, depth_map, max_depth, depth);
 }
 
-static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
+static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_Map *visited)
 {
     MD_Node *result = 0;
 
@@ -298,7 +298,7 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
         }
         else
         {
-            MD_b32 inserted = MD_NodeTable_Insert(visited, MD_NodeTableCollisionRule_Overwrite, node->string, node);
+            MD_b32 inserted = MD_NodeTable_Insert(visited, MD_MapCollisionRule_Overwrite, node->string, node);
             MD_Assert(inserted);
         }
     }
@@ -312,7 +312,7 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
             }
             else
             {
-                MD_NodeTableSlot *slot = MD_NodeTable_Lookup(globals.production_table, node->string);
+                MD_MapSlot *slot = MD_NodeTable_Lookup(globals.production_table, node->string);
                 if(slot)
                 {
                     MD_Node *production = slot->value;
@@ -406,7 +406,7 @@ struct Test
     Test *next;
 };
 
-static void ComputeElementDepth(MD_PtrMap *depth_map, MD_Node *re)
+static void ComputeElementDepth(MD_Map *depth_map, MD_Node *re)
 {
     MD_u64 result = 0;
     MD_b32 has_children = !MD_NodeIsNil(re->first_child);
@@ -575,11 +575,11 @@ int main(int argument_count, char **arguments)
     }
 
     // NOTE(mal): Build production hash table
-    MD_NodeTable production_table_ = {0};
+    MD_Map production_table_ = {0};
     globals.production_table = &production_table_;
     for(MD_EachNode(production, productions->first_child))
     {
-        MD_b32 inserted = MD_NodeTable_Insert(globals.production_table, MD_NodeTableCollisionRule_Overwrite, 
+        MD_b32 inserted = MD_NodeTable_Insert(globals.production_table, MD_MapCollisionRule_Overwrite, 
                                               production->string, production);
         MD_Assert(inserted);
     }
@@ -587,7 +587,7 @@ int main(int argument_count, char **arguments)
     // NOTE(mal): Check for root production
     MD_Node* file_production = 0;
     {
-        MD_NodeTableSlot *file_production_slot = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"));
+        MD_MapSlot *file_production_slot = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"));
         if(!file_production_slot)
         {
             fprintf(stderr, "Error: Grammar file does not specify \"file\" production\n");
@@ -597,7 +597,7 @@ int main(int argument_count, char **arguments)
     }
 
     // NOTE(mal): Check that all branches lead to terminal nodes
-    MD_NodeTable visited_productions = {0};
+    MD_Map visited_productions = {0};
 
     for(MD_EachNode(production, productions->first_child))
     {
@@ -612,7 +612,7 @@ int main(int argument_count, char **arguments)
     // NOTE(mal): Check that all productions are reachable
     for(MD_EachNode(production, productions->first_child))
     {
-        MD_NodeTableSlot *slot = MD_NodeTable_Lookup(&visited_productions, production->string);
+        MD_MapSlot *slot = MD_NodeTable_Lookup(&visited_productions, production->string);
         if(!slot)
         {
             fprintf(stderr, "Warning: Unreachable production \"%.*s\"\n", MD_StringExpand(production->string));
@@ -622,8 +622,8 @@ int main(int argument_count, char **arguments)
     // NOTE(mal): Compute depth of productions, rules, rule elements
 
     // NOTE(mal): Init all MD_Node depths to 0
-    MD_PtrMap depth_map_ = {0};
-    MD_PtrMap *depth_map = &depth_map_;
+    MD_Map depth_map_ = {0};
+    MD_Map *depth_map = &depth_map_;
     for(MD_EachNode(production, productions->first_child))
     {
         SET_DEPTH(depth_map, production, 0);

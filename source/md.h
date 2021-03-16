@@ -409,18 +409,6 @@ struct MD_Map
     MD_MapSlot **table;
 };
 
-/////////////////////////////////////////////
-//~ NOTE(mal): Helpers
-typedef MD_Map MD_StringMap;
-typedef MD_Map MD_PtrMap;
-
-// NOTE(mal): MD_NodeTable interface
-typedef MD_Map MD_NodeTable;
-typedef MD_MapSlot MD_NodeTableSlot;
-typedef MD_MapCollisionRule MD_NodeTableCollisionRule;
-#define MD_NodeTableCollisionRule_Chain MD_MapCollisionRule_Chain 
-#define MD_NodeTableCollisionRule_Overwrite MD_MapCollisionRule_Overwrite 
-
 //~ Token kinds.
 
 typedef enum MD_TokenKind
@@ -512,7 +500,7 @@ struct MD_ParseCtx
     MD_u8 *at;
     MD_String8 filename;
     MD_String8 file_contents;
-    MD_NodeTable namespace_table;
+    MD_Map namespace_table;
     MD_Node *selected_namespace;
     MD_b32 catastrophic_error;
 };
@@ -708,8 +696,8 @@ MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 
 //~ String-To-Node-List Table
-MD_FUNCTION MD_NodeTableSlot *MD_NodeTable_Lookup(MD_NodeTable *table, MD_String8 string);
-MD_FUNCTION MD_b32            MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rule, MD_String8 string, MD_Node *node);
+MD_FUNCTION MD_MapSlot       *MD_NodeTable_Lookup(MD_Map *table, MD_String8 string);
+MD_FUNCTION MD_b32            MD_NodeTable_Insert(MD_Map *table, MD_MapCollisionRule collision_rule, MD_String8 string, MD_Node *node);
 
 //~ Parsing
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);

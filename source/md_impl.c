@@ -962,7 +962,7 @@ _MD_Map_Initialize(MD_Map *map)
 /////////////////////////////////////////////
 //~ NOTE(mal): MD_StringMap
 MD_FUNCTION_IMPL MD_MapSlot *
-MD_StringMap_Lookup(MD_StringMap *map, MD_String8 string)       // NOTE(mal): Or MD_PtrFromString
+MD_StringMap_Lookup(MD_Map *map, MD_String8 string)       // NOTE(mal): Or MD_PtrFromString
 {
     _MD_Map_Initialize(map);
     
@@ -982,7 +982,7 @@ MD_StringMap_Lookup(MD_StringMap *map, MD_String8 string)       // NOTE(mal): Or
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_StringMap_Insert(MD_StringMap *map, MD_MapCollisionRule collision_rule, MD_String8 string, void *value)
+MD_StringMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, MD_String8 string, void *value)
 {
     _MD_Map_Initialize(map);
     
@@ -1055,7 +1055,7 @@ MD_HashPointer(void *p)
 }
 
 MD_FUNCTION_IMPL MD_MapSlot *
-MD_PtrMap_Lookup(MD_PtrMap *map, void *key)                     // NOTE(mal): Or MD_PtrFromPtr
+MD_PtrMap_Lookup(MD_Map *map, void *key)                     // NOTE(mal): Or MD_PtrFromPtr
 {
     _MD_Map_Initialize(map);
 
@@ -1076,7 +1076,7 @@ MD_PtrMap_Lookup(MD_PtrMap *map, void *key)                     // NOTE(mal): Or
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_PtrMap_Insert(MD_PtrMap *map, MD_MapCollisionRule collision_rule, void *key, void *value)
+MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, void *value)
 {
     _MD_Map_Initialize(map);
     
@@ -2080,12 +2080,12 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                     MD_Token token = MD_ZERO_STRUCT;
                     if(MD_Parse_RequireKind(&ctx, MD_TokenKind_Identifier, &token))
                     {
-                        MD_NodeTableSlot *existing_namespace_slot = MD_NodeTable_Lookup(&ctx.namespace_table, token.string);
+                        MD_MapSlot *existing_namespace_slot = MD_NodeTable_Lookup(&ctx.namespace_table, token.string);
                         if(existing_namespace_slot == 0)
                         {
                             MD_Node *ns = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_Namespace, token.string,
                                                                      token.outer_string.str);
-                            MD_NodeTable_Insert(&ctx.namespace_table, MD_NodeTableCollisionRule_Overwrite, token.string, ns);
+                            MD_NodeTable_Insert(&ctx.namespace_table, MD_MapCollisionRule_Overwrite, token.string, ns);
                             existing_namespace_slot = MD_NodeTable_Lookup(&ctx.namespace_table, token.string);
                         }
                         ctx.selected_namespace = (MD_Node *)existing_namespace_slot->value;

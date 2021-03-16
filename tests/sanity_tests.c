@@ -506,7 +506,7 @@ int main(void)
             MD_MapCollisionRule rules[] = { MD_MapCollisionRule_Chain, MD_MapCollisionRule_Overwrite };
             for(int i_rule = 0; i_rule < MD_ArrayCount(rules); ++i_rule)
             {
-                MD_StringMap map = {0};
+                MD_Map map = {0};
                 MD_StringMap_Insert(&map, rules[i_rule], keys[0], (void *)0);
                 MD_StringMap_Insert(&map, rules[i_rule], keys[1], (void *)1);
                 MD_StringMap_Insert(&map, rules[i_rule], keys[2], (void *)2);
@@ -525,7 +525,7 @@ int main(void)
             MD_MapCollisionRule rules[] = { MD_MapCollisionRule_Chain, MD_MapCollisionRule_Overwrite };
             for(int i_rule = 0; i_rule < MD_ArrayCount(rules); ++i_rule)
             {
-                MD_PtrMap map = {0};
+                MD_Map map = {0};
                 MD_PtrMap_Insert(&map, rules[i_rule], (void *)0, (void *)0);
                 MD_PtrMap_Insert(&map, rules[i_rule], (void *)1, (void *)1);
                 MD_PtrMap_Insert(&map, rules[i_rule], (void *)2, (void *)2);

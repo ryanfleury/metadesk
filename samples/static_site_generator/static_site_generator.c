@@ -28,7 +28,7 @@ struct PageInfo
 static PageInfo ParsePageInfo(MD_Node *page);
 static SiteInfo ParseSiteInfo(MD_Node *site);
 static MD_String8 MakeDateString(MD_Node *date);
-static void GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, MD_Node *node);
+static void GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, MD_Node *node);
 
 int main(int argument_count, char **arguments)
 {
@@ -80,7 +80,7 @@ int main(int argument_count, char **arguments)
     }
     
     //~ NOTE(rjf): Generate index table.
-    MD_NodeTable index_table = {0};
+    MD_Map index_table = {0};
     {
         for(MD_EachNode(root, first_root))
         {
@@ -90,7 +90,7 @@ int main(int argument_count, char **arguments)
                 {
                     for(MD_EachNode(index_string, node->first_child))
                     {
-                        MD_NodeTable_Insert(&index_table, MD_NodeTableCollisionRule_Chain, index_string->string, root);
+                        MD_NodeTable_Insert(&index_table, MD_MapCollisionRule_Chain, index_string->string, root);
                     }
                     goto end_index_build;
                 }
@@ -372,7 +372,7 @@ MakeDateString(MD_Node *date)
 }
 
 static void
-GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, MD_Node *node)
+GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, MD_Node *node)
 {
     
     //~ NOTE(rjf): Text blobs
@@ -513,7 +513,7 @@ GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
             MD_Node *index_string = 0;
             for(MD_u64 idx = 0; !MD_NodeIsNil(index_string = MD_ChildFromIndex(node, idx)); idx += 1)
             {
-                for(MD_NodeTableSlot *slot = MD_NodeTable_Lookup(index_table, index_string->string);
+                for(MD_MapSlot *slot = MD_NodeTable_Lookup(index_table, index_string->string);
                     slot; slot = slot->next)
                 {
                     if(slot->value)
