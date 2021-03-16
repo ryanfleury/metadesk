@@ -947,26 +947,26 @@ MD_S32FromS8(MD_String8 in)
     return(result);
 }
 
-#if 0
+/////////////////////////////////////////////
+//~ String-To-Ptr and Ptr-To-Ptr tables
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_NodeTable_Initialize(MD_NodeTable *table)
+_MD_Map_Initialize(MD_Map *map)
 {
-    if(table->table_size == 0)
+    if(map->table_size == 0)
     {
-        table->table_size = 4096;
-        table->table = _MD_PushArray(_MD_GetCtx(), MD_NodeTableSlot *, table->table_size);
+        map->table_size = 4096;
+        map->table = _MD_PushArray(_MD_GetCtx(), MD_MapSlot *, map->table_size);
     }
 }
 
-MD_FUNCTION_IMPL MD_NodeTableSlot *
-MD_NodeTable_Lookup(MD_NodeTable *table, MD_String8 string)
+MD_FUNCTION_IMPL MD_MapSlot *
+_MD_Map_Lookup(MD_Map *map, MD_u64 hash)
 {
-    _MD_NodeTable_Initialize(table);
+    _MD_Map_Initialize(map);
     
-    MD_NodeTableSlot *slot = 0;
-    MD_u64 hash = MD_HashString(string);
-    MD_u64 index = hash % table->table_size;
-    for(MD_NodeTableSlot *candidate = table->table[index]; candidate; candidate = candidate->next)
+    MD_MapSlot *slot = 0;
+    MD_u64 index = hash % map->table_size;
+    for(MD_MapSlot *candidate = map->table[index]; candidate; candidate = candidate->next)
     {
         if(candidate->hash == hash)
         {
@@ -978,15 +978,14 @@ MD_NodeTable_Lookup(MD_NodeTable *table, MD_String8 string)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rule, MD_String8 string, MD_Node *node)
+_MD_Map_Insert(MD_StringMap *map, MD_MapCollisionRule collision_rule, MD_u64 hash, void *value)
 {
-    _MD_NodeTable_Initialize(table);
+    _MD_Map_Initialize(map);
     
-    MD_NodeTableSlot *slot = 0;
-    MD_u64 hash = MD_HashString(string);
-    MD_u64 index = hash % table->table_size;
+    MD_MapSlot *slot = 0;
+    MD_u64 index = hash % map->table_size;
     
-    for(MD_NodeTableSlot *candidate = table->table[index]; candidate; candidate = candidate->next)
+    for(MD_MapSlot *candidate = map->table[index]; candidate; candidate = candidate->next)
     {
         if(candidate->hash == hash)
         {
@@ -995,15 +994,15 @@ MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rul
         }
     }
     
-    if(slot == 0 || (slot != 0 && collision_rule == MD_NodeTableCollisionRule_Chain))
+    if(slot == 0 || (slot != 0 && collision_rule == MD_MapCollisionRule_Chain))
     {
-        slot = _MD_PushArray(_MD_GetCtx(), MD_NodeTableSlot, 1);
+        slot = _MD_PushArray(_MD_GetCtx(), MD_MapSlot, 1);
         if(slot)
         {
             slot->next = 0;
-            if(table->table[index])
+            if(map->table[index])
             {
-                for(MD_NodeTableSlot *old_slot = table->table[index]; old_slot; old_slot = old_slot->next)
+                for(MD_MapSlot *old_slot = map->table[index]; old_slot; old_slot = old_slot->next)
                 {
                     if(old_slot->next == 0)
                     {
@@ -1014,22 +1013,69 @@ MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rul
             }
             else
             {
-                table->table[index] = slot;
+                map->table[index] = slot;
             }
         }
     }
     
     if(slot)
     {
-        slot->node = node;
+        slot->value = value;
         slot->hash = hash;
     }
     
     return !!slot;
 }
-#else
-#include "map_proposal.c"
-#endif
+
+/////////////////////////////////////////////
+//~ NOTE(mal): MD_StringMap
+MD_FUNCTION_IMPL MD_MapSlot *
+MD_StringMap_Lookup(MD_StringMap *map, MD_String8 string)       // NOTE(mal): Or MD_PtrFromString
+{
+    MD_MapSlot *slot = _MD_Map_Lookup(map, MD_HashString(string));
+    return slot;
+}
+
+MD_FUNCTION_IMPL MD_b32
+MD_StringMap_Insert(MD_StringMap *map, MD_MapCollisionRule collision_rule, MD_String8 string, void *value)
+{
+    MD_b32 result = _MD_Map_Insert(map, collision_rule, MD_HashString(string), value);
+    return result;
+}
+
+// NOTE(mal): Original MD_NodeTable interface
+#define MD_NodeTable_Lookup(map, string) MD_StringMap_Lookup(map, string)
+#define MD_NodeTable_Insert(map, collision_rule, string, node) MD_StringMap_Insert(map, collision_rule, string, (void *) node)
+
+/////////////////////////////////////////////
+//~ NOTE(mal): MD_PtrMap
+
+// NOTE(mal): Generic 64-bit hash function (https://nullprogram.com/blog/2018/07/31/)
+//            Assumes all bits of the pointer matter and that there's a b
+MD_FUNCTION_IMPL MD_u64 
+MD_HashPointer(void *p)
+{
+    MD_u64 h = (MD_u64)p;
+    h = (h ^ (h >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+    h = (h ^ (h >> 27)) * UINT64_C(0x94d049bb133111eb);
+    h = h ^ (h >> 31);
+    return h;
+}
+
+MD_FUNCTION_IMPL MD_MapSlot *
+MD_PtrMap_Lookup(MD_PtrMap *map, void *key)                     // NOTE(mal): Or MD_PtrFromPtr
+{
+    MD_MapSlot *slot = _MD_Map_Lookup(map, MD_HashPointer(key));
+    return slot;
+}
+
+// TODO(mal): Remove collision_rule parameter and assume MD_MapCollisionRule_Overwrite?
+MD_FUNCTION_IMPL MD_b32
+MD_PtrMap_Insert(MD_PtrMap *map, MD_MapCollisionRule collision_rule, void *key, void *value)
+{
+    MD_b32 result = _MD_Map_Insert(map, collision_rule, MD_HashPointer(key), value);
+    return result;
+}
 
 MD_FUNCTION_IMPL MD_b32
 MD_TokenKindIsWhitespace(MD_TokenKind kind)
