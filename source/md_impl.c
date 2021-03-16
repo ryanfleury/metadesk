@@ -947,7 +947,7 @@ MD_S32FromS8(MD_String8 in)
     return(result);
 }
 
-
+#if 0
 MD_PRIVATE_FUNCTION_IMPL void
 _MD_NodeTable_Initialize(MD_NodeTable *table)
 {
@@ -1027,6 +1027,9 @@ MD_NodeTable_Insert(MD_NodeTable *table, MD_NodeTableCollisionRule collision_rul
     
     return !!slot;
 }
+#else
+#include "map_proposal.c"
+#endif
 
 MD_FUNCTION_IMPL MD_b32
 MD_TokenKindIsWhitespace(MD_TokenKind kind)
@@ -1990,7 +1993,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                             MD_NodeTable_Insert(&ctx.namespace_table, MD_NodeTableCollisionRule_Overwrite, token.string, ns);
                             existing_namespace_slot = MD_NodeTable_Lookup(&ctx.namespace_table, token.string);
                         }
-                        ctx.selected_namespace = existing_namespace_slot->node;
+                        ctx.selected_namespace = (MD_Node *)existing_namespace_slot->value;
                     }
                     else
                     {

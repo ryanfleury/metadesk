@@ -516,11 +516,11 @@ GeneratePageContent(MD_NodeTable *index_table, SiteInfo *site_info, PageInfo *pa
                 for(MD_NodeTableSlot *slot = MD_NodeTable_Lookup(index_table, index_string->string);
                     slot; slot = slot->next)
                 {
-                    if(slot->node)
+                    if(slot->value)
                     {
-                        PageInfo info = ParsePageInfo(slot->node);
+                        PageInfo info = ParsePageInfo((MD_Node *)slot->value);
                         
-                        MD_String8 filename = slot->node->filename;
+                        MD_String8 filename = ((MD_Node *)slot->value)->filename;
                         MD_String8 filename_no_ext = MD_ChopExtension(MD_SkipFolder(filename));
                         MD_String8 link = MD_PushStringF("%.*s.html", MD_StringExpand(filename_no_ext));
                         MD_String8 name = info.title->string;

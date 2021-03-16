@@ -385,7 +385,7 @@ typedef enum MD_MessageKind
 MD_MessageKind;
 
 //~ String-To-Node table
-
+#if 0
 typedef enum MD_NodeTableCollisionRule
 {
     MD_NodeTableCollisionRule_Chain,
@@ -407,6 +407,9 @@ struct MD_NodeTable
     MD_u64 table_size;
     MD_NodeTableSlot **table;
 };
+#else
+#include "map_proposal.h"
+#endif
 
 //~ Token kinds.
 

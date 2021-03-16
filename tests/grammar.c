@@ -251,7 +251,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 }
                 else        // NOTE(mal): Non-terminal production
                 {
-                    MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->node;
+                    MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->value;
                     MD_Assert(production);
                     ExpandProduction(production, out_strings, cur_node, op_flags, max_depth, depth+1);
                 }
@@ -314,7 +314,7 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
                 MD_NodeTableSlot *slot = MD_NodeTable_Lookup(globals.production_table, node->string);
                 if(slot)
                 {
-                    MD_Node *production = slot->node;
+                    MD_Node *production = slot->value;
                     result = FindNonTerminalProduction(production, visited);
                 }
                 else
@@ -429,7 +429,7 @@ static void ComputeElementDepth(MD_Node *re)
         }
         else
         {
-            MD_Node * production = MD_NodeTable_Lookup(globals.production_table, re->string)->node;
+            MD_Node * production = MD_NodeTable_Lookup(globals.production_table, re->string)->value;
             result = GET_DEPTH(production)+1;
         }
     }
@@ -592,7 +592,7 @@ int main(int argument_count, char **arguments)
             fprintf(stderr, "Error: Grammar file does not specify \"file\" production\n");
             goto error;
         }
-        file_production = file_production_slot->node;
+        file_production = file_production_slot->value;
     }
 
     // NOTE(mal): Check that all branches lead to terminal nodes
@@ -641,7 +641,7 @@ int main(int argument_count, char **arguments)
                         MD_Assert(MD_NodeIsNil(rule_element->first_child));
                         if(!(rule_element->flags & MD_NodeFlag_CharLiteral))
                         {
-                            MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->node;
+                            MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->value;
                             depth = GET_DEPTH(production);
                         }
                         depth += 1;
@@ -694,7 +694,7 @@ int main(int argument_count, char **arguments)
 
     RandomSeries random_series = rand_seed(0, 0);  // NOTE(mal): Reproduceable
     globals.random_series = &random_series;
-    MD_Node* file_production_node = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"))->node;
+    MD_Node* file_production_node = MD_NodeTable_Lookup(globals.production_table, MD_S8Lit("file"))->value;
 
     // NOTE(mal): Generate test_count unique tests, sorted by complexity
     MD_u32 test_count = 1000;
