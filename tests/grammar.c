@@ -468,6 +468,65 @@ static int StringCompare(MD_String8 a, MD_String8 b)
     return result;
 }
 
+static MD_Node *
+FirstBadNodeAtPointer(MD_Node *node)
+{
+    MD_Node *result = 0;
+    switch(node->kind){
+      case MD_NodeKind_File:
+        {
+        } break;
+      case MD_NodeKind_Label:
+        {
+            if(node->at != node->whole_string.str)
+            {
+                if(node->whole_string.size)
+                {
+                    result = node;
+                }
+                else
+                {
+                    if(!node->at || (node->at[0] != '(' && node->at[0] != '[' && node->at[0] != '{'))
+                    {
+                        result = node;
+                    }
+                }
+
+                if(result)
+                {
+                    goto end;
+                }
+            }
+        } break;
+      case MD_NodeKind_Namespace:
+      case MD_NodeKind_Tag:
+        {
+            if(node->at != node->whole_string.str)
+            {
+                result = node;
+                goto end;
+            }
+        } break;
+      default:
+        break;
+    }
+
+    for(MD_EachNode(child, node->first_child))
+    {
+        result = FirstBadNodeAtPointer(child);
+        if(result) goto end;
+    }
+    for(MD_EachNode(child, node->first_tag))
+    {
+        result = FirstBadNodeAtPointer(child);
+        if(result) goto end;
+    }
+
+    end:
+
+    return result;
+}
+
 int main(int argument_count, char **arguments)
 {
     MD_Node *grammar = MD_ParseWholeFile(MD_S8Lit("tests/grammar.md")).node;
@@ -699,6 +758,18 @@ int main(int argument_count, char **arguments)
             MD_OutputTree(stdout, file_node);
             printf("Grammar:\n");
             MD_OutputTree(stdout, test->expected_output); printf("\n");
+            return -1;
+        }
+
+        MD_Node *bad_at_node = FirstBadNodeAtPointer(file_node);
+        if(bad_at_node)
+        {
+            printf("\nBad node->at on test %d\n", i_test);
+            printf("> %.*s <\n", MD_StringExpand(test->input));
+            printf("MD:\n");
+            MD_OutputTree(stdout, file_node);
+            printf("offending_node");
+            MD_OutputTree(stdout, bad_at_node);
             return -1;
         }
         ++i_test;

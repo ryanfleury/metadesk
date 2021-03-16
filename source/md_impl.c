@@ -1514,13 +1514,14 @@ _MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_St
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
 _MD_MakeNodeFromToken_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_Token token)
 {
-    return _MD_MakeNode(kind, token.string, token.outer_string, ctx->filename, ctx->file_contents.str, ctx->at);
+    return _MD_MakeNode(kind, token.string, token.outer_string, ctx->filename, ctx->file_contents.str,
+                        token.outer_string.str);
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNodeFromString_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_String8 string)
+_MD_MakeNodeFromString_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_String8 string, MD_u8 *at)
 {
-    return _MD_MakeNode(kind, string, string, ctx->filename, ctx->file_contents.str, ctx->at);
+    return _MD_MakeNode(kind, string, string, ctx->filename, ctx->file_contents.str, at);
 }
 
 typedef MD_u32 _MD_ParseSetFlags;
@@ -1638,7 +1639,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
        next_token.kind == MD_TokenKind_Symbol )
     {
-        result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Label, MD_S8Lit(""));
+        result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Label, MD_S8Lit(""), next_token.outer_string.str);
+
         _MD_ParseSet(ctx, result.node,
                      _MD_ParseSetFlag_Paren   |
                      _MD_ParseSetFlag_Brace   |
@@ -1655,7 +1657,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             MD_Parse_RequireKind(ctx, MD_TokenKind_CharLiteral,    &token) ||
             MD_Parse_RequireKind(ctx, MD_TokenKind_Symbol,         &token))
     {
-        result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
+        result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str,
+                                           token.outer_string.str, token);
         _MD_SetNodeFlagsByToken(result.node, token);
         
         if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
@@ -1975,7 +1978,8 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                         MD_NodeTableSlot *existing_namespace_slot = MD_NodeTable_Lookup(&ctx.namespace_table, token.string);
                         if(existing_namespace_slot == 0)
                         {
-                            MD_Node *ns = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_Namespace, token.string);
+                            MD_Node *ns = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_Namespace, token.string,
+                                                                     token.outer_string.str);
                             MD_NodeTable_Insert(&ctx.namespace_table, MD_NodeTableCollisionRule_Overwrite, token.string, ns);
                             existing_namespace_slot = MD_NodeTable_Lookup(&ctx.namespace_table, token.string);
                         }
