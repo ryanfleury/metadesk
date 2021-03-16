@@ -81,10 +81,9 @@ static MD_Node * NewChild(MD_Node *parent)
 
 #define OPTIONAL_TAG "optional"
 
-// TODO(mal): Use data table instead of smuggling depth as file_contents
-#define GET_DEPTH(node) ((MD_u64)((node)->file_contents))
-#define SET_DEPTH(node, v) (node)->file_contents = (MD_u8 *)(v);
-static void PrintRule(MD_Node *rule)
+#define GET_DEPTH(depth_map, node) ((MD_u64)MD_PtrMap_Lookup(depth_map, node)->value)
+#define SET_DEPTH(depth_map, node, depth) MD_PtrMap_Insert(depth_map, MD_NodeTableCollisionRule_Overwrite, node, (void *)(depth))
+static void PrintRule(MD_PtrMap *depth_map, MD_Node *rule)
 {
     MD_b32 is_literal_char = rule->flags & MD_NodeFlag_CharLiteral;
 
@@ -115,8 +114,8 @@ static void PrintRule(MD_Node *rule)
 
         for(MD_EachNode(rule_element, rule->first_child))
         {
-            PrintRule(rule_element);
-            printf(" (%lu) ", (unsigned long)GET_DEPTH(rule_element));
+            PrintRule(depth_map, rule_element);
+            printf(" (%lu) ", (unsigned long)GET_DEPTH(depth_map, rule_element));
 
             if(!MD_NodeIsNil(rule_element->next))
             {
@@ -154,10 +153,11 @@ static void Extend(MD_String8 *s, char c)
 }
 
 static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
-                             OperationFlags op_flags, MD_u32 max_depth, MD_u32 depth);
+                             OperationFlags op_flags, MD_PtrMap *depth_map,
+                             MD_u32 max_depth, MD_u32 depth);
 
 static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_node, OperationFlags op_flags,
-                       MD_u32 max_depth, MD_u32 depth)
+                       MD_PtrMap *depth_map, MD_u32 max_depth, MD_u32 depth)
 {
     for(MD_EachNode(rule_element, rule->first_child))
     {
@@ -168,7 +168,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
 
             if(expand)
             {
-                if(GET_DEPTH(rule_element) + depth >= max_depth)
+                if(GET_DEPTH(depth_map, rule_element) + depth >= max_depth)
                 {
                     expand = 0;
                 }
@@ -216,7 +216,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
             MD_b32 has_children = !MD_NodeIsNil(rule_element->first_child);
             if(has_children)
             {
-                ExpandRule(rule_element, out_strings, cur_node, op_flags, max_depth, depth+1);
+                ExpandRule(rule_element, out_strings, cur_node, op_flags, depth_map, max_depth, depth+1);
             }
             else
             {
@@ -253,7 +253,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 {
                     MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->value;
                     MD_Assert(production);
-                    ExpandProduction(production, out_strings, cur_node, op_flags, max_depth, depth+1);
+                    ExpandProduction(production, out_strings, cur_node, op_flags, depth_map, max_depth, depth+1);
                 }
             }
 
@@ -269,19 +269,20 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
 }
 
 static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
-                             OperationFlags op_flags, MD_u32 max_depth, MD_u32 depth)
+                             OperationFlags op_flags, MD_PtrMap *depth_map,
+                             MD_u32 max_depth, MD_u32 depth)
 {
     MD_i64 rule_count = MD_ChildCountFromNode(production);
 
-    MD_Assert(GET_DEPTH(production)+depth <= max_depth);
+    MD_Assert(GET_DEPTH(depth_map, production)+depth <= max_depth);
 
     MD_Node *rule = 0;
     do{
         int rule_number = rand_U32(globals.random_series)%rule_count;
         rule = MD_ChildFromIndex(production, rule_number);
-    }while(GET_DEPTH(rule)+depth > max_depth);
+    }while(GET_DEPTH(depth_map, rule)+depth > max_depth);
 
-    ExpandRule(rule, out, cur_node, op_flags, max_depth, depth);
+    ExpandRule(rule, out, cur_node, op_flags, depth_map, max_depth, depth);
 }
 
 static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_NodeTable *visited)
@@ -405,7 +406,7 @@ struct Test
     Test *next;
 };
 
-static void ComputeElementDepth(MD_Node *re)
+static void ComputeElementDepth(MD_PtrMap *depth_map, MD_Node *re)
 {
     MD_u64 result = 0;
     MD_b32 has_children = !MD_NodeIsNil(re->first_child);
@@ -413,8 +414,8 @@ static void ComputeElementDepth(MD_Node *re)
     {
         for(MD_EachNode(sub_re, re->first_child))
         {
-            ComputeElementDepth(sub_re);
-            MD_u64 depth = GET_DEPTH(sub_re);
+            ComputeElementDepth(depth_map, sub_re);
+            MD_u64 depth = GET_DEPTH(depth_map, sub_re);
             if(result < depth)
             {
                 result = depth;
@@ -430,11 +431,11 @@ static void ComputeElementDepth(MD_Node *re)
         else
         {
             MD_Node * production = MD_NodeTable_Lookup(globals.production_table, re->string)->value;
-            result = GET_DEPTH(production)+1;
+            result = GET_DEPTH(depth_map, production)+1;
         }
     }
 
-    SET_DEPTH(re, result);
+    SET_DEPTH(depth_map, re, result);
 }
 
 // NOTE(mal): Compares first by size then alphabetically
@@ -619,6 +620,23 @@ int main(int argument_count, char **arguments)
     }
 
     // NOTE(mal): Compute depth of productions, rules, rule elements
+
+    // NOTE(mal): Init all MD_Node depths to 0
+    MD_PtrMap depth_map_ = {0};
+    MD_PtrMap *depth_map = &depth_map_;
+    for(MD_EachNode(production, productions->first_child))
+    {
+        SET_DEPTH(depth_map, production, 0);
+        for(MD_EachNode(rule, production->first_child))
+        {
+            SET_DEPTH(depth_map, rule, 0);
+            for(MD_EachNode(rule_element, rule->first_child))
+            {
+                SET_DEPTH(depth_map, rule_element, 0);
+            }
+        }
+    }
+
     MD_b32 progress = 1;
     while(progress)
     {
@@ -632,8 +650,8 @@ int main(int argument_count, char **arguments)
                 MD_u64 max_mandatory_rule_element_depth = 0;
                 for(MD_EachNode(rule_element, rule->first_child))
                 {
-                    ComputeElementDepth(rule_element);
-                    MD_u64 depth = GET_DEPTH(rule_element);
+                    ComputeElementDepth(depth_map, rule_element);
+                    MD_u64 depth = GET_DEPTH(depth_map, rule_element);
 
                     if(!MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG)))
                     {
@@ -642,7 +660,7 @@ int main(int argument_count, char **arguments)
                         if(!(rule_element->flags & MD_NodeFlag_CharLiteral))
                         {
                             MD_Node * production = MD_NodeTable_Lookup(globals.production_table, rule_element->string)->value;
-                            depth = GET_DEPTH(production);
+                            depth = GET_DEPTH(depth_map, production);
                         }
                         depth += 1;
 
@@ -658,10 +676,10 @@ int main(int argument_count, char **arguments)
                     }
                 }
 
-                if(max_mandatory_rule_element_depth > GET_DEPTH(rule))
+                if(max_mandatory_rule_element_depth > GET_DEPTH(depth_map, rule))
                 {
                     progress = 1;
-                    SET_DEPTH(rule, max_mandatory_rule_element_depth);
+                    SET_DEPTH(depth_map, rule, max_mandatory_rule_element_depth);
                 }
 
                 if(max_mandatory_rule_element_depth < min_rule_depth)
@@ -670,10 +688,10 @@ int main(int argument_count, char **arguments)
                 }
             }
 
-            if(min_rule_depth > GET_DEPTH(production))
+            if(min_rule_depth > GET_DEPTH(depth_map, production))
             {
                 progress = 1;
-                SET_DEPTH(production, min_rule_depth);
+                SET_DEPTH(depth_map, production, min_rule_depth);
             }
         }
     }
@@ -710,7 +728,7 @@ int main(int argument_count, char **arguments)
 
         MD_String8List string_list = {0};
         // NOTE(mal): Generate a random MD file
-        ExpandProduction(file_production_node, &string_list, test.expected_output, 0, max_production_depth, 0);
+        ExpandProduction(file_production_node, &string_list, test.expected_output, 0, depth_map, max_production_depth, 0);
         test.input = MD_JoinStringList(string_list);
 
         Test *prev = 0;
