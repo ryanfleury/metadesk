@@ -1304,7 +1304,7 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 
                 else
                 {
-                    token.kind = MD_TokenKind_NonASCII;
+                    token.kind = MD_TokenKind_BadCharacter;
                     at += 1;
                 }
             }break;
@@ -1708,10 +1708,17 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         goto end_parse;
     }
     
-    else if(MD_Parse_RequireKind(ctx, MD_TokenKind_NonASCII,     &token))
+    else if(MD_Parse_RequireKind(ctx, MD_TokenKind_BadCharacter, &token))
     {
         result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
-        _MD_Error(ctx, result.node, ctx->at-1, 0, "Non-ASCII character %d", token.string.str[0]);
+
+        MD_String8List bytes = {0};
+        for(int i_byte = 0; i_byte < token.outer_string.size; ++i_byte)
+        {
+            MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", token.outer_string.str[i_byte]));
+        }
+        MD_String8 byte_string = MD_JoinStringListWithSeparator(bytes, MD_S8Lit(" "));
+        _MD_Error(ctx, result.node, ctx->at-1, 0, "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
     }
     
     end_parse:;
