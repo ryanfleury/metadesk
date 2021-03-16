@@ -398,6 +398,7 @@ struct MD_MapSlot
 {
     MD_MapSlot *next;
     MD_u64 hash;
+    void *key;
     void *value;
 };
 
