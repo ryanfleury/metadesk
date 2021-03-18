@@ -1192,8 +1192,8 @@ MD_Parse_BumpNext(MD_ParseCtx *ctx)
     MD_Parse_Bump(ctx, MD_Parse_LexNext(ctx));
 }
 
-MD_FUNCTION_IMPL MD_u8 *
-MD_TokenizerScanEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
+MD_PRIVATE_FUNCTION_IMPL MD_u8 *
+_MD_TokenizerScanEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
 {
     while(at < one_past_last)
     {
@@ -1207,13 +1207,35 @@ MD_TokenizerScanEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
     return at;
 }
 
+MD_PRIVATE_FUNCTION_IMPL MD_u8 *
+_MD_TokenizerScanTripletEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
+{
+    MD_u32 consecutive_c = 0;
+    while(at < one_past_last && consecutive_c < 3)
+    {
+        if(at[0] == c)
+        {
+            consecutive_c += 1;
+        }
+        else
+        {
+            consecutive_c = 0;
+            if(at[0] == '\\' && at + 1 < one_past_last)
+            {
+                if(at[1] == c || at[1] == '\\')
+                {
+                    at += 1;
+                }
+            }
+        }
+        at += 1;
+    }
+    return at;
+}
+
 MD_PRIVATE_FUNCTION_IMPL MD_u32
 _MD_ComputeTextLiteralChop(MD_u32 bytes_to_skip, MD_u8 *beg, MD_u8 *end)
 {
-    // NOTE(mal): By counting the bytes to chop off text literals and encoding exact token.string and
-    //            token.outer_string we delegate the responsibility of generating errors to the parser
-    //            That way, we can avoid generating errors during peeks and save them for actual token
-    //            consumption. That allows more predictable error ordering.
     MD_u32 result = 0;
     MD_u8 *skip_end = beg + bytes_to_skip;
     MD_u8 *chop_beg = end - bytes_to_skip;
@@ -1322,15 +1344,12 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 if (at + 2 < one_past_last && at[1] == '`' && at[2] == '`')
                 {
                     skip_n = 3;
-                    at += 3;
-                    MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '`' && at[1] == '`' && at[2] == '`'));
-                    at += 3;
+                    at = _MD_TokenizerScanTripletEscaped(at+3, one_past_last, '`');
                 }
                 else
                 {
                     skip_n = 1;
-                    at += 1;
-                    at = MD_TokenizerScanEscaped(at, one_past_last, '`');
+                    at = _MD_TokenizerScanEscaped(at+1, one_past_last, '`');
                 }
                 chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
             }break;
@@ -1342,15 +1361,13 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 if (at + 2 < one_past_last && at[1] == '"' && at[2] == '"')
                 {
                     skip_n = 3;
-                    at += 3;
-                    MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '"' && at[1] == '"' && at[2] == '"'));
-                    at += 3;
+                    at = _MD_TokenizerScanTripletEscaped(at+3, one_past_last, '"');
                 }
                 else
                 {
                     skip_n = 1;
                     at += 1;
-                    at = MD_TokenizerScanEscaped(at, one_past_last, '"');
+                    at = _MD_TokenizerScanEscaped(at, one_past_last, '"');
                 }
                 chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
             }break;
@@ -1361,16 +1378,14 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 {
                     token.kind = MD_TokenKind_StringLiteral;
                     skip_n = 3;
-                    at += 3;
-                    MD_TokenizerScan(!(at + 2 < one_past_last && at[0] == '\'' && at[1] == '\'' && at[2] == '\''));
-                    at += 3;
+                    at = _MD_TokenizerScanTripletEscaped(at+3, one_past_last, '\'');
                 }
                 else
                 {
                     token.kind = MD_TokenKind_CharLiteral;
                     skip_n = 1;
                     at += 1;
-                    at = MD_TokenizerScanEscaped(at, one_past_last, '\'');
+                    at = _MD_TokenizerScanEscaped(at, one_past_last, '\'');
                 }
                 chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
             }break;

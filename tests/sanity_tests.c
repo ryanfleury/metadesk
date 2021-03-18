@@ -539,8 +539,48 @@ int main(void)
                            slot2 && slot2->value == (void *) 2);
             }
         }
+    }
 
-        
+    Test("String escaping")
+    {
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("`\\``"));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("\\`"), 0));
+        }
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("``` \\``` ```"));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit(" \\``` "), 0));
+        }
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("`````\\````"));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("``\\`"), 0));
+        }
+
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("`\\'`"));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("\\'"), 0));
+        }
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("''' \\''' '''"));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit(" \\''' "), 0));
+        }
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("'''''\\''''"));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("''\\'"), 0));
+        }
+
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("`\\\"`"));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("\\\""), 0));
+        }
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("\"\"\" \\\"\"\" \"\"\""));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit(" \\\"\"\" "), 0));
+        }
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("\"\"\"\"\"\\\"\"\"\""));
+            TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("\"\"\\\""), 0));
+        }
     }
 
     return 0;
