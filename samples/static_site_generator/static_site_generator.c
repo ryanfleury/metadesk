@@ -102,7 +102,7 @@ int main(int argument_count, char **arguments)
     //~ NOTE(rjf): Generate stylesheet.
     if(site_info.style)
     {
-        FILE *file = fopen("style.css", "w");
+        FILE *file = fopen("style.css", "wb");
         if(file)
         {
             fprintf(file, "%.*s", MD_StringExpand(site_info.style->string));
@@ -112,7 +112,7 @@ int main(int argument_count, char **arguments)
     
     //~ NOTE(rjf): Generate JS.
     {
-        FILE *file = fopen("site.js", "w");
+        FILE *file = fopen("site.js", "wb");
         if(file)
         {
             fprintf(file, "%.*s", MD_StringExpand(js_string));
@@ -126,7 +126,7 @@ int main(int argument_count, char **arguments)
         PageInfo page_info = ParsePageInfo(root);
         
         MD_String8 name_without_extension = MD_SkipFolder(MD_ChopExtension(root->filename));
-        FILE *file = fopen(MD_PushStringF("%.*s.html", MD_StringExpand(name_without_extension)).str, "w");
+        FILE *file = fopen(MD_PushStringF("%.*s.html", MD_StringExpand(name_without_extension)).str, "wb");
         if(file)
         {
             fprintf(file, "<!DOCTYPE html>\n");

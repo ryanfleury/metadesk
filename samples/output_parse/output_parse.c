@@ -73,7 +73,7 @@ int main(int argument_count, char **arguments)
         MD_String8 info_filename = MD_PushStringF("parsed_%.*s.txt", MD_StringExpand(code_filename));
         printf("Parse Input -> Output: %.*s -> %.*s\n", MD_StringExpand(code_filename), MD_StringExpand(info_filename));
         
-        FILE* file = fopen((char *)info_filename.str, "w");
+        FILE* file = fopen((char *)info_filename.str, "wb");
         for(MD_EachNode(node, root->first_child))
         {
             PrintNode(node, file, 0);
