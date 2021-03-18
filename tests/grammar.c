@@ -6,7 +6,8 @@
 #define DEBUG_PRINT_GENERATED_TESTS 1
 
 // NOTE: https://www.pcg-random.org/download.html
-typedef struct RandomSeries{
+typedef struct RandomSeries
+{
     MD_u64 state; // NOTE: RNG state.  All values are possible.
     MD_u64 inc;   //       Controls which RNG sequence (stream) is selected. Odd at all times.
 } RandomSeries;

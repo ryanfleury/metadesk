@@ -301,6 +301,7 @@ typedef enum MD_NodeKind
     MD_NodeKind_Namespace,
     MD_NodeKind_Label,
     MD_NodeKind_Tag,
+    MD_NodeKind_ErrorMarker,
     MD_NodeKind_MAX,
 }
 MD_NodeKind;
@@ -487,7 +488,6 @@ struct MD_Error
     MD_String8 filename;
     MD_Node *node;
     MD_b32 catastrophic;
-    MD_CodeLoc location;
 };
 
 typedef struct MD_ParseCtx MD_ParseCtx;

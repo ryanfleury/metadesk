@@ -1546,17 +1546,14 @@ _MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 * file_contents, MD_u8 *at)
 }
 
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char *fmt, ...)
+_MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_b32 catastrophic, char *fmt, ...)
 {
-    MD_CodeLoc error_loc = _MD_CodeLocFromFileOffset(ctx->filename, ctx->file_contents.str, at);
-    
-    // NOTE(mal): Sort errors. We traverse the whole list assuming there won't be many of them.
-    //            We could drop a prev pointer into MD_Error and start from ctx->last_error to make it faster
+    // NOTE(mal): Sort errors. Traverse the whole list assuming it will be short.
+    //            The alternative is to drop a prev pointer into MD_Error and traverse it backwards
     MD_Error *prev_error = 0;
     for(MD_Error *e = ctx->first_error; e; e = e->next)
     {
-        if(e->location.line < error_loc.line ||
-           (e->location.line == error_loc.line && e->location.column < error_loc.column))
+        if(e->node->at < node->at)
         {
             prev_error = e;
         }
@@ -1572,7 +1569,6 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char 
         MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
         error->node = node ? node : MD_NilNode();
         error->catastrophic = catastrophic;
-        error->location = error_loc;
         error->filename = ctx->filename;
         va_list args;
         va_start(args, fmt);
@@ -1601,6 +1597,8 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_u8 *at, MD_b32 catastrophic, char 
         }
     }
 }
+#define _MD_TokenError(ctx, token, catastrophic, fmt, ...) \
+    _MD_Error(ctx, _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_ErrorMarker, token), catastrophic, fmt, __VA_ARGS__)
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
 _MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_String8 filename,
@@ -1738,13 +1736,15 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         comment_before = comment_token.string;
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
-            _MD_Error(ctx, result.node, ctx->at-comment_token.outer_string.size, 1, "Unterminated comment \"%.*s\"",
-                      MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
+            _MD_TokenError(ctx, comment_token, 1, "Unterminated comment \"%.*s\"",
+                           MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
         }
     }
     
     MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
     MD_Token next_token = MD_Parse_PeekSkipSome(ctx, skip_groups);
+
+    retry:
     
     // NOTE(rjf): Unnamed Sets
     if((MD_Parse_TokenMatch(next_token, MD_S8Lit("("), 0) ||
@@ -1778,7 +1778,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         {
             if(!_MD_StringLiteralIsBalanced(token))
             {
-                _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 1, "Unterminated text literal \"%.*s\"",
+                _MD_Error(ctx, result.node, 1, "Unterminated text literal \"%.*s\"",
                           MD_StringExpand(MD_StringPrefix(token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
             }
         }
@@ -1787,11 +1787,11 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             MD_u8 c = token.string.str[0];
             if(c == '}' || c == ']' || c == ')')
             {
-                _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 1, "Unbalanced \"%c\"", c);
+                _MD_TokenError(ctx, token, 1, "Unbalanced \"%c\"", c);
             }
             else
             {
-                _MD_Error(ctx, result.node, ctx->at-token.outer_string.size, 0, "Unexpected reserved symbol \"%c\"", c);
+                _MD_TokenError(ctx, token, 0, "Unexpected reserved symbol \"%c\"", c);
             }
         }
         
@@ -1811,11 +1811,10 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             if(fc == result.node->last_child && !MD_NodeIsNil(fc->first_tag) && // NOTE(mal): One child. Tagged.
                fc->kind == MD_NodeKind_Label && fc->whole_string.size == 0)     // NOTE(mal): Unlabeled set
             {
-                MD_Node *tag = fc->first_tag;
-                // NOTE(mal): @rjf: I'm assuming that tag->string falls inside the ctx->file_contents string
-                //                  Can I do that? It's the easiest way to get the error offset.
-                MD_u8 *tag_at = tag->string.str;
-                _MD_Error(ctx, tag, tag_at, 0, "Invalid position for tag \"%.*s\"", MD_StringExpand(tag->string));
+                for(MD_EachNode(tag, fc->first_tag))
+                {
+                    _MD_Error(ctx, tag, 0, "Invalid position for tag \"%.*s\"", MD_StringExpand(tag->string));
+                }
             }
         }
         goto end_parse;
@@ -1823,15 +1822,14 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     
     else if(MD_Parse_RequireKind(ctx, MD_TokenKind_BadCharacter, &token))
     {
-        result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str, ctx->at, token);
-
         MD_String8List bytes = {0};
         for(int i_byte = 0; i_byte < token.outer_string.size; ++i_byte)
         {
             MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", token.outer_string.str[i_byte]));
         }
         MD_String8 byte_string = MD_JoinStringListWithSeparator(bytes, MD_S8Lit(" "));
-        _MD_Error(ctx, result.node, ctx->at-1, 0, "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
+        _MD_TokenError(ctx, token, 0, "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
+        goto retry;
     }
     
     end_parse:;
@@ -1865,8 +1863,8 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         comment_after = comment_token.string;
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
-            _MD_Error(ctx, result.node, ctx->at-comment_token.outer_string.size, 1, "Unterminated comment \"%.*s\"",
-                      MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
+            _MD_TokenError(ctx, comment_token, 1, "Unterminated comment \"%.*s\"",
+                           MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
         }
     }
     
@@ -1969,7 +1967,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                     if(brace) delimiter_char = '{';
                     else if(paren) delimiter_char = '(';
                     else if(bracket) delimiter_char = '[';
-                    _MD_Error(ctx, parse.node, at_before_children-1, 1, "Unbalanced \"%c\"", delimiter_char);
+                    _MD_Error(ctx, parent, 1, "Unbalanced \"%c\"", delimiter_char);
                 }
                 goto end_parse;
             }
@@ -2044,8 +2042,8 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             else
             {
                 MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
-                _MD_Error(ctx, 0, token.outer_string.str, 0,
-                          "Tag \"%.*s\" is not a proper identifier", MD_StringExpand(token.outer_string));
+                _MD_TokenError(ctx, token, 0, "\"%.*s\" is not a proper tag identifier",
+                               MD_StringExpand(token.outer_string));
                 // NOTE(mal): There are reasons to consume the non-tag token, but also to leave it.
                 break;
             }
@@ -2114,8 +2112,8 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                 else
                 {
                     MD_Token token = MD_Parse_PeekSkipSome(&ctx, 0);
-                    _MD_Error(&ctx, 0, ctx.at, 0, "Invalid hash directive \"%.*s\"",
-                              MD_StringExpand(token.outer_string));
+                    _MD_TokenError(&ctx, token, 0, "Invalid hash directive \"%.*s\"",
+                                   MD_StringExpand(token.outer_string));
                 }
             }
             

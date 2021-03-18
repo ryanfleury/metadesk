@@ -471,7 +471,7 @@ int main(void)
                 MD_Error *e = parse.first_error;
                 for(int i_error = 0; i_error < max_error_count && tests[i_test].columns[i_error]; ++i_error)
                 {
-                    if(!e || e->location.column != tests[i_test].columns[i_error])
+                    if(!e || MD_CodeLocFromNode(e->node).column != tests[i_test].columns[i_error])
                     {
                         columns_match = 0;
                         break;
