@@ -1,26 +1,32 @@
 ////////////////////////////////
 //~ Basic Unicode string types.
 
+@doc("A pointer and size representing a UTF-8 string. Also used for any range of untyped data range.")
+@see(MD_String8List)
 @struct MD_String8: {
  str: *MD_u8,
  size: MD_u64,
 };
 
+@doc("A pointer and size representing a UTF-16 string.")
 @struct MD_String16: {
  str: *MD_u16,
  size: MD_u64,
 };
 
+@doc("A pointer and size representing a UTF-32 string.")
 @struct MD_String32: {
  str: *MD_u32,
  size: MD_u64,
 };
 
+@doc("A node in an MD_String8List")
 @struct MD_String8Node: {
- next: MD_String8Node,
+ next: *MD_String8Node,
  string: MD_String8,
 };
 
+@doc("A list of multiple possibly discontiguous strings (in MD_String8). Stored as a singly linked list.")
 @struct MD_String8List: {
  node_count: MD_u64,
  total_size: MD_u64,
@@ -28,11 +34,15 @@
  last: *MD_String8Node,
 };
 
+@doc("Controls matching rules in routines that perform string matching.")
 @prefix(MD_StringMatchFlag)
 @base_type(MD_u32)
 @flags MD_StringMatchFlags: {
+ @doc("Consider lower case letters equivalent to upper case equivalents in the ASCII range.")
  CaseInsensitive,
+ @doc("Do not require the strings to be the same length. If one of the strings is a prefix of another, the two strings will count as a match.")
  RightSideSloppy,
+ @doc("On string ")
  FindLast,
  SlashInsensitive,
 };
@@ -478,13 +488,6 @@
  str: MD_String8,
  substring: MD_String8,
  start_pos: MD_u64,
- flags: MD_StringMatchFlags,
- return: MD_u64,
-};
-
-@func MD_FindLastSubstring: {
- str: MD_String8,
- substring: MD_String8,
  flags: MD_StringMatchFlags,
  return: MD_u64,
 };

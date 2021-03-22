@@ -259,16 +259,10 @@ MD_FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_Stri
     return found_idx;
 }
 
-MD_FUNCTION_IMPL MD_u64
-MD_FindLastSubstring(MD_String8 str, MD_String8 substring, MD_StringMatchFlags flags)
-{
-    return MD_FindSubstring(str, substring, 0, flags | MD_StringMatchFlag_FindLast);
-}
-
 MD_FUNCTION_IMPL MD_String8
 MD_ChopExtension(MD_String8 string)
 {
-    MD_u64 period_pos = MD_FindLastSubstring(string, MD_S8Lit("."), 0);
+    MD_u64 period_pos = MD_FindSubstring(string, MD_S8Lit("."), 0, MD_StringMatchFlag_FindLast);
     if(period_pos < string.size)
     {
         string.size = period_pos;
@@ -279,7 +273,9 @@ MD_ChopExtension(MD_String8 string)
 MD_FUNCTION_IMPL MD_String8
 MD_SkipFolder(MD_String8 string)
 {
-    MD_u64 slash_pos = MD_FindLastSubstring(string, MD_S8Lit("/"), MD_StringMatchFlag_SlashInsensitive);
+    MD_u64 slash_pos = MD_FindSubstring(string, MD_S8Lit("/"), 0,
+                                        MD_StringMatchFlag_SlashInsensitive|
+                                        MD_StringMatchFlag_FindLast);
     if(slash_pos < string.size)
     {
         string.str += slash_pos+1;
@@ -291,7 +287,7 @@ MD_SkipFolder(MD_String8 string)
 MD_FUNCTION_IMPL MD_String8
 MD_ExtensionFromPath(MD_String8 string)
 {
-    MD_u64 period_pos = MD_FindLastSubstring(string, MD_S8Lit("."), 0);
+    MD_u64 period_pos = MD_FindSubstring(string, MD_S8Lit("."), 0, MD_StringMatchFlag_FindLast);
     if(period_pos < string.size)
     {
         string.str += period_pos+1;
@@ -303,7 +299,9 @@ MD_ExtensionFromPath(MD_String8 string)
 MD_FUNCTION_IMPL MD_String8
 MD_FolderFromPath(MD_String8 string)
 {
-    MD_u64 slash_pos = MD_FindLastSubstring(string, MD_S8Lit("/"), MD_StringMatchFlag_SlashInsensitive);
+    MD_u64 slash_pos = MD_FindSubstring(string, MD_S8Lit("/"), 0,
+                                        MD_StringMatchFlag_SlashInsensitive|
+                                        MD_StringMatchFlag_FindLast);
     if(slash_pos < string.size)
     {
         string.size = slash_pos;

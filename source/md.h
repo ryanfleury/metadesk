@@ -657,7 +657,6 @@ MD_FUNCTION MD_String8     MD_StringSuffix(MD_String8 str, MD_u64 size);
 MD_FUNCTION MD_b32         MD_StringMatch(MD_String8 a, MD_String8 b, MD_StringMatchFlags flags);
 MD_FUNCTION MD_u64         MD_FindSubstring(MD_String8 str, MD_String8 substring,
                                             MD_u64 start_pos, MD_StringMatchFlags flags);
-MD_FUNCTION MD_u64         MD_FindLastSubstring(MD_String8 str, MD_String8 substring, MD_StringMatchFlags flags);
 
 MD_FUNCTION MD_String8     MD_ChopExtension(MD_String8 string);
 MD_FUNCTION MD_String8     MD_SkipFolder(MD_String8 string);
