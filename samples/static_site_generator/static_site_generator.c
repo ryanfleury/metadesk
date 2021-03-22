@@ -90,7 +90,7 @@ int main(int argument_count, char **arguments)
                 {
                     for(MD_EachNode(index_string, node->first_child))
                     {
-                        MD_NodeTable_Insert(&index_table, MD_MapCollisionRule_Chain, index_string->string, root);
+                        MD_StringMap_Insert(&index_table, MD_MapCollisionRule_Chain, index_string->string, root);
                     }
                     goto end_index_build;
                 }

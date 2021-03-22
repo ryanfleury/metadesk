@@ -696,9 +696,13 @@ MD_FUNCTION MD_String16    MD_S16FromS8(MD_String8 str);
 MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 
-//~ String-To-Node-List Table
+//~ String-To-Pointer Table
 MD_FUNCTION MD_MapSlot       *MD_StringMap_Lookup(MD_Map *table, MD_String8 string);
 MD_FUNCTION MD_b32            MD_StringMap_Insert(MD_Map *table, MD_MapCollisionRule collision_rule, MD_String8 string, void *value);
+
+//~ Pointer-To-Pointer Table
+MD_FUNCTION MD_MapSlot       *MD_PtrMap_Lookup(MD_Map *map, void *key);
+MD_FUNCTION MD_b32            MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, void *value);
 
 //~ Parsing
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
