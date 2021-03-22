@@ -40,18 +40,27 @@
 @flags MD_StringMatchFlags: {
  @doc("Consider lower case letters equivalent to upper case equivalents in the ASCII range.")
  CaseInsensitive,
+
  @doc("Do not require the strings to be the same length. If one of the strings is a prefix of another, the two strings will count as a match.")
  RightSideSloppy,
- @doc("On string ")
+
+ @doc("On routines returning the location of a substring, alters the behavior to return the last match instead of the first match.")
  FindLast,
+
+ @doc("Consider forward slash and backward slash as equivalents.")
  SlashInsensitive,
 };
 
+@doc("Information gathered from consuming one unicode character from some unicode encoded stream.")
 @struct MD_UnicodeConsume: {
+ @doc("The codepoint of the consumed character.")
  codepoint: MD_u32,
+
+ @doc("The size of the character in the encoded stream, measured in 'units'. A unit is one byte in UTF-8, two bytes in UTF-16, and four bytes in UTF-32.")
  advance: MD_u32,
 };
 
+@doc("Styles of identifier spacing and capitalization.")
 @enum MD_WordStyle: {
  UpperCamelCase,
  LowerCamelCase,
@@ -62,13 +71,26 @@
 ////////////////////////////////
 //~ Node types that are used to build all ASTs.
 
+@doc("The basic kinds of nodes in the abstract syntax tree parsed from metadesk.")
 @enum MD_NodeKind: {
-    Nil,
-    File,
-    Namespace,
-    Label,
-    Tag,
-    MAX,
+ @doc("The Nil node is a unique node representing the lack of information, for example iterating off the end of a list, or up to the parent of a root node results in Nil.")
+ Nil,
+
+ @doc("A File node represents parsed metadesk source text.")
+ File,
+
+ @doc("A Namespace node represents a namespace created by the '#namespace' reserved keyword.")
+ Namespace,
+
+ @doc("A Label node represents the main structure of the metadesk abstract syntax tree. Some labels have children which will also be labels. Labels can be given their text by identifiers, numerics, string and character literals, and operator symbols.")
+ @see(MD_TokenKind)
+ Label,
+
+ @doc("A Tag node represents a tag attached to a label node with the '@identifer' syntax. The children of a tag node represent the arguments placed in the tag.")
+ Tag,
+ 
+ @doc("Not a real kind value given to nodes, this is always one larger than the largest enum value that can be given to a node.")
+ MAX,
 };
 
 @prefix(MD_NodeFlag)
@@ -97,6 +119,7 @@
 @base_type(MD_u32)
 @flags MD_NodeMatchFlags: {
  MD_NodeMatchFlag_Tags,
+
  MD_NodeMatchFlag_TagArguments,
 };
 
