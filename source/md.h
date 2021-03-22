@@ -698,8 +698,8 @@ MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 
 //~ String-To-Node-List Table
-MD_FUNCTION MD_MapSlot       *MD_Map_Lookup(MD_Map *table, MD_String8 string);
-MD_FUNCTION MD_b32            MD_Map_Insert(MD_Map *table, MD_MapCollisionRule collision_rule, MD_String8 string, MD_Node *node);
+MD_FUNCTION MD_MapSlot       *MD_StringMap_Lookup(MD_Map *table, MD_String8 string);
+MD_FUNCTION MD_b32            MD_StringMap_Insert(MD_Map *table, MD_MapCollisionRule collision_rule, MD_String8 string, void *value);
 
 //~ Parsing
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);

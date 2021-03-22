@@ -977,7 +977,7 @@ MD_StringMap_Lookup(MD_Map *map, MD_String8 string)       // NOTE(mal): Or MD_Pt
             break;
         }
     }
-
+    
     return slot;
 }
 
@@ -1058,9 +1058,9 @@ MD_FUNCTION_IMPL MD_MapSlot *
 MD_PtrMap_Lookup(MD_Map *map, void *key)                     // NOTE(mal): Or MD_PtrFromPtr
 {
     _MD_Map_Initialize(map);
-
+    
     MD_MapSlot *slot = 0;
-
+    
     MD_u64 hash = MD_HashPointer(key);
     MD_u64 index = hash % map->table_size;
     for(MD_MapSlot *candidate = map->table[index]; candidate; candidate = candidate->next)
@@ -1071,7 +1071,7 @@ MD_PtrMap_Lookup(MD_Map *map, void *key)                     // NOTE(mal): Or MD
             break;
         }
     }
-
+    
     return slot;
 }
 
@@ -1594,7 +1594,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_b32 catastrop
         {
             ctx->catastrophic_error = 1;
         }
-
+        
         if(kind > ctx->error_level)
         {
             ctx->error_level = kind;
@@ -1602,7 +1602,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_b32 catastrop
     }
 }
 #define _MD_TokenError(ctx, token, kind, catastrophic, fmt, ...) \
-    _MD_Error(ctx, _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_ErrorMarker, token), kind, catastrophic, fmt, __VA_ARGS__)
+_MD_Error(ctx, _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_ErrorMarker, token), kind, catastrophic, fmt, __VA_ARGS__)
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
 _MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_String8 filename,
@@ -1747,7 +1747,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     
     MD_TokenGroups skip_groups = MD_TokenGroup_Whitespace|MD_TokenGroup_Comment;
     MD_Token next_token = MD_Parse_PeekSkipSome(ctx, skip_groups);
-
+    
     retry:
     
     // NOTE(rjf): Unnamed Sets
@@ -1757,7 +1757,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
        next_token.kind == MD_TokenKind_Symbol )
     {
         result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Label, MD_S8Lit(""), next_token.outer_string.str);
-
+        
         _MD_ParseSet(ctx, result.node,
                      _MD_ParseSetFlag_Paren   |
                      _MD_ParseSetFlag_Brace   |
