@@ -513,7 +513,7 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
             MD_Node *index_string = 0;
             for(MD_u64 idx = 0; !MD_NodeIsNil(index_string = MD_ChildFromIndex(node, idx)); idx += 1)
             {
-                for(MD_MapSlot *slot = MD_NodeTable_Lookup(index_table, index_string->string);
+                for(MD_MapSlot *slot = MD_Map_Lookup(index_table, index_string->string);
                     slot; slot = slot->next)
                 {
                     if(slot->value)

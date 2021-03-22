@@ -131,27 +131,29 @@
 //~ Message Levels
 
 @enum MD_MessageKind: {
- Error,
+ None,
  Warning,
+ Error,
 }
 
 ////////////////////////////////
 //~ String-To-Node table
 
-@enum MD_NodeTableCollisionRule: {
+@enum MD_MapCollisionRule: {
  Chain,
  Overwrite,
 }
 
-@struct MD_NodeTableSlot: {
- next: *MD_NodeTableSlot,
+@struct MD_MapSlot: {
+ next: *MD_MapSlot,
  hash: MD_u64,
- node: *MD_Node,
+ key: *void;
+ value: *void;
 };
 
-@struct MD_NodeTable: {
+@struct MD_Map: {
  table_size: MD_u64,
- table: **MD_NodeTableSlot,
+ table: **MD_MapSlot,
 };
 
 ////////////////////////////////
@@ -198,7 +200,7 @@
  Newline,
  WhitespaceMax,
 
- MD_TokenKind_NonASCII,
+ MD_TokenKind_BadCharacter,
 
  MAX,
 };
@@ -237,7 +239,7 @@
  at: *MD_u8,
  filename: MD_String8,
  file_contents: MD_String8,
- namespace_table: MD_NodeTable,
+ namespace_table: MD_Map,
  selected_namespace: *MD_Node,
  catastrophic_error: MD_b32,
 };
@@ -647,15 +649,15 @@
 ////////////////////////////////
 //~ String-To-Node-List Table
 
-@func MD_NodeTable_Lookup: {
- table: *MD_NodeTable,
+@func MD_Map_Lookup: {
+ table: *MD_Map,
  string: MD_String8,
- return: *MD_NodeTableSlot,
+ return: *MD_MapSlot,
 };
 
-@func MD_NodeTable_Insert: {
- table: *MD_NodeTable,
- collision_rule: MD_NodeTableCollisionRule,
+@func MD_Map_Insert: {
+ table: *MD_Map,
+ collision_rule: MD_MapCollisionRule,
  string: MD_String8,
  node: *MD_Node,
  return: MD_b32,
