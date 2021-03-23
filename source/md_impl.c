@@ -1540,10 +1540,10 @@ _MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 * file_contents, MD_u8 *at)
 }
 
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_b32 catastrophic, char *fmt, ...)
+_MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
 {
     // NOTE(mal): Sort errors. Traverse the whole list assuming it will be short.
-    //            The alternative is to drop a prev pointer into MD_Error and traverse it backwards
+    //            The alternative is to drop a prev pointer into MD_Error and search backwards
     MD_Error *prev_error = 0;
     for(MD_Error *e = ctx->first_error; e; e = e->next)
     {
@@ -1558,11 +1558,10 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_b32 catastrop
     }
     
     // NOTE(mal): Ignore errors after first catastrophic error
-    if(!ctx->catastrophic_error || !prev_error || prev_error->next)
+    if(ctx->error_level < MD_MessageKind_CatastrophicError || !prev_error || prev_error->next)
     {
         MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
-        error->node = node ? node : MD_NilNode();
-        error->filename = ctx->filename;
+        error->node = node;
         va_list args;
         va_start(args, fmt);
         error->string = MD_PushStringFV(fmt, args);
@@ -1584,19 +1583,14 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_b32 catastrop
             ctx->last_error = error;
         }
         
-        if(catastrophic)
-        {
-            ctx->catastrophic_error = 1;
-        }
-        
         if(kind > ctx->error_level)
         {
             ctx->error_level = kind;
         }
     }
 }
-#define _MD_TokenError(ctx, token, kind, catastrophic, fmt, ...) \
-_MD_Error(ctx, _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_ErrorMarker, token), kind, catastrophic, fmt, __VA_ARGS__)
+#define _MD_TokenError(ctx, token, kind, fmt, ...) \
+_MD_Error(ctx, _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_ErrorMarker, token), kind, fmt, __VA_ARGS__)
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
 _MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_String8 filename,
@@ -1734,7 +1728,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         comment_before = comment_token.string;
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
-            _MD_TokenError(ctx, comment_token, MD_MessageKind_Error, 1, "Unterminated comment \"%.*s\"",
+            _MD_TokenError(ctx, comment_token, MD_MessageKind_CatastrophicError, "Unterminated comment \"%.*s\"",
                            MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
         }
     }
@@ -1776,7 +1770,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         {
             if(!_MD_StringLiteralIsBalanced(token))
             {
-                _MD_Error(ctx, result.node, MD_MessageKind_Error, 1, "Unterminated text literal \"%.*s\"",
+                _MD_Error(ctx, result.node, MD_MessageKind_CatastrophicError, "Unterminated text literal \"%.*s\"",
                           MD_StringExpand(MD_StringPrefix(token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
             }
         }
@@ -1785,11 +1779,11 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             MD_u8 c = token.string.str[0];
             if(c == '}' || c == ']' || c == ')')
             {
-                _MD_TokenError(ctx, token, MD_MessageKind_Error, 1, "Unbalanced \"%c\"", c);
+                _MD_TokenError(ctx, token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", c);
             }
             else
             {
-                _MD_TokenError(ctx, token, MD_MessageKind_Error, 0, "Unexpected reserved symbol \"%c\"", c);
+                _MD_TokenError(ctx, token, MD_MessageKind_Error, "Unexpected reserved symbol \"%c\"", c);
             }
         }
         
@@ -1811,7 +1805,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             {
                 for(MD_EachNode(tag, fc->first_tag))
                 {
-                    _MD_Error(ctx, tag, MD_MessageKind_Warning, 0, "Invalid position for tag \"%.*s\"", MD_StringExpand(tag->string));
+                    _MD_Error(ctx, tag, MD_MessageKind_Error, "Invalid position for tag \"%.*s\"", MD_StringExpand(tag->string));
                 }
             }
         }
@@ -1826,7 +1820,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
             MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", token.outer_string.str[i_byte]));
         }
         MD_String8 byte_string = MD_JoinStringListWithSeparator(bytes, MD_S8Lit(" "));
-        _MD_TokenError(ctx, token, MD_MessageKind_Error, 0, "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
+        _MD_TokenError(ctx, token, MD_MessageKind_Error, "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
         goto retry;
     }
     
@@ -1861,7 +1855,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         comment_after = comment_token.string;
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
-            _MD_TokenError(ctx, comment_token, MD_MessageKind_Error, 1, "Unterminated comment \"%.*s\"",
+            _MD_TokenError(ctx, comment_token, MD_MessageKind_CatastrophicError, "Unterminated comment \"%.*s\"",
                            MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
         }
     }
@@ -1965,7 +1959,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                     if(brace) delimiter_char = '{';
                     else if(paren) delimiter_char = '(';
                     else if(bracket) delimiter_char = '[';
-                    _MD_Error(ctx, parent, MD_MessageKind_Error, 1, "Unbalanced \"%c\"", delimiter_char);
+                    _MD_Error(ctx, parent, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", delimiter_char);
                 }
                 goto end_parse;
             }
@@ -2040,7 +2034,7 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             else
             {
                 MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
-                _MD_TokenError(ctx, token, MD_MessageKind_Error, 0, "\"%.*s\" is not a proper tag identifier",
+                _MD_TokenError(ctx, token, MD_MessageKind_Error, "\"%.*s\" is not a proper tag identifier",
                                MD_StringExpand(token.outer_string));
                 // NOTE(mal): There are reasons to consume the non-tag token, but also to leave it.
                 break;
@@ -2110,7 +2104,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                 else
                 {
                     MD_Token token = MD_Parse_PeekSkipSome(&ctx, 0);
-                    _MD_TokenError(&ctx, token, MD_MessageKind_Error, 0, "Invalid hash directive \"%.*s\"",
+                    _MD_TokenError(&ctx, token, MD_MessageKind_Error, "Invalid hash directive \"%.*s\"",
                                    MD_StringExpand(token.outer_string));
                 }
             }

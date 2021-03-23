@@ -383,6 +383,7 @@ typedef enum MD_MessageKind
     MD_MessageKind_None,
     MD_MessageKind_Warning,
     MD_MessageKind_Error,
+    MD_MessageKind_CatastrophicError,
 }
 MD_MessageKind;
 
@@ -486,7 +487,6 @@ struct MD_Error
 {
     MD_Error *next;
     MD_String8 string;
-    MD_String8 filename;
     MD_Node *node;
     MD_MessageKind kind;
 };
@@ -504,7 +504,6 @@ struct MD_ParseCtx
     MD_Map namespace_table;
     MD_Node *selected_namespace;
     MD_MessageKind error_level;
-    MD_b32 catastrophic_error;
 };
 
 typedef struct MD_ParseResult MD_ParseResult;
