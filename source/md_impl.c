@@ -1888,7 +1888,9 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
     MD_b32 paren = 0;
     MD_b32 bracket = 0;
     MD_b32 terminate_with_separator = !!(flags & _MD_ParseSetFlag_Implicit);
-    
+
+    MD_Token initial_token = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+
     if(flags & _MD_ParseSetFlag_Brace && MD_Parse_Require(ctx, MD_S8Lit("{"), MD_TokenKind_Symbol))
     {
         parent->flags |= MD_NodeFlag_BraceLeft;
@@ -1960,7 +1962,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                     if(brace) delimiter_char = '{';
                     else if(paren) delimiter_char = '(';
                     else if(bracket) delimiter_char = '[';
-                    _MD_Error(ctx, parent, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", delimiter_char);
+                    _MD_TokenError(ctx, initial_token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", delimiter_char);
                 }
                 goto end_parse;
             }
