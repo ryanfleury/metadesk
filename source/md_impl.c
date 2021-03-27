@@ -1562,6 +1562,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
     {
         MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
         error->node = node;
+        error->kind = kind;
         va_list args;
         va_start(args, fmt);
         error->string = MD_PushStringFV(fmt, args);
@@ -2144,7 +2145,16 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
 MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseWholeFile(MD_String8 filename)
 {
-    return MD_ParseWholeString(filename, MD_LoadEntireFile(filename));
+    MD_String8 file_contents = MD_LoadEntireFile(filename);
+    MD_ParseResult parse = MD_ParseWholeString(filename, file_contents);
+    if(file_contents.str == 0)
+    {
+        MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, MD_S8Lit(""));
+        _MD_Error(&ctx, parse.node, MD_MessageKind_CatastrophicError, "Could not read file \"%.*s\"",
+                  MD_StringExpand(filename));
+        parse.first_error = ctx.first_error;
+    }
+    return parse;
 }
 
 MD_FUNCTION_IMPL MD_b32

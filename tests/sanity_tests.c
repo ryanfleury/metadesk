@@ -446,7 +446,7 @@ int main(void)
         }
     }
 
-    Test("Syntax Errors")
+    Test("Errors")
     {
         struct { char *s; int columns[2]; } tests[] = {
             {"{", {1}},
@@ -486,6 +486,12 @@ int main(void)
             }
             TestResult(columns_match);
         }
+
+        {
+            MD_ParseResult parse = MD_ParseWholeFile(MD_S8Lit("__does_not_exist.md"));
+            TestResult(parse.node->kind == MD_NodeKind_File && parse.first_error);
+        }
+
     }
 
     Test("Hash maps")
