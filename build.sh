@@ -24,6 +24,7 @@ $CC $compile_flags ../samples/static_site_generator/static_site_generator.c -o s
 $CC $compile_flags ../samples/output_parse/output_parse.c -o output_parse
 $CC $compile_flags ../samples/c_code_generation.c -o c_code_generation
 $CC $compile_flags ../samples/node_errors/node_errors.c -o node_errors
+$CC $compile_flags ../samples/namespaced_types/namespaced_types.c -o namespaced_types
 echo
 echo ~~~ Build All Tests ~~~
 $CC $compile_flags ../tests/sanity_tests.c -o sanity_tests
@@ -63,3 +64,12 @@ echo ~~~ Running Error Generation Sample ~~~
 pushd build
 ./node_errors ../samples/node_errors/node_errors.md
 popd
+
+echo
+echo ~~~ Running Namespace Type Versioning Sample ~~~
+pushd build
+./namespaced_types ../samples/namespaced_types/spec.md ../samples/namespaced_types/generated/converter.c
+$CC $compile_flags ../samples/namespaced_types/conversion_test.c -o conversion_test
+./conversion_test
+popd
+

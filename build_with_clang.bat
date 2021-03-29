@@ -14,6 +14,7 @@ clang %compile_flags% ..\samples\static_site_generator\static_site_generator.c -
 clang %compile_flags% ..\samples\output_parse\output_parse.c -o output_parse.exe
 clang %compile_flags% ..\samples\c_code_generation.c -o c_code_generation.exe
 clang %compile_flags% ..\samples\node_errors\node_errors.c -o node_errors.exe
+clang %compile_flags% ..\samples\namespaced_types\namespaced_types.c -o namespaced_types.exe
 echo.
 echo ~~~ Build All Tests ~~~
 clang %compile_flags% ..\tests\sanity_tests.c -o sanity_tests.exe
@@ -65,3 +66,13 @@ echo ~~~ Running Error Generation Sample ~~~
 pushd build
 node_errors.exe %~dp0\samples\node_errors\node_errors.md
 popd
+
+echo.
+echo ~~~ Running Namespace Type Versioning Sample ~~~
+pushd build
+namespaced_types.exe ..\samples\namespaced_types\spec.md ..\samples\namespaced_types\generated\converter.c
+clang %compile_flags% ..\samples\namespaced_types\conversion_test.c -o conversion_test.exe
+conversion_test.exe
+popd
+
+
