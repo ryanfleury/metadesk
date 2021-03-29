@@ -298,7 +298,8 @@ typedef enum MD_NodeKind
 {
     MD_NodeKind_Nil,
     MD_NodeKind_File,
-    MD_NodeKind_Namespace,
+    MD_NodeKind_List,
+    MD_NodeKind_Reference,
     MD_NodeKind_Label,
     MD_NodeKind_Tag,
     MD_NodeKind_ErrorMarker,
@@ -355,6 +356,7 @@ struct MD_Node
     MD_String8 string;
     MD_String8 whole_string;
     MD_u64 string_hash;
+    MD_Node *ref_target;
     
     // Comments.
     MD_String8 comment_before;
@@ -501,8 +503,6 @@ struct MD_ParseCtx
     MD_u8 *at;
     MD_String8 filename;
     MD_String8 file_contents;
-    MD_Map namespace_table;
-    MD_Node *selected_namespace;
     MD_MessageKind error_level;
 };
 
@@ -512,6 +512,7 @@ struct MD_ParseResult
     MD_Node *node;
     MD_Error *first_error;
     MD_u64 bytes_parsed;
+    MD_Node *namespaces;
 };
 
 //~ Expression and Type-Expression parser helper types.
@@ -728,6 +729,7 @@ MD_FUNCTION MD_Node *MD_MakeNodeFromString(MD_NodeKind kind, MD_String8 filename
 MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *parent, MD_Node *new_sibling);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
+MD_FUNCTION void     MD_InsertToNamespace(MD_Node *ns, MD_Node *node);
 
 //~ Introspection Helpers
 MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string);
@@ -743,8 +745,12 @@ MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
 MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
-// NOTE(rjf): For-Loop Helper
+MD_FUNCTION MD_Node *  MD_Deref(MD_Node *node);
+// NOTE(rjf): For-Loop Helpers
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
+#define MD_EachNodeRef(it, first) MD_Node *it##_r = (first), *it = MD_Deref(it##_r); \
+                                  !MD_NodeIsNil(it##_r); \
+                                  it##_r = it##_r->next, it = MD_Deref(it##_r)
 
 //~ Error/Warning Helpers
 MD_FUNCTION void MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 str);

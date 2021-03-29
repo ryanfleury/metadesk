@@ -500,7 +500,7 @@ FirstBadNodeAtPointer(MD_Node *node)
                 }
             }
         } break;
-      case MD_NodeKind_Namespace:
+      case MD_NodeKind_List:
       case MD_NodeKind_Tag:
         {
             if(node->at != node->whole_string.str)

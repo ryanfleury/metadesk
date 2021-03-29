@@ -24,7 +24,8 @@ static MD_Node _md_nil_node =
     0,                     // flags
     MD_ZERO_STRUCT,        // string
     MD_ZERO_STRUCT,        // whole_string
-    0xdeadffffffffffull,
+    0xdeadffffffffffull,   // string_hash
+    &_md_nil_node,         // ref_target
     {(MD_u8*)"`NIL DD NODE`", 13},
     0,
     0,
@@ -666,9 +667,11 @@ MD_StringFromNodeKind(MD_NodeKind kind)
     {
         "Nil",
         "File",
-        "Namespace",
+        "List",
+        "Reference",
         "Label",
         "Tag",
+        "ErrorMarker",
     };
     return MD_S8CString(cstrs[kind]);
 }
@@ -1603,7 +1606,7 @@ _MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_St
         node->kind = kind;
         node->string = string;
         node->whole_string = whole_string;
-        node->next = node->prev = node->parent = node->first_child = node->last_child = node->first_tag = node->last_tag = MD_NilNode();
+        node->next = node->prev = node->parent = node->first_child = node->last_child = node->first_tag = node->last_tag = node->ref_target = MD_NilNode();
         node->filename = filename;
         node->file_contents = file_contents;
         node->at = at;
@@ -2060,10 +2063,13 @@ MD_ParseOneNode(MD_String8 filename, MD_String8 contents)
     return _MD_ParseOneNode(&ctx);
 }
 
-// TODO(mal): Make this public once the full story for namespaces is in place
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_InsertToNamespace(MD_Node *ns, MD_Node *node)
+MD_InsertToNamespace(MD_Node *ns, MD_Node *node)
 {
+    MD_Node *ref = _MD_MakeNode(MD_NodeKind_Reference, node->string, node->whole_string, node->filename,
+                                node->file_contents, node->at);
+    ref->ref_target = node;
+    MD_PushChild(ns, ref);
 }
 
 MD_FUNCTION MD_ParseResult
@@ -2076,6 +2082,14 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
         // NOTE(mal): Parse the content of the file as the inside of a set
         MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, contents);
         MD_NodeFlags next_child_flags = 0;
+
+        MD_Node *namespaces = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, MD_S8Lit(""), ctx.at);
+        MD_Node *default_namespace = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, MD_S8Lit(""), ctx.at);
+        MD_PushChild(namespaces, default_namespace);
+        MD_Node *selected_namespace = default_namespace;
+        MD_Map namespace_table = {0};
+        MD_StringMap_Insert(&namespace_table, MD_MapCollisionRule_Overwrite, default_namespace->string, default_namespace);
+
         for(MD_u64 child_idx = 0;; child_idx += 1)
         {
             // NOTE(rjf): #-things (just namespaces right now, but can be used for other such
@@ -2088,19 +2102,20 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                     MD_Token token = MD_ZERO_STRUCT;
                     if(MD_Parse_RequireKind(&ctx, MD_TokenKind_Identifier, &token))
                     {
-                        MD_MapSlot *existing_namespace_slot = MD_StringMap_Lookup(&ctx.namespace_table, token.string);
+                        MD_MapSlot *existing_namespace_slot = MD_StringMap_Lookup(&namespace_table, token.string);
                         if(existing_namespace_slot == 0)
                         {
-                            MD_Node *ns = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_Namespace, token.string,
+                            MD_Node *ns = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, token.string,
                                                                      token.outer_string.str);
-                            MD_StringMap_Insert(&ctx.namespace_table, MD_MapCollisionRule_Overwrite, token.string, ns);
-                            existing_namespace_slot = MD_StringMap_Lookup(&ctx.namespace_table, token.string);
+                            MD_StringMap_Insert(&namespace_table, MD_MapCollisionRule_Overwrite, token.string, ns);
+                            existing_namespace_slot = MD_StringMap_Lookup(&namespace_table, token.string);
+                            MD_PushChild(namespaces, ns);
                         }
-                        ctx.selected_namespace = (MD_Node *)existing_namespace_slot->value;
+                        selected_namespace = (MD_Node *)existing_namespace_slot->value;
                     }
                     else
                     {
-                        ctx.selected_namespace = 0;
+                        selected_namespace = default_namespace;
                     }
                 }
                 // NOTE(rjf): Not a valid hash thing
@@ -2123,7 +2138,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
             else
             {
                 _MD_PushNodeToList(&root->first_child, &root->last_child, root, child);
-                _MD_InsertToNamespace(ctx.selected_namespace, child);
+                MD_InsertToNamespace(selected_namespace, child);
             }
             
             if(MD_Parse_Require(&ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
@@ -2137,6 +2152,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                 next_child_flags |= MD_NodeFlag_AfterSemicolon;
             }
         }
+        result.namespaces = namespaces;
         result.bytes_parsed = (MD_u64)(ctx.at - contents.str);
         result.first_error = ctx.first_error;
     }
@@ -2413,6 +2429,16 @@ MD_TagCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_StringMatchFla
         {
             result += 1;
         }
+    }
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_Node *  MD_Deref(MD_Node *node)
+{
+    MD_Node *result = node;
+    while(result->kind == MD_NodeKind_Reference)
+    {
+        result = result->ref_target;
     }
     return result;
 }
