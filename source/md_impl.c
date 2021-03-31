@@ -1644,38 +1644,36 @@ MD_PRIVATE_FUNCTION_IMPL MD_ParseResult _MD_ParseOneNode(MD_ParseCtx *ctx);
 MD_PRIVATE_FUNCTION_IMPL void _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags, MD_Node **first_out, MD_Node **last_out);
 MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
 
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_SetNodeFlagsByToken(MD_Node *node, MD_Token token)
+MD_PRIVATE_FUNCTION_IMPL MD_NodeFlags
+_MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
 {
-#define Flag(_kind, _flag) if(token.kind == _kind) { node->flags |= _flag; }
-    Flag(MD_TokenKind_Identifier,     MD_NodeFlag_Identifier);
-    Flag(MD_TokenKind_NumericLiteral, MD_NodeFlag_Numeric);
-    Flag(MD_TokenKind_StringLiteral,  MD_NodeFlag_StringLiteral);
-    Flag(MD_TokenKind_CharLiteral,    MD_NodeFlag_CharLiteral);
-#undef Flag
+    MD_NodeFlags result = 0;
+    switch (kind){
+        case MD_TokenKind_Identifier:     result = MD_NodeFlag_Identifier;    break;
+        case MD_TokenKind_NumericLiteral: result = MD_NodeFlag_Numeric;       break;
+        case MD_TokenKind_StringLiteral:  result = MD_NodeFlag_StringLiteral; break;
+        case MD_TokenKind_CharLiteral:    result = MD_NodeFlag_CharLiteral;   break;
+    }
+    return(result);
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_StringLiteralIsBalanced(MD_Token token)
 {
-    MD_b32 result = 0;
     MD_u64 front_len = token.string.str - token.outer_string.str;
     MD_u64 back_len  = (token.outer_string.str + token.outer_string.size) - (token.string.str + token.string.size);
-    result = (front_len == back_len);
+    MD_b32 result = (front_len == back_len);
     return result;
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
 {
-    
-    MD_b32 result = 1;
-    
     MD_String8 inner = comment_token.string;
     MD_String8 outer = comment_token.outer_string;
     MD_b32 incorrect = (MD_StringMatch(MD_StringPrefix(outer, 2), MD_S8Lit("/*"), 0) &&   // C-style comment
                         (inner.str != outer.str + 2 || inner.str + inner.size != outer.str + outer.size - 2)); // Internally unbalanced
-    result = !incorrect;
+    MD_b32 result = !incorrect;
     return result;
 }
 
@@ -1768,7 +1766,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     {
         result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str,
                                            token.outer_string.str, token);
-        _MD_SetNodeFlagsByToken(result.node, token);
+        result.node->flags |= _MD_NodeFlagsFromTokenKind(token.kind);
         
         if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
         {
@@ -1891,9 +1889,9 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
     MD_b32 paren = 0;
     MD_b32 bracket = 0;
     MD_b32 terminate_with_separator = !!(flags & _MD_ParseSetFlag_Implicit);
-
+    
     MD_Token initial_token = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
-
+    
     if(flags & _MD_ParseSetFlag_Brace && MD_Parse_Require(ctx, MD_S8Lit("{"), MD_TokenKind_Symbol))
     {
         parent->flags |= MD_NodeFlag_BraceLeft;
@@ -2082,14 +2080,14 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
         // NOTE(mal): Parse the content of the file as the inside of a set
         MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, contents);
         MD_NodeFlags next_child_flags = 0;
-
+        
         MD_Node *namespaces = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, MD_S8Lit(""), ctx.at);
         MD_Node *default_namespace = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, MD_S8Lit(""), ctx.at);
         MD_PushChild(namespaces, default_namespace);
         MD_Node *selected_namespace = default_namespace;
         MD_Map namespace_table = {0};
         MD_StringMap_Insert(&namespace_table, MD_MapCollisionRule_Overwrite, default_namespace->string, default_namespace);
-
+        
         for(MD_u64 child_idx = 0;; child_idx += 1)
         {
             // NOTE(rjf): #-things (just namespaces right now, but can be used for other such

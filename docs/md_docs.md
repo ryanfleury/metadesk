@@ -72,12 +72,19 @@
 //~ Node types that are used to build all ASTs.
 
 @doc("The basic kinds of nodes in the abstract syntax tree parsed from metadesk.")
+@see(MD_Node)
 @enum MD_NodeKind: {
  @doc("The Nil node is a unique node representing the lack of information, for example iterating off the end of a list, or up to the parent of a root node results in Nil.")
  Nil,
 
  @doc("A File node represents parsed metadesk source text.")
  File,
+
+ @doc("A List node serves as the root of an externally chained list of nodes. It's children are nodes with the MD_NodeKind_Reference kind.")
+ List,
+
+ @doc("A Reference node is an indirection to another node. The node field 'ref_target' contains a pointer to the referenced node. These nodes are typically used for creating externally chained linked lists that gather nodes from a parse tree.")
+ Reference,
 
  @doc("A Namespace node represents a namespace created by the '#namespace' reserved keyword.")
  Namespace,
@@ -93,34 +100,51 @@
  MAX,
 };
 
+@doc("Flags put on nodes to indicate extra information about specific details about the strings that were parsed to create the node.")
+@see(MD_Node)
+@see(MD_TokenKind)
 @prefix(MD_NodeFlag)
 @base_type(MD_u32)
 @flags MD_NodeFlags: {
+ @doc("The node has children in an open/close symbol pair and '(' is the open symbol.")
  ParenLeft,
+ @doc("The node has children in an open/close symbol pair and ')' is the close .")
  ParenRight,
+ @doc("The node has children in an open/close symbol pair and '[' is the open symbol.")
  BracketLeft,
+ @doc("The node has children in an open/close symbol pair and ']' is the close symbol.")
  BracketRight,
+ @doc("The node has children in an open/close symbol pair and '{' is the close symbol.")
  BraceLeft,
+ @doc("The node has children in an open/close symbol pair and '}' is the close symbol.")
  BraceRight,
 
+ @doc("The delimiter between this node and it's next sibling is a ';'")
  BeforeSemicolon,
+ @doc("The delimiter between this node and it's next sibling is a ','")
  BeforeComma,
 
+ @doc("The delimiter between this node and it's previous sibling is a ';'")
  AfterSemicolon,
+ @doc("The delimiter between this node and it's previous sibling is a ','")
  AfterComma,
 
+ @doc("The label on this node comes from a token with the MD_TokenKind_NumericLiteral kind.")
  Numeric,
+ @doc("The label on this node comes from a token with the MD_TokenKind_Identifier kind.")
  Identifier,
+ @doc("The label on this node comes from a token with the MD_TokenKind_StringLiteral kind.")
  StringLiteral,
+ @doc("The label on this node comes from a token with the MD_TokenKind_CharLiteral kind.")
  CharLiteral,
 };
 
+@doc("")
 @prefix(MD_NodeMatchFlag)
 @base_type(MD_u32)
 @flags MD_NodeMatchFlags: {
- MD_NodeMatchFlag_Tags,
-
- MD_NodeMatchFlag_TagArguments,
+ Tags,
+ TagArguments,
 };
 
 @struct MD_Node: {
@@ -140,6 +164,7 @@
  string: MD_String8,
  whole_string: MD_String8,
  string_hash: MD_u64,
+ ref_target: *MD_Node,
 
  // Comments.
  comment_before: MD_String8,
@@ -167,6 +192,7 @@
  None,
  Warning,
  Error,
+ CatastrophicError,
 }
 
 ////////////////////////////////
