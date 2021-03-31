@@ -25,10 +25,12 @@ static MD_Node _md_nil_node =
     MD_ZERO_STRUCT,        // string
     MD_ZERO_STRUCT,        // whole_string
     0xdeadffffffffffull,   // string_hash
+    MD_ZERO_STRUCT,        // comment_before
+    MD_ZERO_STRUCT,        // comment_after
+    {(MD_u8*)"`NIL DD NODE`", 13}, // filename
+    0,                     // file_contents
+    0,                     // at
     &_md_nil_node,         // ref_target
-    {(MD_u8*)"`NIL DD NODE`", 13},
-    0,
-    0,
 };
 
 MD_PRIVATE_FUNCTION_IMPL void
@@ -1520,28 +1522,6 @@ MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token)
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_CodeLoc
-_MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 * file_contents, MD_u8 *at)
-{
-    MD_CodeLoc loc;
-    loc.filename = filename;
-    loc.line = 1;
-    loc.column = 1;
-    for(MD_u64 i = 0; file_contents+i < at && file_contents[i]; i += 1)
-    {
-        if(file_contents[i] == '\n')
-        {
-            loc.line += 1;
-            loc.column = 1;
-        }
-        else
-        {
-            loc.column += 1;
-        }
-    }
-    return loc;
-}
-
 MD_PRIVATE_FUNCTION_IMPL void
 _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
 {
@@ -2173,6 +2153,36 @@ MD_ParseWholeFile(MD_String8 filename)
     return parse;
 }
 
+MD_PRIVATE_FUNCTION_IMPL MD_CodeLoc
+MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u8 *at)
+{
+    MD_CodeLoc loc;
+    loc.filename = filename;
+    loc.line = 1;
+    loc.column = 1;
+    for(MD_u64 i = 0; base+i < at && base[i]; i += 1)
+    {
+        if(base[i] == '\n')
+        {
+            loc.line += 1;
+            loc.column = 1;
+        }
+        else
+        {
+            loc.column += 1;
+        }
+    }
+    return loc;
+}
+
+MD_FUNCTION_IMPL MD_CodeLoc
+MD_CodeLocFromNode(MD_Node *node)
+{
+    MD_CodeLoc loc = MD_CodeLocFromFileOffset(node->filename, node->file_contents, node->at);
+    return loc;
+}
+
+
 MD_FUNCTION_IMPL MD_b32
 MD_NodeIsNil(MD_Node *node)
 {
@@ -2372,13 +2382,6 @@ MD_FUNCTION_IMPL MD_b32
 MD_NodeHasTag(MD_Node *node, MD_String8 tag_string)
 {
     return !MD_NodeIsNil(MD_TagFromString(node, tag_string));
-}
-
-MD_FUNCTION_IMPL MD_CodeLoc
-MD_CodeLocFromNode(MD_Node *node)
-{
-    MD_CodeLoc loc = _MD_CodeLocFromFileOffset(node->filename, node->file_contents, node->at);
-    return loc;
 }
 
 MD_FUNCTION_IMPL MD_i64

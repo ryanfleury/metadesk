@@ -723,6 +723,10 @@ MD_FUNCTION MD_ParseResult MD_ParseOneNode     (MD_String8 filename, MD_String8 
 MD_FUNCTION MD_ParseResult MD_ParseWholeString (MD_String8 filename, MD_String8 contents);
 MD_FUNCTION MD_ParseResult MD_ParseWholeFile   (MD_String8 filename);
 
+//~ Location Conversion
+MD_FUNCTION MD_CodeLoc MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u8 *off);
+MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
+
 //~ Tree/List Building
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
@@ -744,7 +748,6 @@ MD_FUNCTION MD_Node *  MD_ChildFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *  MD_TagFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *  MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, int n);
 MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
-MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_Deref(MD_Node *node);

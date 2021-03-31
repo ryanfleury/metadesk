@@ -198,9 +198,12 @@
 ////////////////////////////////
 //~ Code Location Info.
 
+@doc("Source code location using file, line, column coordinates")
 @struct MD_CodeLoc: {
  filename: MD_String8,
+ @doc("Line numbers are 1 based, the lowest valid location is on line number 1.")
  line: MD_u32,
+ @doc("Column numbers are 1 based, the lowest valid location is on column number 1.")
  column: MD_u32,
 };
 
@@ -816,6 +819,22 @@
 };
 
 ////////////////////////////////
+//~ Location Conversion
+
+@func MD_CodeLocFromFileOffset: {
+ filename: MD_String8,
+ base: *MD_u8,
+ off: *MD_u8,
+ return: MD_CodeLoc,
+};
+
+@func MD_CodeLocFromNode: {
+ node: *MD_Node,
+ return: MD_CodeLoc,
+};
+
+
+////////////////////////////////
 //~ Tree/List Building
 
 @func MD_NodeIsNil: {
@@ -925,11 +944,6 @@
  node: *MD_Node,
  tag_string: MD_String8,
  return: MD_b32,
-};
-
-@func MD_CodeLocFromNode: {
- node: *MD_Node,
- return: MD_CodeLoc,
 };
 
 @func MD_ChildCountFromNode: {
