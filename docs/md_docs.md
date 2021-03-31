@@ -208,20 +208,13 @@
 };
 
 ////////////////////////////////
-//~ Message Levels
-
-@enum MD_MessageKind: {
- None,
- Warning,
- Error,
- CatastrophicError,
-}
-
-////////////////////////////////
 //~ String-To-Node table
 
+@doc("Controls the behavior of routines that write into maps when the written key was already in the map.")
 @enum MD_MapCollisionRule: {
+ @doc("When the key written was already in the map, a new key value pair is attached to the same chain always. Leaving multiple values associated to the same key.")
  Chain,
+ @doc("When the key written was already in the map, the existing value is replaced with the newly inserted value.")
  Overwrite,
 }
 
@@ -302,6 +295,13 @@
 
 ////////////////////////////////
 //~ Parsing State
+
+@enum MD_MessageKind: {
+ None,
+ Warning,
+ Error,
+ CatastrophicError,
+}
 
 @struct MD_Error: {
  next: *MD_Error,

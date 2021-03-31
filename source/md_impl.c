@@ -55,29 +55,18 @@ _MD_WriteStringToBuffer(MD_String8 string, MD_u64 max, void *dest)
 }
 
 MD_PRIVATE_FUNCTION_IMPL void *
-_MD_AllocZero(void *ctx, MD_u64 size)
+_MD_AllocZero(MD_u64 size)
 {
 #if !defined(MD_IMPL_Alloc)
 # error Missing implementation detail MD_IMPL_Alloc
 #else
-    void *result = MD_IMPL_Alloc(ctx, size);
+    void *result = MD_IMPL_Alloc(size);
     _MD_MemoryZero(result, size);
     return(result);
 #endif
 }
 
-#define _MD_PushArray(ctx, type, count) (type *)_MD_AllocZero((ctx), sizeof(type)*(count))
-
-MD_PRIVATE_FUNCTION_IMPL void*
-_MD_GetCtx(void)
-{
-#if !defined(MD_IMPL_GetCtx)
-    return(0);
-#else
-    return(MD_IMPL_GetCtx());
-#endif
-}
-
+#define _MD_PushArray(type, count) (type *)_MD_AllocZero(sizeof(type)*(count))
 
 MD_FUNCTION_IMPL MD_b32
 MD_CharIsAlpha(MD_u8 c)
@@ -317,7 +306,7 @@ MD_PushStringCopy(MD_String8 string)
 {
     MD_String8 res;
     res.size = string.size;
-    res.str = _MD_PushArray(_MD_GetCtx(), MD_u8, string.size+1);
+    res.str = _MD_PushArray(MD_u8, string.size+1);
     _MD_MemoryCopy(res.str, string.str, string.size);
     return res;
 }
@@ -329,7 +318,7 @@ MD_PushStringFV(char *fmt, va_list args)
     va_list args2;
     va_copy(args2, args);
     MD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
-    result.str = _MD_PushArray(_MD_GetCtx(), MD_u8, needed_bytes);
+    result.str = _MD_PushArray(MD_u8, needed_bytes);
     result.size = needed_bytes-1;
     vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
@@ -352,7 +341,7 @@ MD_PushStringToList(MD_String8List *list, MD_String8 string)
     list->node_count += 1;
     list->total_size += string.size;
     
-    MD_String8Node *node = _MD_PushArray(_MD_GetCtx(), MD_String8Node, 1);
+    MD_String8Node *node = _MD_PushArray(MD_String8Node, 1);
     node->next = 0;
     node->string = string;
     if(list->last == 0)
@@ -438,7 +427,7 @@ MD_JoinStringList(MD_String8List list)
 {
     MD_String8 string = MD_ZERO_STRUCT;
     string.size = list.total_size;
-    string.str = _MD_PushArray(_MD_GetCtx(), MD_u8, string.size);
+    string.str = _MD_PushArray(MD_u8, string.size);
     MD_u64 write_pos = 0;
     for(MD_String8Node *node = list.first; node; node = node->next)
     {
@@ -457,7 +446,7 @@ MD_JoinStringListWithSeparator(MD_String8List list, MD_String8 separator)
     }
     MD_String8 string = MD_ZERO_STRUCT;
     string.size = list.total_size + (list.node_count - 1)*separator.size;
-    string.str = _MD_PushArray(_MD_GetCtx(), MD_u8, string.size);
+    string.str = _MD_PushArray(MD_u8, string.size);
     MD_u64 write_pos = 0;
     for(MD_String8Node *node = list.first; node; node = node->next)
     {
@@ -596,7 +585,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
     {
         result.size += separator.size*(words.node_count-1);
     }
-    result.str = _MD_PushArray(_MD_GetCtx(), MD_u8, result.size);
+    result.str = _MD_PushArray(MD_u8, result.size);
     
     {
         MD_u64 write_pos = 0;
@@ -877,7 +866,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS16(MD_String16 in)
 {
     MD_u64 cap = in.size*3;
-    MD_u8 *str = _MD_PushArray(_MD_GetCtx(), MD_u8, cap + 1);
+    MD_u8 *str = _MD_PushArray(MD_u8, cap + 1);
     MD_u16 *ptr = in.str;
     MD_u16 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -896,7 +885,7 @@ MD_FUNCTION MD_String16
 MD_S16FromS8(MD_String8 in)
 {
     MD_u64 cap = in.size*2;
-    MD_u16 *str = _MD_PushArray(_MD_GetCtx(), MD_u16, (cap + 1));
+    MD_u16 *str = _MD_PushArray(MD_u16, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -916,7 +905,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS32(MD_String32 in)
 {
     MD_u64 cap = in.size*4;
-    MD_u8 *str = _MD_PushArray(_MD_GetCtx(), MD_u8, cap + 1);
+    MD_u8 *str = _MD_PushArray(MD_u8, cap + 1);
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -933,7 +922,7 @@ MD_FUNCTION MD_String32
 MD_S32FromS8(MD_String8 in)
 {
     MD_u64 cap = in.size;
-    MD_u32 *str = _MD_PushArray(_MD_GetCtx(), MD_u32, (cap + 1));
+    MD_u32 *str = _MD_PushArray(MD_u32, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -958,7 +947,7 @@ _MD_Map_Initialize(MD_Map *map)
     if(map->table_size == 0)
     {
         map->table_size = 4096;
-        map->table = _MD_PushArray(_MD_GetCtx(), MD_MapSlot *, map->table_size);
+        map->table = _MD_PushArray(MD_MapSlot *, map->table_size);
     }
 }
 
@@ -1004,7 +993,7 @@ MD_StringMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, MD_String8 
     
     if(slot == 0 || (slot != 0 && collision_rule == MD_MapCollisionRule_Chain))
     {
-        slot = _MD_PushArray(_MD_GetCtx(), MD_MapSlot, 1);
+        slot = _MD_PushArray(MD_MapSlot, 1);
         if(slot)
         {
             slot->next = 0;
@@ -1030,7 +1019,7 @@ MD_StringMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, MD_String8 
     {
         slot->value = value;
         slot->hash = hash;
-        MD_String8 *string_copy =  _MD_PushArray(_MD_GetCtx(), MD_String8, 1);
+        MD_String8 *string_copy =  _MD_PushArray(MD_String8, 1);
         *string_copy = MD_PushStringCopy(string);
         slot->key = string_copy;
     }
@@ -1094,7 +1083,7 @@ MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, voi
     
     if(slot == 0 || (slot != 0 && collision_rule == MD_MapCollisionRule_Chain))
     {
-        slot = _MD_PushArray(_MD_GetCtx(), MD_MapSlot, 1);
+        slot = _MD_PushArray(MD_MapSlot, 1);
         if(slot)
         {
             slot->next = 0;
@@ -1543,7 +1532,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
     // NOTE(mal): Ignore errors after first catastrophic error
     if(ctx->error_level < MD_MessageKind_CatastrophicError || !prev_error || prev_error->next)
     {
-        MD_Error *error = _MD_PushArray(_MD_GetCtx(), MD_Error, 1);
+        MD_Error *error = _MD_PushArray(MD_Error, 1);
         error->node = node;
         error->kind = kind;
         va_list args;
@@ -1580,7 +1569,7 @@ MD_PRIVATE_FUNCTION_IMPL MD_Node *
 _MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_String8 filename,
              MD_u8 *file_contents, MD_u8 *at)
 {
-    MD_Node *node = _MD_PushArray(_MD_GetCtx(), MD_Node, 1);
+    MD_Node *node = _MD_PushArray(MD_Node, 1);
     if(node)
     {
         node->kind = kind;
@@ -2649,7 +2638,7 @@ MD_ExprPrecFromExprKind(MD_ExprKind kind)
 MD_FUNCTION_IMPL MD_Expr *
 MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr *right)
 {
-    MD_Expr *expr = _MD_PushArray(_MD_GetCtx(), MD_Expr, 1);
+    MD_Expr *expr = _MD_PushArray(MD_Expr, 1);
     if(expr)
     {
         if(left == 0)  left  = MD_NilExpr();
@@ -3220,7 +3209,7 @@ MD_FUNCTION_IMPL MD_CommandLine
 MD_CommandLine_Start(int argument_count, char **arguments)
 {
     MD_CommandLine cmdln = MD_ZERO_STRUCT;
-    cmdln.arguments = _MD_PushArray(_MD_GetCtx(), MD_String8, argument_count-1);
+    cmdln.arguments = _MD_PushArray(MD_String8, argument_count-1);
     for(int i = 1; i < argument_count; i += 1)
     {
         cmdln.arguments[i-1] = MD_PushStringF("%s", arguments[i]);
@@ -3354,7 +3343,7 @@ MD_LoadEntireFile(MD_String8 filename)
         fseek(file, 0, SEEK_END);
         MD_u64 file_size = ftell(file);
         fseek(file, 0, SEEK_SET);
-        file_contents.str = _MD_PushArray(_MD_GetCtx(), MD_u8, file_size+1);
+        file_contents.str = _MD_PushArray(MD_u8, file_size+1);
         if(file_contents.str)
         {
             file_contents.size = file_size;

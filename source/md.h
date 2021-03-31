@@ -19,8 +19,7 @@
 // NOTE(allen): "Plugin" functionality
 //
 // MD_b32     MD_IMPL_FileIterIncrement(MD_FileIter*, MD_String8, MD_FileInfo*) - optional
-// void*      MD_IMPL_Alloc(void*,MD_u64)                                       - required
-// void*      MD_IMPL_GetCtx(void)                                              - optional
+// void*      MD_IMPL_Alloc(MD_u64)                                             - required
 //
 // TODO(allen): Commentary about this system somewhere easy to discover when
 // you go digging.
@@ -380,17 +379,6 @@ struct MD_CodeLoc
     int column;
 };
 
-//~ Message Levels
-
-typedef enum MD_MessageKind
-{
-    MD_MessageKind_None,
-    MD_MessageKind_Warning,
-    MD_MessageKind_Error,
-    MD_MessageKind_CatastrophicError,
-}
-MD_MessageKind;
-
 //~ String-To-Ptr and Ptr-To-Ptr tables
 
 typedef enum MD_MapCollisionRule
@@ -485,6 +473,15 @@ enum{
 };
 
 //~ Parsing State
+
+typedef enum MD_MessageKind
+{
+    MD_MessageKind_None,
+    MD_MessageKind_Warning,
+    MD_MessageKind_Error,
+    MD_MessageKind_CatastrophicError,
+}
+MD_MessageKind;
 
 typedef struct MD_Error MD_Error;
 struct MD_Error
