@@ -68,6 +68,7 @@ popd
 echo.
 echo ~~~ Running Namespace Type Versioning Sample ~~~
 pushd build
+if not exist ..\samples\namespaced_types\generated mkdir ..\samples\namespaced_types\generated
 namespaced_types.exe ..\samples\namespaced_types\spec.md ..\samples\namespaced_types\generated\converter.c
 cl %compile_flags% ..\samples\namespaced_types\conversion_test.c
 conversion_test.exe

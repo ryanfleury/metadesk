@@ -100,7 +100,7 @@
  MAX,
 };
 
-@doc("Flags put on nodes to indicate extra information about specific details about the strings that were parsed to create the node.")
+@doc("Flags put on nodes to indicate extra details about the strings that were parsed to create the node.")
 @see(MD_Node)
 @see(MD_TokenKind)
 @prefix(MD_NodeFlag)
@@ -211,6 +211,9 @@
 //~ String-To-Node table
 
 @doc("Controls the behavior of routines that write into maps when the written key was already in the map.")
+@see(MD_Map)
+@see(MD_StringMap_Insert)
+@see(MD_PtrMap_Insert)
 @enum MD_MapCollisionRule: {
  @doc("When the key written was already in the map, a new key value pair is attached to the same chain always. Leaving multiple values associated to the same key.")
  Chain,
@@ -218,13 +221,20 @@
  Overwrite,
 }
 
+@doc("A slot containing one (key,value) pair in a MD_Map.")
+@see(MD_Map)
 @struct MD_MapSlot: {
+ @doc("The next slot in the same bucket of the MD_Map")
  next: *MD_MapSlot,
+ @doc("For slots with a string key, the hash of the key.")
  hash: MD_u64,
+ @doc("The key for slots with a pointer key.")
  key: *void;
+ @doc("The value part of the pair.")
  value: *void;
 };
 
+@doc("The map is a chained hash table data structure. Data written to the map is a key-value pair. The key of a pair may either be a pointer, or a string. Both types may be mixed inside a single map. Keys stored with one type never match keys of the other type. The values of the pairs are pointers.")
 @struct MD_Map: {
  table_size: MD_u64,
  table: **MD_MapSlot,
@@ -721,18 +731,35 @@
 };
 
 ////////////////////////////////
-//~ String-To-Node-List Table
+//~ String-To-Pointer Table
 
-@func MD_Map_Lookup: {
+@func MD_StringMap_Lookup: {
  table: *MD_Map,
  string: MD_String8,
  return: *MD_MapSlot,
 };
 
-@func MD_Map_Insert: {
+@func MD_StringMap_Insert: {
  table: *MD_Map,
  collision_rule: MD_MapCollisionRule,
  string: MD_String8,
+ node: *MD_Node,
+ return: MD_b32,
+};
+
+////////////////////////////////
+//~ Pointer-To-Pointer Table
+
+@func MD_PtrMap_Lookup: {
+ table: *MD_Map,
+ key: *void,
+ return: *MD_MapSlot,
+};
+
+@func MD_PtrMap_Insert: {
+ table: *MD_Map,
+ collision_rule: MD_MapCollisionRule,
+ key: *void,
  node: *MD_Node,
  return: MD_b32,
 };
