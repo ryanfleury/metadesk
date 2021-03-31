@@ -139,41 +139,60 @@
  CharLiteral,
 };
 
-@doc("")
+@doc("Controls matching rules in routines that compare MD_Node trees")
 @prefix(MD_NodeMatchFlag)
 @base_type(MD_u32)
 @flags MD_NodeMatchFlags: {
+ @doc("When this flag is set, differences in the order and names of tags on a node count as differences in the input nodes. Without this flag tags are ignored in tree comparisons.")
  Tags,
+
+ @doc("When this flag is set in addition to MD_NodeMatchFlag_Tags, the differences in the arguments of each tag (the tag's children in the tree) are count as differences in the input nodes. Tag arguments are compared with fully recursive compares, whether or not the compare routine would be recursive or not.")
  TagArguments,
 };
 
+@doc("The main 'lego-brick' for modeling the result of a metadesk parse. Also used in some auxiliary data structures.")
 @struct MD_Node: {
+ @doc("The next sibling in the hierarchy, or the next tag in a list of tags, or next node in an externally chained linked list.")
  next: *MD_Node,
+ @doc("The previous sibling in the hierarchy, or the previous tag in a list of tags, or previous node in an externally chained linked list.")
  prev: *MD_Node,
+ @doc("The parent in the hierarchy, or root node of an externally chained linked list.")
  parent: *MD_Node,
+ @doc("The first child in the hierarchy, or the first node in an externally chained linked list.")
  first_child: *MD_Node,
+ @doc("The last child in the hierarchy, or the last node in an externally chained linked list.")
  last_child: *MD_Node,
 
- // Tag list.
+ @doc("The first tag attached to a node.")
  first_tag: *MD_Node,
+ @doc("The last tag attached to a node.")
  last_tag: *MD_Node,
 
- // Node info.
+ @doc("Indicates the role that the node plays in metadesk node graph.")
  kind: MD_NodeKind,
+ @doc("Extra information about the source that generated this node in the parse.")
  flags: MD_NodeFlags,
+ @doc("The string of the token labeling this node, after processing. Processing removing quote marks that delimits string literals and character literals")
  string: MD_String8,
+ @doc("The raw string of the token labeling this node.")
  whole_string: MD_String8,
+ @doc("A hash of the string field using the metadesk built in hash function.")
  string_hash: MD_u64,
- ref_target: *MD_Node,
 
- // Comments.
+ @doc("The raw string of the comment token before this node, if there is one.")
  comment_before: MD_String8,
+ @doc("The raw string of the comment token after this node, if there is one.")
  comment_after: MD_String8,
  
- // Source code location information.
+ @doc("The name of the file from which this node was parsed; or the name that was passed to the parse call.")
  filename: MD_String8,
+ @doc("The pointer to the base of the raw string from which this node was parsed.")
  file_contents: *MD_u8,
+ @doc("A pointer into the raw string from which this was parsed indicating the beginning of the text that generated this node.")
  at: *MD_u8,
+
+ @doc("The external pointer from an MD_NodeKind_Reference kind node in an externally linked list.")
+ ref_target: *MD_Node,
 };
 
 ////////////////////////////////

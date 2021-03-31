@@ -2213,13 +2213,13 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags)
+MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags match_flags)
 {
     MD_b32 result = 0;
     if(a->kind == b->kind && MD_StringMatch(a->string, b->string, str_flags))
     {
         result = 1;
-        if(a->kind != MD_NodeKind_Tag && node_flags & MD_NodeMatchFlag_Tags)
+        if(a->kind != MD_NodeKind_Tag && (match_flags & MD_NodeMatchFlag_Tags))
         {
             for(MD_Node *a_tag = a->first_tag, *b_tag = b->first_tag;
                 !MD_NodeIsNil(a_tag) || !MD_NodeIsNil(b_tag);
@@ -2227,13 +2227,13 @@ MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatch
             {
                 if(MD_NodeMatch(a_tag, b_tag, str_flags, 0))
                 {
-                    if(node_flags & MD_NodeMatchFlag_TagArguments)
+                    if(match_flags & MD_NodeMatchFlag_TagArguments)
                     {
                         for(MD_Node *a_tag_arg = a_tag->first_child, *b_tag_arg = b_tag->first_child;
                             !MD_NodeIsNil(a_tag_arg) || !MD_NodeIsNil(b_tag_arg);
                             a_tag_arg = a_tag_arg->next, b_tag_arg = b_tag_arg->next)
                         {
-                            if(!MD_NodeDeepMatch(a_tag_arg, b_tag_arg, str_flags, node_flags))
+                            if(!MD_NodeDeepMatch(a_tag_arg, b_tag_arg, str_flags, match_flags))
                             {
                                 result = 0;
                                 goto end;
@@ -2254,16 +2254,16 @@ MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatch
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags)
+MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags match_flags)
 {
-    MD_b32 result = MD_NodeMatch(a, b, str_flags, node_flags);
+    MD_b32 result = MD_NodeMatch(a, b, str_flags, match_flags);
     if(result)
     {
         for(MD_Node *a_child = a->first_child, *b_child = b->first_child;
             !MD_NodeIsNil(a_child) || !MD_NodeIsNil(b_child);
             a_child = a_child->next, b_child = b_child->next)
         {
-            if(!MD_NodeDeepMatch(a_child, b_child, str_flags, node_flags))
+            if(!MD_NodeDeepMatch(a_child, b_child, str_flags, match_flags))
             {
                 result = 0;
                 goto end;

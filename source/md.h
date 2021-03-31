@@ -356,7 +356,6 @@ struct MD_Node
     MD_String8 string;
     MD_String8 whole_string;
     MD_u64 string_hash;
-    MD_Node *ref_target;
     
     // Comments.
     MD_String8 comment_before;
@@ -366,6 +365,9 @@ struct MD_Node
     MD_String8 filename;
     MD_u8 *file_contents;
     MD_u8 *at;
+    
+    // Reference.
+    MD_Node *ref_target;
 };
 
 //~ Code Location Info.
@@ -749,8 +751,8 @@ MD_FUNCTION MD_Node *  MD_Deref(MD_Node *node);
 // NOTE(rjf): For-Loop Helpers
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
 #define MD_EachNodeRef(it, first) MD_Node *it##_r = (first), *it = MD_Deref(it##_r); \
-                                  !MD_NodeIsNil(it##_r); \
-                                  it##_r = it##_r->next, it = MD_Deref(it##_r)
+!MD_NodeIsNil(it##_r); \
+it##_r = it##_r->next, it = MD_Deref(it##_r)
 
 //~ Error/Warning Helpers
 MD_FUNCTION void MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 str);
