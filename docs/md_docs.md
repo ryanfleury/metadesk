@@ -82,20 +82,20 @@ title: "Metadesk Reference"
     @doc("A File node represents parsed metadesk source text.")
         File,
     
-    @doc("A List node serves as the root of an externally chained list of nodes. Its children are nodes with the MD_NodeKind_Reference kind.")
+    @doc("A List node serves as the root of an externally chained list of nodes. Its children are nodes with the @code 'MD_NodeKind_Reference' kind.")
         List,
     
-    @doc("A Reference node is an indirection to another node. The node field 'ref_target' contains a pointer to the referenced node. These nodes are typically used for creating externally chained linked lists that gather nodes from a parse tree.")
+    @doc("A Reference node is an indirection to another node. The node field @code 'ref_target' contains a pointer to the referenced node. These nodes are typically used for creating externally chained linked lists that gather nodes from a parse tree.")
         Reference,
     
-    @doc("A Namespace node represents a namespace created by the '#namespace' reserved keyword.")
+    @doc("A Namespace node represents a namespace created by the @code '#namespace' reserved keyword.")
         Namespace,
     
     @doc("A Label node represents the main structure of the metadesk abstract syntax tree. Some labels have children which will also be labels. Labels can be given their text by identifiers, numerics, string and character literals, and operator symbols.")
         @see(MD_TokenKind)
         Label,
     
-    @doc("A Tag node represents a tag attached to a label node with the '@identifer' syntax. The children of a tag node represent the arguments placed in the tag.")
+    @doc("A Tag node represents a tag attached to a label node with the @code '@identifer' syntax. The children of a tag node represent the arguments placed in the tag.")
         Tag,
     
     @doc("Not a real kind value given to nodes, this is always one larger than the largest enum value that can be given to a node.")
@@ -110,7 +110,7 @@ title: "Metadesk Reference"
 @flags MD_NodeFlags: {
     @doc("The node has children in an open/close symbol pair and @code '(' is the open symbol.")
         ParenLeft,
-    @doc("The node has children in an open/close symbol pair and @code ')' is the close .")
+    @doc("The node has children in an open/close symbol pair and @code ')' is the close symbol.")
         ParenRight,
     @doc("The node has children in an open/close symbol pair and @code '[' is the open symbol.")
         BracketLeft,
@@ -148,7 +148,7 @@ title: "Metadesk Reference"
     @doc("When this flag is set, differences in the order and names of tags on a node count as differences in the input nodes. Without this flag tags are ignored in tree comparisons.")
         Tags,
     
-    @doc("When this flag is set in addition to MD_NodeMatchFlag_Tags, the differences in the arguments of each tag (the tag's children in the tree) are count as differences in the input nodes. Tag arguments are compared with fully recursive compares, whether or not the compare routine would be recursive or not.")
+    @doc("When this flag is set in addition to @code 'MD_NodeMatchFlag_Tags', the differences in the arguments of each tag (the tag's children in the tree) are count as differences in the input nodes. Tag arguments are compared with fully recursive compares, whether or not the compare routine would be recursive or not.")
         TagArguments,
 };
 
@@ -193,7 +193,7 @@ title: "Metadesk Reference"
     @doc("A pointer into the raw string from which this was parsed indicating the beginning of the text that generated this node.")
         at: *MD_u8,
     
-    @doc("The external pointer from an MD_NodeKind_Reference kind node in an externally linked list.")
+    @doc("The external pointer from an @code 'MD_NodeKind_Reference' kind node in an externally linked list.")
         ref_target: *MD_Node,
 };
 
@@ -1215,6 +1215,3 @@ title: "Metadesk Reference"
     out_info: *MD_FileInfo,
     return: MD_b32,
 };
-
-
-
