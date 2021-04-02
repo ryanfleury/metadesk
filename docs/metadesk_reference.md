@@ -4,7 +4,7 @@ title: "Metadesk Reference"
 //~ Basic Unicode string types.
 
 @group("Strings")
-@doc("A pointer and size representing a UTF-8 string. Also used for any range of untyped data range.")
+@doc("FOO BAR TESTING TESTING")
 @see(MD_String8List)
 @struct MD_String8: {
     str: *MD_u8,
