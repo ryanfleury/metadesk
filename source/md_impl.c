@@ -200,20 +200,20 @@ MD_StringSuffix(MD_String8 str, MD_u64 size)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_StringMatch(MD_String8 a, MD_String8 b, MD_StringMatchFlags flags)
+MD_StringMatch(MD_String8 a, MD_String8 b, MD_MatchFlags flags)
 {
     int result = 0;
-    if(a.size == b.size || flags & MD_StringMatchFlag_RightSideSloppy)
+    if(a.size == b.size || flags & MD_MatchFlag_RightSideSloppy)
     {
         result = 1;
         for(MD_u64 i = 0; i < a.size; i += 1)
         {
             MD_b32 match = (a.str[i] == b.str[i]);
-            if(flags & MD_StringMatchFlag_CaseInsensitive)
+            if(flags & MD_MatchFlag_CaseInsensitive)
             {
                 match |= (MD_CharToLower(a.str[i]) == MD_CharToLower(b.str[i]));
             }
-            if(flags & MD_StringMatchFlag_SlashInsensitive)
+            if(flags & MD_MatchFlag_SlashInsensitive)
             {
                 match |= (MD_CorrectSlash(a.str[i]) == MD_CorrectSlash(b.str[i]));
             }
@@ -228,7 +228,7 @@ MD_StringMatch(MD_String8 a, MD_String8 b, MD_StringMatchFlags flags)
 }
 
 MD_FUNCTION_IMPL MD_u64
-MD_FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_StringMatchFlags flags)
+MD_FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_MatchFlags flags)
 {
     MD_b32 found = 0;
     MD_u64 found_idx = str.size;
@@ -241,7 +241,7 @@ MD_FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_Stri
             {
                 found_idx = i;
                 found = 1;
-                if(!(flags & MD_StringMatchFlag_FindLast))
+                if(!(flags & MD_MatchFlag_FindLast))
                 {
                     break;
                 }
@@ -254,7 +254,7 @@ MD_FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_Stri
 MD_FUNCTION_IMPL MD_String8
 MD_ChopExtension(MD_String8 string)
 {
-    MD_u64 period_pos = MD_FindSubstring(string, MD_S8Lit("."), 0, MD_StringMatchFlag_FindLast);
+    MD_u64 period_pos = MD_FindSubstring(string, MD_S8Lit("."), 0, MD_MatchFlag_FindLast);
     if(period_pos < string.size)
     {
         string.size = period_pos;
@@ -266,8 +266,8 @@ MD_FUNCTION_IMPL MD_String8
 MD_SkipFolder(MD_String8 string)
 {
     MD_u64 slash_pos = MD_FindSubstring(string, MD_S8Lit("/"), 0,
-                                        MD_StringMatchFlag_SlashInsensitive|
-                                        MD_StringMatchFlag_FindLast);
+                                        MD_MatchFlag_SlashInsensitive|
+                                        MD_MatchFlag_FindLast);
     if(slash_pos < string.size)
     {
         string.str += slash_pos+1;
@@ -279,7 +279,7 @@ MD_SkipFolder(MD_String8 string)
 MD_FUNCTION_IMPL MD_String8
 MD_ExtensionFromPath(MD_String8 string)
 {
-    MD_u64 period_pos = MD_FindSubstring(string, MD_S8Lit("."), 0, MD_StringMatchFlag_FindLast);
+    MD_u64 period_pos = MD_FindSubstring(string, MD_S8Lit("."), 0, MD_MatchFlag_FindLast);
     if(period_pos < string.size)
     {
         string.str += period_pos+1;
@@ -292,8 +292,8 @@ MD_FUNCTION_IMPL MD_String8
 MD_FolderFromPath(MD_String8 string)
 {
     MD_u64 slash_pos = MD_FindSubstring(string, MD_S8Lit("/"), 0,
-                                        MD_StringMatchFlag_SlashInsensitive|
-                                        MD_StringMatchFlag_FindLast);
+                                        MD_MatchFlag_SlashInsensitive|
+                                        MD_MatchFlag_FindLast);
     if(slash_pos < string.size)
     {
         string.size = slash_pos;
@@ -1452,7 +1452,7 @@ MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_StringMatchFlags flags)
+MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_MatchFlags flags)
 {
     return MD_StringMatch(token.string, string, flags);
 }
@@ -2212,27 +2212,27 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags match_flags)
+MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 {
     MD_b32 result = 0;
-    if(a->kind == b->kind && MD_StringMatch(a->string, b->string, str_flags))
+    if(a->kind == b->kind && MD_StringMatch(a->string, b->string, flags))
     {
         result = 1;
-        if(a->kind != MD_NodeKind_Tag && (match_flags & MD_NodeMatchFlag_Tags))
+        if(a->kind != MD_NodeKind_Tag && (flags & MD_MatchFlag_Tags))
         {
             for(MD_Node *a_tag = a->first_tag, *b_tag = b->first_tag;
                 !MD_NodeIsNil(a_tag) || !MD_NodeIsNil(b_tag);
                 a_tag = a_tag->next, b_tag = b_tag->next)
             {
-                if(MD_NodeMatch(a_tag, b_tag, str_flags, 0))
+                if(MD_NodeMatch(a_tag, b_tag, flags))
                 {
-                    if(match_flags & MD_NodeMatchFlag_TagArguments)
+                    if(flags & MD_MatchFlag_TagArguments)
                     {
                         for(MD_Node *a_tag_arg = a_tag->first_child, *b_tag_arg = b_tag->first_child;
                             !MD_NodeIsNil(a_tag_arg) || !MD_NodeIsNil(b_tag_arg);
                             a_tag_arg = a_tag_arg->next, b_tag_arg = b_tag_arg->next)
                         {
-                            if(!MD_NodeDeepMatch(a_tag_arg, b_tag_arg, str_flags, match_flags))
+                            if(!MD_NodeDeepMatch(a_tag_arg, b_tag_arg, flags))
                             {
                                 result = 0;
                                 goto end;
@@ -2253,16 +2253,16 @@ MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatch
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags match_flags)
+MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 {
-    MD_b32 result = MD_NodeMatch(a, b, str_flags, match_flags);
+    MD_b32 result = MD_NodeMatch(a, b, flags);
     if(result)
     {
         for(MD_Node *a_child = a->first_child, *b_child = b->first_child;
             !MD_NodeIsNil(a_child) || !MD_NodeIsNil(b_child);
             a_child = a_child->next, b_child = b_child->next)
         {
-            if(!MD_NodeDeepMatch(a_child, b_child, str_flags, match_flags))
+            if(!MD_NodeDeepMatch(a_child, b_child, flags))
             {
                 result = 0;
                 goto end;
@@ -2396,7 +2396,7 @@ MD_TagCountFromNode(MD_Node *node)
 }
 
 MD_FUNCTION_IMPL MD_i64
-MD_ChildCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_StringMatchFlags flags)
+MD_ChildCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_MatchFlags flags)
 {
     MD_i64 result = 0;
     for(MD_EachNode(child, node->first_child))
@@ -2410,7 +2410,7 @@ MD_ChildCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_StringMatchF
 }
 
 MD_FUNCTION_IMPL MD_i64
-MD_TagCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_StringMatchFlags flags)
+MD_TagCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_MatchFlags flags)
 {
     MD_i64 result = 0;
     for(MD_EachNode(tag, node->first_tag))
@@ -2941,7 +2941,7 @@ MD_EvaluateExpr_F64(MD_Expr *expr)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags)
+MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags)
 {
     MD_b32 result = 0;
     if(a->kind == b->kind)
@@ -2949,20 +2949,20 @@ MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags)
         result = 1;
         if(a->kind == MD_ExprKind_Atom)
         {
-            result = MD_StringMatch(a->node->string, b->node->string, str_flags);
+            result = MD_StringMatch(a->node->string, b->node->string, flags);
         }
     }
     return result;
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags)
+MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags)
 {
-    MD_b32 result = MD_ExprMatch(a, b, str_flags);
+    MD_b32 result = MD_ExprMatch(a, b, flags);
     if(result && !MD_ExprIsNil(a) && !MD_ExprIsNil(b))
     {
-        result = (MD_ExprDeepMatch(a->sub[0], b->sub[0], str_flags) &&
-                  MD_ExprDeepMatch(a->sub[1], b->sub[1], str_flags));
+        result = (MD_ExprDeepMatch(a->sub[0], b->sub[0], flags) &&
+                  MD_ExprDeepMatch(a->sub[1], b->sub[1], flags));
     }
     return result;
 }

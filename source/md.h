@@ -266,13 +266,15 @@ struct MD_String8List
     MD_String8Node *last;
 };
 
-typedef MD_u32 MD_StringMatchFlags;
+typedef MD_u32 MD_MatchFlags;
 enum
 {
-    MD_StringMatchFlag_CaseInsensitive  = (1<<0),
-    MD_StringMatchFlag_RightSideSloppy  = (1<<1),
-    MD_StringMatchFlag_FindLast         = (1<<2),
-    MD_StringMatchFlag_SlashInsensitive = (1<<3),
+    MD_MatchFlag_CaseInsensitive  = (1<<0),
+    MD_MatchFlag_RightSideSloppy  = (1<<1),
+    MD_MatchFlag_FindLast         = (1<<2),
+    MD_MatchFlag_SlashInsensitive = (1<<3),
+    MD_MatchFlag_Tags             = (1<<4),
+    MD_MatchFlag_TagArguments     = (1<<5),
 };
 
 typedef struct MD_UnicodeConsume MD_UnicodeConsume;
@@ -326,13 +328,6 @@ enum
     MD_NodeFlag_Identifier       = (1<<11),
     MD_NodeFlag_StringLiteral    = (1<<12),
     MD_NodeFlag_CharLiteral      = (1<<13),
-};
-
-typedef MD_u32 MD_NodeMatchFlags;
-enum
-{
-    MD_NodeMatchFlag_Tags         = (1<<0),
-    MD_NodeMatchFlag_TagArguments = (1<<1),
 };
 
 typedef struct MD_Node MD_Node;
@@ -653,9 +648,9 @@ MD_FUNCTION MD_String8     MD_StringChop(MD_String8 str, MD_u64 nmax);
 MD_FUNCTION MD_String8     MD_StringPrefix(MD_String8 str, MD_u64 size);
 MD_FUNCTION MD_String8     MD_StringSuffix(MD_String8 str, MD_u64 size);
 
-MD_FUNCTION MD_b32         MD_StringMatch(MD_String8 a, MD_String8 b, MD_StringMatchFlags flags);
+MD_FUNCTION MD_b32         MD_StringMatch(MD_String8 a, MD_String8 b, MD_MatchFlags flags);
 MD_FUNCTION MD_u64         MD_FindSubstring(MD_String8 str, MD_String8 substring,
-                                            MD_u64 start_pos, MD_StringMatchFlags flags);
+                                            MD_u64 start_pos, MD_MatchFlags flags);
 
 MD_FUNCTION MD_String8     MD_ChopExtension(MD_String8 string);
 MD_FUNCTION MD_String8     MD_SkipFolder(MD_String8 string);
@@ -713,7 +708,7 @@ MD_FUNCTION void           MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token);
 MD_FUNCTION void           MD_Parse_BumpNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_LexNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups);
-MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_StringMatchFlags flags);
+MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_MatchFlags flags);
 MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string, MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token);
 MD_FUNCTION MD_ParseResult MD_ParseOneNode     (MD_String8 filename, MD_String8 contents);
@@ -759,8 +754,8 @@ MD_FUNCTION void MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 s
 MD_FUNCTION void MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, ...);
 
 //~ Tree Comparison/Verification
-MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags);
-MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_StringMatchFlags str_flags, MD_NodeMatchFlags node_flags);
+MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
+MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags node_flags);
 
 //~ Expression and Type-Expression Helper
 MD_FUNCTION MD_Expr *     MD_NilExpr(void);
@@ -773,8 +768,8 @@ MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
 MD_FUNCTION MD_i64        MD_EvaluateExpr_I64(MD_Expr *expr);
 MD_FUNCTION MD_f64        MD_EvaluateExpr_F64(MD_Expr *expr);
-MD_FUNCTION MD_b32        MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags);
-MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_StringMatchFlags str_flags);
+MD_FUNCTION MD_b32        MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags);
+MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags);
 
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
