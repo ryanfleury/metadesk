@@ -435,7 +435,7 @@ title: "Metadesk Reference"
     node: *MD_Node,
     kind: MD_ExprKind,
     parent: *MD_Expr,
-    sub: [2]*MD_Expr,
+    sub: ([2]*MD_Expr),
 };
 
 ////////////////////////////////
