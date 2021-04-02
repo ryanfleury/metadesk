@@ -3,6 +3,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Basic Unicode string types.
 
+@group("Strings")
 @doc("A pointer and size representing a UTF-8 string. Also used for any range of untyped data range.")
 @see(MD_String8List)
 @struct MD_String8: {
@@ -10,24 +11,28 @@ title: "Metadesk Reference"
     size: MD_u64,
 };
 
+@group("Strings")
 @doc("A pointer and size representing a UTF-16 string.")
 @struct MD_String16: {
     str: *MD_u16,
     size: MD_u64,
 };
 
+@group("Strings")
 @doc("A pointer and size representing a UTF-32 string.")
 @struct MD_String32: {
     str: *MD_u32,
     size: MD_u64,
 };
 
+@group("Strings")
 @doc("A node in an MD_String8List.")
 @struct MD_String8Node: {
     next: *MD_String8Node,
     string: MD_String8,
 };
 
+@group("Strings")
 @doc("A list of multiple possibly discontiguous strings (in MD_String8). Stored as a singly linked list.")
 @struct MD_String8List: {
     node_count: MD_u64,
@@ -36,6 +41,7 @@ title: "Metadesk Reference"
     last: *MD_String8Node,
 };
 
+@group("Strings")
 @doc("Controls matching rules in routines that perform string matching.")
 @prefix(MD_StringMatchFlag)
 @base_type(MD_u32)
@@ -53,6 +59,7 @@ title: "Metadesk Reference"
         SlashInsensitive,
 };
 
+@group("Strings")
 @doc("Information gathered from consuming one unicode character from some unicode encoded stream.")
 @struct MD_UnicodeConsume: {
     @doc("The codepoint of the consumed character.")
@@ -62,6 +69,7 @@ title: "Metadesk Reference"
         advance: MD_u32,
 };
 
+@group("Strings")
 @doc("Styles of identifier spacing and capitalization.")
 @enum MD_WordStyle: {
     UpperCamelCase,
@@ -73,6 +81,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Node types that are used to build all ASTs.
 
+@group("Nodes")
 @doc("The basic kinds of nodes in the abstract syntax tree parsed from metadesk.")
 @see(MD_Node)
 @enum MD_NodeKind: {
@@ -102,6 +111,7 @@ title: "Metadesk Reference"
         MAX,
 };
 
+@group("Nodes")
 @doc("Flags put on nodes to indicate extra details about the strings that were parsed to create the node.")
 @see(MD_Node)
 @see(MD_TokenKind)
@@ -141,6 +151,7 @@ title: "Metadesk Reference"
         CharLiteral,
 };
 
+@group("Nodes")
 @doc("Controls matching rules in routines that compare MD_Node trees.")
 @prefix(MD_NodeMatchFlag)
 @base_type(MD_u32)
@@ -152,6 +163,7 @@ title: "Metadesk Reference"
         TagArguments,
 };
 
+@group("Nodes")
 @doc("The main 'lego-brick' for modeling the result of a metadesk parse. Also used in some auxiliary data structures.")
 @struct MD_Node: {
     @doc("The next sibling in the hierarchy, or the next tag in a list of tags, or next node in an externally chained linked list.")
@@ -200,6 +212,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Code Location Info.
 
+@group("Code Location")
 @doc("Source code location using file, line, column coordinates")
 @struct MD_CodeLoc: {
     filename: MD_String8,
@@ -212,6 +225,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ String-To-Node table
 
+@group("Map")
 @doc("Controls the behavior of routines that write into maps when the written key was already in the map.")
 @see(MD_Map)
 @see(MD_StringMap_Insert)
@@ -223,6 +237,7 @@ title: "Metadesk Reference"
         Overwrite,
 }
 
+@group("Map")
 @doc("A slot containing one (key,value) pair in a MD_Map.")
 @see(MD_Map)
 @struct MD_MapSlot: {
@@ -236,6 +251,7 @@ title: "Metadesk Reference"
         value: *void;
 };
 
+@group("Map")
 @doc("The map is a chained hash table data structure. Data written to the map is a key-value pair. The key of a pair may either be a pointer, or a string. Both types may be mixed inside a single map. Keys stored with one type never match keys of the other type. The values of the pairs are pointers.")
 @struct MD_Map: {
     table_size: MD_u64,
@@ -245,6 +261,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Tokens
 
+@group("Tokens")
 @enum MD_TokenKind: {
     Nil,
     
@@ -291,12 +308,14 @@ title: "Metadesk Reference"
     MAX,
 };
 
+@group("Tokens")
 @struct MD_Token: {
     kind: MD_TokenKind,
     string: MD_String8,
     outer_string: MD_String8,
 };
 
+@group("Tokens")
 @prefix(MD_TokenGroup)
 @base_type(MD_u32)
 @flags MD_TokenGroups: {
@@ -308,6 +327,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Parsing State
 
+@group("Parsing")
 @enum MD_MessageKind: {
     None,
     Warning,
@@ -315,6 +335,7 @@ title: "Metadesk Reference"
     CatastrophicError,
 }
 
+@group("Parsing")
 @struct MD_Error: {
     next: *MD_Error,
     string: MD_String8,
@@ -324,6 +345,7 @@ title: "Metadesk Reference"
     location: MD_CodeLoc,
 };
 
+@group("Parsing")
 @struct MD_ParseCtx: {
     first_root: *MD_Node,
     last_root: *MD_Node,
@@ -337,6 +359,7 @@ title: "Metadesk Reference"
     catastrophic_error: MD_b32,
 };
 
+@group("Parsing")
 @struct MD_ParseResult: {
     node: *MD_Node;
     first_error: *MD_Error;
@@ -349,6 +372,7 @@ title: "Metadesk Reference"
 // VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
 // it is kept in-sync with the MD_ExprPrecFromExprKind function.
 
+@group("Expression Parsing Helper")
 @enum MD_ExprKind: {
     Nil,
     
@@ -403,8 +427,10 @@ title: "Metadesk Reference"
     MAX,
 };
 
+@group("Expression Parsing Helper")
 @typedef(MD_i32) MD_ExprPrec;
 
+@group("Expression Parsing Helper")
 @struct MD_Expr: {
     node: *MD_Node,
     kind: MD_ExprKind,
@@ -415,6 +441,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Command line parsing helper types.
 
+@group("Command Line Helper")
 @struct MD_CommandLine: {
     arguments: *MD_String8;
     argument_count: MD_u32;
@@ -423,32 +450,38 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ File system access types.
 
+@group("File System Helper")
 @prefix(MD_FileFlag)
 @base_type(MD_u32)
 @flags MD_FileFlags: {
     Directory,
 };
 
+@group("File System Helper")
 @struct MD_FileInfo: {
     flags: MD_FileFlags;
     filename: MD_String8;
     file_size: MD_u64;
 };
 
+@group("File System Helper")
 @opaque
 @struct MD_FileIter: {};
 
 ////////////////////////////////
 //~ Basic Utilities
 
+@group("Helper Macros")
 @macro MD_Assert: {
     c,
 };
 
+@group("Helper Macros")
 @macro MD_StaticAssert: {
     c,
 };
 
+@group("Helper Macros")
 @macro MD_ArrayCount: {
     a,
 };
@@ -456,51 +489,61 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Characters
 
+@group("Characters")
 @func MD_CharIsAlpha: {
     c: MD_u8,
     return: MD_b32,
 };
 
+@group("Characters")
 @func MD_CharIsAlphaUpper: {
     c: MD_u8,
     return: MD_b32,
 };
 
+@group("Characters")
 @func MD_CharIsAlphaLower: {
     c: MD_u8,
     return: MD_b32,
 };
 
+@group("Characters")
 @func MD_CharIsDigit: {
     c: MD_u8,
     return: MD_b32,
 };
 
+@group("Characters")
 @func MD_CharIsSymbol: {
     c: MD_u8,
     return: MD_b32,
 };
 
+@group("Characters")
 @func MD_CharIsReservedSymbol: {
     c: MD_u8,
     return: MD_b32,
 };
 
+@group("Characters")
 @func MD_CharIsSpace: {
     c: MD_u8,
     return: MD_b32,
 };
 
+@group("Characters")
 @func MD_CharToUpper: {
     c: MD_u8,
     return: MD_u8,
 };
 
+@group("Characters")
 @func MD_CharToLower: {
     c: MD_u8,
     return: MD_u8,
 };
 
+@group("Characters")
 @func MD_CorrectSlash: {
     c: MD_u8,
     return: MD_u8,
@@ -509,26 +552,31 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Strings
 
+@group("Strings")
 @func MD_S8: {
     str: *MD_u8,
     size: MD_u64,
     return: MD_String8,
 };
 
+@group("Strings")
 @macro MD_S8CString: {
     s,
 };
 
+@group("Strings")
 @macro MD_S8Lit: {
     s,
 };
 
+@group("Strings")
 @func MD_S8Range: {
     str: *MD_u8,
     opl: *MD_u8,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_StringSubstring: {
     str: MD_String8,
     min: MD_u64,
@@ -536,30 +584,35 @@ title: "Metadesk Reference"
         return: MD_String8,
 };
 
+@group("Strings")
 @func MD_StringSkip: {
     str: MD_String8,
     min: MD_u64,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_StringChop: {
     str: MD_String8,
     nmax: MD_u64,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_StringPrefix: {
     str: MD_String8,
     size: MD_u64,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_StringSuffix: {
     str: MD_String8,
     size: MD_u64,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_StringMatch: {
     a: MD_String8,
     b: MD_String8,
@@ -567,6 +620,7 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Strings")
 @func MD_FindSubstring: {
     str: MD_String8,
     substring: MD_String8,
@@ -575,57 +629,66 @@ title: "Metadesk Reference"
     return: MD_u64,
 };
 
+@group("Strings")
 @func MD_ChopExtension: {
     string: MD_String8,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_SkipFolder: {
     string: MD_String8,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_ExtensionFromPath: {
     string: MD_String8,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_FolderFromPath: {
     string: MD_String8,
     return: MD_String8,
 };
 
-
+@group("Strings")
 @func MD_PushStringCopy: {
     string: MD_String8,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_PushStringFV: {
     fmt: *char,
     args: va_list,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_PushStringF: {
     fmt: *char,
     "...",
     return: MD_String8,
 };
 
+@group("Strings")
 @macro MD_StringExpand: { s, }
 
-
+@group("Strings")
 @func MD_PushStringToList: {
     list: *MD_String8List,
     string: MD_String8,
 };
 
+@group("Strings")
 @func MD_PushStringListToList: {
     list: *MD_String8List,
     to_push: *MD_String8List,
 };
 
+@group("Strings")
 @func MD_SplitString: {
     string: MD_String8,
     split_count: MD_u32,
@@ -633,38 +696,45 @@ title: "Metadesk Reference"
     return: MD_String8List
 };
 
+@group("Strings")
 @func MD_JoinStringList: {
     list: MD_String8List,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_JoinStringListWithSeparator: {
     list: MD_String8List,
     separator: MD_String8
         return: MD_String8,
 };
 
+@group("Strings")
 @func MD_I64FromString: {
     string: MD_String8,
     radix: MD_u32,
     return: MD_i64,
 };
 
+@group("Strings")
 @func MD_F64FromString: {
     string: MD_String8,
     return: MD_f64,
 };
 
+@group("Strings")
 @func MD_HashString: {
     string: MD_String8,
     return: MD_u64,
 };
 
+@group("Strings")
 @func MD_CalculateCStringLength: {
     cstr: *char,
     return: MD_u64,
 };
 
+@group("Strings")
 @func MD_StyledStringFromString: {
     string: MD_String8,
     word_style: MD_WordStyle,
@@ -675,11 +745,13 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Enum/Flag Strings
 
+@group("Nodes")
 @func MD_StringFromNodeKind: {
     kind: MD_NodeKind,
     return: MD_String8,
 };
 
+@group("Nodes")
 @func MD_StringListFromNodeFlags: {
     flags: MD_NodeFlags,
     return: MD_String8List,
@@ -688,45 +760,53 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Unicode Conversions
 
+@group("Strings")
 @func MD_CodepointFromUtf8: {
     str: MD_u8,
     max: MD_u64,
     return: MD_UnicodeConsume,
 };
 
+@group("Strings")
 @func MD_CodepointFromUtf16: {
     str: *MD_u16,
     max: MD_u64,
     return: MD_UnicodeConsume,
 };
 
+@group("Strings")
 @func MD_Utf8FromCodepoint: {
     out: *MD_u8,
     codepoint: MD_u32,
     return: MD_u32,
 };
 
+@group("Strings")
 @func MD_Utf16FromCodepoint: {
     out: *MD_u16,
     codepoint: MD_u32,
     return: MD_u32,
 };
 
+@group("Strings")
 @func MD_S8FromS16: {
     str: MD_String16,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_S16FromS8: {
     str: MD_String8,
     return: MD_String16,
 };
 
+@group("Strings")
 @func MD_S8FromS32: {
     str: MD_String32,
     return: MD_String8,
 };
 
+@group("Strings")
 @func MD_S32FromS8: {
     str: MD_String8,
     return: MD_String32,
@@ -735,12 +815,14 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ String-To-Pointer Table
 
+@group("Map")
 @func MD_StringMap_Lookup: {
     table: *MD_Map,
     string: MD_String8,
     return: *MD_MapSlot,
 };
 
+@group("Map")
 @func MD_StringMap_Insert: {
     table: *MD_Map,
     collision_rule: MD_MapCollisionRule,
@@ -752,12 +834,14 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Pointer-To-Pointer Table
 
+@group("Map")
 @func MD_PtrMap_Lookup: {
     table: *MD_Map,
     key: *void,
     return: *MD_MapSlot,
 };
 
+@group("Map")
 @func MD_PtrMap_Insert: {
     table: *MD_Map,
     collision_rule: MD_MapCollisionRule,
@@ -769,47 +853,56 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Parsing
 
+@group("Tokens")
 @func MD_TokenKindIsWhitespace: {
     kind: MD_TokenKind,
     return: MD_b32,
 };
 
+@group("Tokens")
 @func MD_TokenKindIsComment: {
     kind: MD_TokenKind,
     return: MD_b32,
 };
 
+@group("Tokens")
 @func MD_TokenKindIsRegular: {
     kind: MD_TokenKind,
     return: MD_b32,
 };
 
+@group("Parsing")
 @func MD_Parse_InitializeCtx: {
     filename: MD_String8,
     contents: MD_String8,
     return: MD_ParseCtx,
 };
 
+@group("Parsing")
 @func MD_Parse_Bump: {
     ctx: *MD_ParseCtx,
     token: MD_Token,
 };
 
+@group("Parsing")
 @func MD_Parse_BumpNext: {
     ctx: *MD_ParseCtx,
 };
 
+@group("Parsing")
 @func MD_Parse_LexNext: {
     ctx: *MD_ParseCtx,
     return: MD_Token,
 };
 
+@group("Parsing")
 @func MD_Parse_PeekSkipSome: {
     ctx: *MD_ParseCtx,
     skip_groups: MD_TokenGroups,
     return: MD_Token,
 };
 
+@group("Parsing")
 @func MD_Parse_TokenMatch: {
     token: MD_Token,
     string: MD_String8,
@@ -817,12 +910,14 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Parsing")
 @func MD_Parse_Require: {
     ctx: *MD_ParseCtx,
     string: MD_String8,
     return: MD_b32,
 };
 
+@group("Parsing")
 @func MD_Parse_RequireKind: {
     ctx: *MD_ParseCtx,
     kind: MD_TokenKind,
@@ -830,18 +925,21 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Parsing")
 @func MD_ParseOneNode: {
     filename: MD_String8,
     contents: MD_String8,
     return: MD_ParseResult,
 };
 
+@group("Parsing")
 @func MD_ParseWholeString: {
     filename: MD_String8,
     contents: MD_String8,
     return: MD_ParseResult,
 };
 
+@group("Parsing")
 @func MD_ParseWholeFile: {
     filename: MD_String8,
     return: MD_ParseResult,
@@ -850,6 +948,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Location Conversion
 
+@group("Code Location")
 @func MD_CodeLocFromFileOffset: {
     filename: MD_String8,
     base: *MD_u8,
@@ -857,6 +956,7 @@ title: "Metadesk Reference"
     return: MD_CodeLoc,
 };
 
+@group("Code Location")
 @func MD_CodeLocFromNode: {
     node: *MD_Node,
     return: MD_CodeLoc,
@@ -866,15 +966,18 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Tree/List Building
 
+@group("Nodes")
 @func MD_NodeIsNil: {
     node: *MD_Node,
     return: MD_b32,
 };
 
+@group("Nodes")
 @func MD_NilNode: {
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_MakeNodeFromToken: {
     kind: MD_NodeKind,
     filename: MD_String8,
@@ -884,6 +987,7 @@ title: "Metadesk Reference"
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_MakeNodeFromString: {
     kind: MD_NodeKind,
     filename: MD_String8,
@@ -893,6 +997,7 @@ title: "Metadesk Reference"
         return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_PushSibling: {
     first: **MD_Node,
     last: **MD_Node,
@@ -900,11 +1005,13 @@ title: "Metadesk Reference"
     new_sibling: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_PushChild: {
     parent: *MD_Node,
     new_child: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_PushTag: {
     node: *MD_Node,
     tag: *MD_Node,
@@ -913,6 +1020,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Introspection Helpers
 
+@group("Nodes")
 @func MD_NodeFromString: {
     first: *MD_Node,
     last: *MD_Node,
@@ -920,6 +1028,7 @@ title: "Metadesk Reference"
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_NodeFromIndex: {
     first: *MD_Node,
     last: *MD_Node,
@@ -927,41 +1036,48 @@ title: "Metadesk Reference"
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_IndexFromNode: {
     node: *MD_Node,
     return: int,
 };
 
+@group("Nodes")
 @func MD_NextNodeSibling: {
     last: *MD_Node,
     string: MD_String8,
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_ChildFromString: {
     node: *MD_Node,
     child_string: MD_String8,
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_TagFromString: {
     node: *MD_Node,
     tag_string: MD_String8,
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_ChildFromIndex: {
     node: *MD_Node,
     n: int,
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_TagFromIndex: {
     node: *MD_Node,
     n: int,
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_TagArgFromIndex: {
     node: *MD_Node,
     tag_string: MD_String8,
@@ -969,33 +1085,39 @@ title: "Metadesk Reference"
     return: *MD_Node,
 };
 
+@group("Nodes")
 @func MD_NodeHasTag: {
     node: *MD_Node,
     tag_string: MD_String8,
     return: MD_b32,
 };
 
+@group("Nodes")
 @func MD_ChildCountFromNode: {
     node: *MD_Node,
     return: MD_i64,
 };
 
+@group("Nodes")
 @func MD_TagCountFromNode: {
     node: *MD_Node,
     return: MD_i64,
 };
 
+@group("Nodes")
 @macro MD_EachNode: { it, first, };
 
 ////////////////////////////////
 //~ Error/Warning Helpers
 
+@group("Nodes")
 @func MD_NodeMessage: {
     node: *MD_Node,
     kind: MD_MessageKind,
     str: MD_String8,
 };
 
+@group("Nodes")
 @func MD_NodeMessageF: {
     node: *MD_Node,
     kind: MD_MessageKind,
@@ -1006,6 +1128,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Tree Comparison/Verification
 
+@group("Nodes")
 @func MD_NodeMatch: {
     a: *MD_Node,
     b: *MD_Node,
@@ -1014,6 +1137,7 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Nodes")
 @func MD_NodeDeepMatch: {
     a: *MD_Node,
     b: *MD_Node,
@@ -1025,30 +1149,36 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Expression and Type-Expression Helper
 
+@group("Expression Parsing Helper")
 @func MD_NilExpr: {
     return: *MD_Expr,
 };
 
+@group("Expression Parsing Helper")
 @func MD_ExprIsNil: {
     expr: *MD_Expr,
     return: MD_b32,
 };
 
+@group("Expression Parsing Helper")
 @func MD_PreUnaryExprKindFromNode: {
     node: *MD_Node,
     return: MD_ExprKind,
 };
 
+@group("Expression Parsing Helper")
 @func MD_BinaryExprKindFromNode: {
     node: *MD_Node,
     return: MD_ExprKind,
 };
 
+@group("Expression Parsing Helper")
 @func MD_ExprPrecFromExprKind: {
     kind: MD_ExprKind,
     return: MD_ExprPrec,
 };
 
+@group("Expression Parsing Helper")
 @func MD_MakeExpr: {
     node: *MD_Node,
     kind: MD_ExprKind,
@@ -1057,28 +1187,33 @@ title: "Metadesk Reference"
     return: *MD_Expr,
 };
 
+@group("Expression Parsing Helper")
 @func MD_ParseAsExpr: {
     first: *MD_Node,
     last: *MD_Node,
     return: *MD_Expr,
 };
 
+@group("Expression Parsing Helper")
 @func MD_ParseAsType: {
     first: *MD_Node,
     last: *MD_Node,
     return: *MD_Expr,
 };
 
+@group("Expression Parsing Helper")
 @func MD_EvaluateExpr_I64: {
     expr: *MD_Expr,
     return: MD_i64,
 };
 
+@group("Expression Parsing Helper")
 @func MD_EvaluateExpr_F64: {
     expr: *MD_Expr,
     return: MD_f64,
 };
 
+@group("Expression Parsing Helper")
 @func MD_ExprMatch: {
     a: *MD_Expr,
     b: *MD_Expr,
@@ -1086,6 +1221,7 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Expression Parsing Helper")
 @func MD_ExprDeepMatch: {
     a: *MD_Expr,
     b: *MD_Expr,
@@ -1096,6 +1232,7 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Generation
 
+@group("Output")
 @func MD_OutputTree: {
     file: *FILE,
     node: *MD_Node,
@@ -1104,47 +1241,56 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ C Language Generation
 
+@group("Output (C)")
 @func MD_OutputTree_C_String: {
     file: *FILE,
     node: *MD_Node,
 };
 
+@group("Output (C)")
 @func MD_OutputTree_C_Struct: {
     file: *FILE,
     node: *MD_Node,
 };
 
+@group("Output (C)")
 @func MD_OutputTree_C_Decl: {
     file: *FILE,
     node: *MD_Node,
 };
 
+@group("Output (C)")
 @func MD_Output_C_DeclByNameAndType: {
     file: *FILE,
     name: MD_String8,
     type: *MD_Expr,
 };
 
+@group("Output (C)")
 @func MD_OutputExpr: {
     file: *FILE,
     expr: *MD_Expr,
 };
 
+@group("Output (C)")
 @func MD_OutputExpr_C: {
     file: *FILE,
     expr: *MD_Expr,
 };
 
+@group("Output (C)")
 @func MD_OutputType: {
     file: *FILE,
     type: *MD_Expr,
 };
 
+@group("Output (C)")
 @func MD_OutputType_C_LHS: {
     file: *FILE,
     type: *MD_Expr,
 };
 
+@group("Output (C)")
 @func MD_OutputType_C_RHS: {
     file: *FILE,
     type: *MD_Expr,
@@ -1153,18 +1299,21 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ Command Line Argument Helper
 
+@group("Command Line Helper")
 @func MD_CommandLine_Start: {
     argument_count: int,
     arguments: **char,
     return: MD_CommandLine,
 };
 
+@group("Command Line Helper")
 @func MD_CommandLine_Flag: {
     cmdln: *MD_CommandLine,
     string: MD_String8,
     return: MD_b32,
 };
 
+@group("Command Line Helper")
 @func MD_CommandLine_FlagStrings: {
     cmdln: *MD_CommandLine,
     string: MD_String8,
@@ -1173,6 +1322,7 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Command Line Helper")
 @func MD_CommandLine_FlagIntegers: {
     cmdln: *MD_CommandLine,
     string: MD_String8,
@@ -1181,6 +1331,7 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Command Line Helper")
 @func MD_CommandLine_FlagString: {
     cmdln: *MD_CommandLine,
     string: MD_String8,
@@ -1188,6 +1339,7 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Command Line Helper")
 @func MD_CommandLine_FlagInteger: {
     cmdln: *MD_CommandLine,
     string: MD_String8,
@@ -1195,6 +1347,7 @@ title: "Metadesk Reference"
     return: MD_b32,
 };
 
+@group("Command Line Helper")
 @func MD_CommandLine_Increment: {
     cmdln: *MD_CommandLine,
     string_ptr: **MD_String8,
@@ -1204,11 +1357,13 @@ title: "Metadesk Reference"
 ////////////////////////////////
 //~ File System
 
+@group("File System Helper")
 @func MD_LoadEntireFile: {
     filename: MD_String8,
     return: MD_String8,
 };
 
+@group("File System Helper")
 @func MD_FileIterIncrement: {
     it: *MD_FileIter,
     path: MD_String8,
