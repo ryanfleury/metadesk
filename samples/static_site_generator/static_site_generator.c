@@ -63,11 +63,11 @@ int main(int argument_count, char **arguments)
         MD_FileInfo file_info = {0};
         for(MD_FileIter it = {0}; MD_FileIterIncrement(&it, page_dir_path, &file_info);)
         {
-            if(MD_StringMatch(MD_ExtensionFromPath(file_info.filename), MD_S8Lit("md"), MD_StringMatchFlag_CaseInsensitive) &&
+            if(MD_StringMatch(MD_ExtensionFromPath(file_info.filename), MD_S8Lit("md"), MD_MatchFlag_CaseInsensitive) &&
                !MD_StringMatch(MD_SkipFolder(MD_ChopExtension(file_info.filename)),
                                MD_SkipFolder(MD_ChopExtension(site_info_path)),
-                               MD_StringMatchFlag_CaseInsensitive |
-                               MD_StringMatchFlag_SlashInsensitive))
+                               MD_MatchFlag_CaseInsensitive |
+                               MD_MatchFlag_SlashInsensitive))
             {
                 printf("Processing site page at \"%.*s\"...\n", MD_StringExpand(file_info.filename));
                 MD_String8 folder = MD_FolderFromPath(page_dir_path);
@@ -86,7 +86,7 @@ int main(int argument_count, char **arguments)
         {
             for(MD_EachNode(node, root->first_child))
             {
-                if(!MD_NodeIsNil(node->first_child) && MD_StringMatch(node->string, MD_S8Lit("index"), MD_StringMatchFlag_CaseInsensitive))
+                if(!MD_NodeIsNil(node->first_child) && MD_StringMatch(node->string, MD_S8Lit("index"), MD_MatchFlag_CaseInsensitive))
                 {
                     for(MD_EachNode(index_string, node->first_child))
                     {
@@ -252,23 +252,23 @@ ParsePageInfo(MD_Node *page)
     {
         if(!MD_NodeIsNil(node->first_child))
         {
-            if(MD_StringMatch(node->string, MD_S8Lit("title"), MD_StringMatchFlag_CaseInsensitive))
+            if(MD_StringMatch(node->string, MD_S8Lit("title"), MD_MatchFlag_CaseInsensitive))
             {
                 info.title = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("desc"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("desc"), MD_MatchFlag_CaseInsensitive))
             {
                 info.desc = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("date"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("date"), MD_MatchFlag_CaseInsensitive))
             {
                 info.date = node;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("parent"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("parent"), MD_MatchFlag_CaseInsensitive))
             {
                 info.parent = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("header_image"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("header_image"), MD_MatchFlag_CaseInsensitive))
             {
                 info.header_image = node->first_child;
             }
@@ -285,39 +285,39 @@ ParseSiteInfo(MD_Node *site)
     {
         if(!MD_NodeIsNil(node->first_child))
         {
-            if(MD_StringMatch(node->string, MD_S8Lit("title"), MD_StringMatchFlag_CaseInsensitive))
+            if(MD_StringMatch(node->string, MD_S8Lit("title"), MD_MatchFlag_CaseInsensitive))
             {
                 info.title = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("desc"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("desc"), MD_MatchFlag_CaseInsensitive))
             {
                 info.desc = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("canonical_url"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("canonical_url"), MD_MatchFlag_CaseInsensitive))
             {
                 info.canonical_url = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("author"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("author"), MD_MatchFlag_CaseInsensitive))
             {
                 info.author = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("twitter_handle"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("twitter_handle"), MD_MatchFlag_CaseInsensitive))
             {
                 info.twitter_handle = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("link_dictionary"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("link_dictionary"), MD_MatchFlag_CaseInsensitive))
             {
                 info.link_dictionary = node;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("header"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("header"), MD_MatchFlag_CaseInsensitive))
             {
                 info.header = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("footer"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("footer"), MD_MatchFlag_CaseInsensitive))
             {
                 info.footer = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("style"), MD_StringMatchFlag_CaseInsensitive))
+            else if(MD_StringMatch(node->string, MD_S8Lit("style"), MD_MatchFlag_CaseInsensitive))
             {
                 info.style = node->first_child;
             }

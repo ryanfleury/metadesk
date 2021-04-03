@@ -80,7 +80,7 @@ static MD_b32
 MatchParsedWithNode(MD_String8 string, MD_Node *tree)
 {
     MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), string);
-    return MD_NodeDeepMatch(tree, parse.node, 0, MD_NodeMatchFlag_Tags | MD_NodeMatchFlag_TagArguments);
+    return MD_NodeDeepMatch(tree, parse.node, MD_MatchFlag_Tags | MD_MatchFlag_TagArguments);
 }
 
 static MD_b32
@@ -445,7 +445,7 @@ int main(void)
             }
         }
     }
-
+    
     Test("Errors")
     {
         struct { char *s; int columns[2]; } tests[] = {
@@ -459,13 +459,13 @@ int main(void)
             {"{a,,#b,}", {4, 5}},
             {"foo""\x80""bar", {4}},
         };
-
+        
         int max_error_count = MD_ArrayCount(tests[0].columns);
-
+        
         for(int i_test = 0; i_test < MD_ArrayCount(tests); ++i_test)
         {
             MD_ParseResult parse = MD_ParseWholeString(MD_S8Lit("test.md"), MD_S8CString(tests[i_test].s));
-
+            
             MD_b32 columns_match = 1;
             {
                 MD_Error *e = parse.first_error;
@@ -478,7 +478,7 @@ int main(void)
                     }
                     e = e->next;
                 }
-
+                
                 if(e && e->next)
                 {
                     columns_match = 0;
@@ -486,14 +486,14 @@ int main(void)
             }
             TestResult(columns_match);
         }
-
+        
         {
             MD_ParseResult parse = MD_ParseWholeFile(MD_S8Lit("__does_not_exist.md"));
             TestResult(parse.node->kind == MD_NodeKind_File && parse.first_error);
         }
-
+        
     }
-
+    
     Test("Hash maps")
     {
         MD_String8 keys[] = 
@@ -502,12 +502,12 @@ int main(void)
             MD_S8Lit("\x4c\x80\xb7\x8b\xbf\x65\x5a\x4b\xc1\x2a\xc3\x5f\xe1\x66\xfb\x0d\x72\x83\x1c\x63\xba\xb5\x97\x02\x3f\x6a\xe0\x2a\x1b\x82\x07\x76"),
             MD_S8Lit("\xd8\xfd\x11\x4b\x04\xdf\xe5\x20\x5b\xd6\x4f\x87\x00\x70\x6a\xc8\xde\xed\xc7\x79\xdb\x87\x24\x36\xa8\x7a\x31\x41\x00\x57\xbd\x8d"),
         };
-
+        
         // NOTE(mal): True for MD_HashString is djb2
         {
             TestResult(MD_HashString(keys[0]) == 1 && MD_HashString(keys[1]) == 1 && MD_HashString(keys[2]) == 3);
         }
-
+        
         {
             MD_MapCollisionRule rules[] = { MD_MapCollisionRule_Chain, MD_MapCollisionRule_Overwrite };
             for(int i_rule = 0; i_rule < MD_ArrayCount(rules); ++i_rule)
@@ -516,17 +516,17 @@ int main(void)
                 MD_StringMap_Insert(&map, rules[i_rule], keys[0], (void *)0);
                 MD_StringMap_Insert(&map, rules[i_rule], keys[1], (void *)1);
                 MD_StringMap_Insert(&map, rules[i_rule], keys[2], (void *)2);
-
+                
                 MD_MapSlot *slot0 = MD_StringMap_Lookup(&map, keys[0]);
                 MD_MapSlot *slot1 = MD_StringMap_Lookup(&map, keys[1]);
                 MD_MapSlot *slot2 = MD_StringMap_Lookup(&map, keys[2]);
-
+                
                 TestResult(slot0 && slot0->value == (void *)0 &&
                            slot1 && slot1->value == (void *)1 &&
                            slot2 && slot2->value == (void *)2);
             }
         }
-
+        
         {
             MD_MapCollisionRule rules[] = { MD_MapCollisionRule_Chain, MD_MapCollisionRule_Overwrite };
             for(int i_rule = 0; i_rule < MD_ArrayCount(rules); ++i_rule)
@@ -535,18 +535,18 @@ int main(void)
                 MD_PtrMap_Insert(&map, rules[i_rule], (void *)0, (void *)0);
                 MD_PtrMap_Insert(&map, rules[i_rule], (void *)1, (void *)1);
                 MD_PtrMap_Insert(&map, rules[i_rule], (void *)2, (void *)2);
-
+                
                 MD_MapSlot *slot0 = MD_PtrMap_Lookup(&map, (void *)0);
                 MD_MapSlot *slot1 = MD_PtrMap_Lookup(&map, (void *)1);
                 MD_MapSlot *slot2 = MD_PtrMap_Lookup(&map, (void *)2);
-
+                
                 TestResult(slot0 && slot0->value == (void *) 0 &&
                            slot1 && slot1->value == (void *) 1 &&
                            slot2 && slot2->value == (void *) 2);
             }
         }
     }
-
+    
     Test("String escaping")
     {
         {
@@ -561,7 +561,7 @@ int main(void)
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("`````\\````"));
             TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("``\\`"), 0));
         }
-
+        
         {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("`\\'`"));
             TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("\\'"), 0));
@@ -574,7 +574,7 @@ int main(void)
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("'''''\\''''"));
             TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("''\\'"), 0));
         }
-
+        
         {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("`\\\"`"));
             TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("\\\""), 0));
@@ -588,6 +588,6 @@ int main(void)
             TestResult(MD_StringMatch(parse.node->string, MD_S8Lit("\"\"\\\""), 0));
         }
     }
-
+    
     return 0;
 }
