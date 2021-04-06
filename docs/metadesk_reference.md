@@ -43,7 +43,7 @@ for (MD_String8Node *node = list.first; node != 0; node = node->next)
   MD_String8 string = node->string;
   // ... work on string ...
 }`
-The node_count and total_size are automaticallyed maintained by the helpers for inserting to the list, and are used in the string joining functions. Hand rolled code for building string lists should take those fields into consideration if the join functions need to work."
+The node_count and total_size are automatically maintained by the helpers for inserting to the list, and are used in the string joining functions. Hand rolled code for building string lists should take those fields into consideration if the join functions need to work."
 )
 @see(MD_PushStringToList)
 @see(MD_SplitString)
@@ -58,7 +58,33 @@ The node_count and total_size are automaticallyed maintained by the helpers for 
 };
 
 @group("Strings")
-@doc("These flags control matching rules in routines that perform matching on strings and AST nodes.")
+@doc("This type is used to report the results of consuming one character from a unicode encoded stream.")
+@see(MD_CodepointFromUtf8)
+@see(MD_CodepointFromUtf16)
+@struct MD_UnicodeConsume: {
+  @doc("The codepoint of the consumed character.")
+  codepoint: MD_u32,
+  
+  @doc("The size of the character in the encoded stream, measured in 'units'. A unit is one byte in UTF-8, two bytes in UTF-16, and four bytes in UTF-32.")
+  advance: MD_u32,
+};
+
+@group("Strings")
+@doc("These constants control the @code `MD_StyledStringFromString` function.")
+@enum MD_WordStyle: {
+  @doc("Creates identifiers that look like this @code `ExampleIdentifier`")
+  UpperCamelCase,
+  @doc("Creates identifiers that look like this @code `exampleIdentifier`")
+  LowerCamelCase,
+  @doc("Creates identifiers that look like this @code `Example_Identifier`")
+  UpperCase,
+  @doc("Creates identifiers that look like this @code `example_identifier`")
+  LowerCase,
+};
+
+@group("Strings")
+@doc("These flags control matching rules in routines that perform matching on strings and Metadesk AST nodes.")
+@see(MD_Node)
 @prefix(MD_MatchFlag)
 @base_type(MD_u32)
 @flags MD_MatchFlags: {
@@ -73,7 +99,7 @@ The node_count and total_size are automaticallyed maintained by the helpers for 
   
   @doc("When comparing strings, consider forward slash and backward slash to be equivalents.")
   SlashInsensitive,
-
+  
   @doc("When comparing nodes with this flag set, differences in the order and names of tags on a node count as differences in the input nodes. Without this flag tags are ignored in tree comparisons.")
   Tags,
   
@@ -81,31 +107,11 @@ The node_count and total_size are automaticallyed maintained by the helpers for 
   TagArguments,
 };
 
-@group("Strings")
-@doc("Information gathered from consuming one unicode character from some unicode encoded stream.")
-@struct MD_UnicodeConsume: {
-  @doc("The codepoint of the consumed character.")
-  codepoint: MD_u32,
-  
-  @doc("The size of the character in the encoded stream, measured in 'units'. A unit is one byte in UTF-8, two bytes in UTF-16, and four bytes in UTF-32.")
-  advance: MD_u32,
-};
-
-@group("Strings")
-@doc("Styles of identifier spacing and capitalization.")
-@enum MD_WordStyle: {
-  UpperCamelCase,
-  LowerCamelCase,
-  UpperCase,
-  LowerCase,
-};
-
 ////////////////////////////////
 //~ Node types that are used to build all ASTs.
 
 @group("Nodes")
-@doc("The basic kinds of nodes in the abstract syntax tree parsed from metadesk.")
-@see(MD_Node)
+@doc("These constants distinguish major roles of @code `MD_Node` in the Metadesk abstract syntax tree data structure.")
 @enum MD_NodeKind: {
   @doc("The Nil node is a unique node representing the lack of information, for example iterating off the end of a list, or up to the parent of a root node results in Nil.")
   Nil,
@@ -134,33 +140,33 @@ The node_count and total_size are automaticallyed maintained by the helpers for 
 };
 
 @group("Nodes")
-@doc("Flags put on nodes to indicate extra details about the strings that were parsed to create the node.")
+@doc("These flags are set on @code `MD_Node` to indicate particular details about the strings that were parsed to create the node.")
 @see(MD_Node)
 @see(MD_TokenKind)
 @prefix(MD_NodeFlag)
 @base_type(MD_u32)
 @flags MD_NodeFlags: {
-  @doc("The node has children in an open/close symbol pair and @code '(' is the open symbol.")
+  @doc("This node's children open with @code '('")
   ParenLeft,
-  @doc("The node has children in an open/close symbol pair and @code ')' is the close symbol.")
+  @doc("This node's children close with @code ')'")
   ParenRight,
-  @doc("The node has children in an open/close symbol pair and @code '[' is the open symbol.")
+  @doc("This node's children open with @code '['")
   BracketLeft,
-  @doc("The node has children in an open/close symbol pair and @code ']' is the close symbol.")
+  @doc("This node's children close with @code ']'")
   BracketRight,
-  @doc("The node has children in an open/close symbol pair and @code '{' is the close symbol.")
+  @doc("This node's children open with @code '{'")
   BraceLeft,
-  @doc("The node has children in an open/close symbol pair and @code '}' is the close symbol.")
+  @doc("This node's children close with @code '}'")
   BraceRight,
   
-  @doc("The delimiter between this node and its next sibling is a @code ';'.")
+  @doc("The delimiter between this node and its next sibling is a @code ';'")
   BeforeSemicolon,
-  @doc("The delimiter between this node and its next sibling is a @code ','.")
+  @doc("The delimiter between this node and its next sibling is a @code ','")
   BeforeComma,
   
-  @doc("The delimiter between this node and its previous sibling is a @code ';'.")
+  @doc("The delimiter between this node and its previous sibling is a @code ';'")
   AfterSemicolon,
-  @doc("The delimiter between this node and its previous sibling is a @code ','.")
+  @doc("The delimiter between this node and its previous sibling is a @code ','")
   AfterComma,
   
   @doc("The label on this node comes from a token with the @code MD_TokenKind_NumericLiteral kind.")
@@ -174,7 +180,7 @@ The node_count and total_size are automaticallyed maintained by the helpers for 
 };
 
 @group("Nodes")
-@doc("The main 'lego-brick' for modeling the result of a metadesk parse. Also used in some auxiliary data structures.")
+@doc("The @code `MD_Node` is the main 'lego-brick' for modeling the result of a metadesk parse. Also used in some auxiliary data structures.")
 @struct MD_Node: {
   @doc("The next sibling in the hierarchy, or the next tag in a list of tags, or next node in an externally chained linked list.")
   next: *MD_Node,
@@ -223,7 +229,7 @@ The node_count and total_size are automaticallyed maintained by the helpers for 
 //~ Code Location Info.
 
 @group("Code Location")
-@doc("Source code location using file, line, column coordinates")
+@doc("This type encodes source code locations using file, line, column coordinates.")
 @struct MD_CodeLoc: {
   filename: MD_String8,
   @doc("Line numbers are 1 based, the lowest valid location is on line number 1.")
