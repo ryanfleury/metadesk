@@ -4,7 +4,7 @@ title: "Metadesk Reference"
 //~ Basic Unicode string types.
 
 @group("Strings")
-@doc("FOO BAR TESTING TESTING")
+@doc("This type is used as the fundamental string type in Metadesk, and as the type for byte granularity data blobs. Strings of this type are encoded in UTF-8.")
 @see(MD_String8List)
 @struct MD_String8: {
     str: *MD_u8,
@@ -12,37 +12,55 @@ title: "Metadesk Reference"
 };
 
 @group("Strings")
-@doc("A pointer and size representing a UTF-16 string.")
+@doc("This type represents a string encoded in UTF-16.")
 @struct MD_String16: {
     str: *MD_u16,
     size: MD_u64,
 };
 
 @group("Strings")
-@doc("A pointer and size representing a UTF-32 string.")
+@doc("This type represents a string encoded in UTF-32.")
 @struct MD_String32: {
     str: *MD_u32,
     size: MD_u64,
 };
 
 @group("Strings")
-@doc("A node in an MD_String8List.")
+@doc("MD_String8Node forms one node in a linked list of strings. Generally used as a part of an MD_String8List data structure.")
 @struct MD_String8Node: {
+    @doc("The next node in the list, or null if this is the last node.")
     next: *MD_String8Node,
+    @doc("The string value stored at this node.")
     string: MD_String8,
 };
 
 @group("Strings")
-@doc("A list of multiple possibly discontiguous strings (in MD_String8). Stored as a singly linked list.")
+@doc("This type is implemented as a singly linked list with an MD_String8 at each node.")
+@details("""
+A sample loop over MD_String8List:
+"""
+
+`MD_String8List list;
+for (MD_String8Node *node = list.first; node != 0; node = node->next)
+{
+    MD_String8 string = node->string;
+    // ... work on string ...
+}`
+)
+@see(MD_PushStringToList)
+@see(MD_SplitString)
+@see(MD_JoinStringList)
 @struct MD_String8List: {
+    @doc("The number of nodes in the list.")
     node_count: MD_u64,
+    @doc("The size of all strings in the list summed together.")
     total_size: MD_u64,
     first: *MD_String8Node,
     last: *MD_String8Node,
 };
 
 @group("Strings")
-@doc("Controls matching rules in routines that perform string matching.")
+@doc("These flags control matching rules in routines that perform string matching.")
 @prefix(MD_StringMatchFlag)
 @base_type(MD_u32)
 @flags MD_StringMatchFlags: {
