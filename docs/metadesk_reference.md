@@ -18,18 +18,43 @@ title: "Metadesk Reference"
 
 main:
 {
+    
+    @title "Strings",
     @paste Strings,
+    
+    @title "Nodes",
     @paste Nodes,
+    
+    @title "Source Code Locations",
     @paste CodeLoc,
+    
+    @title "Map",
     @paste Map,
+    
+    @title "Tokenization",
     @paste Tokens,
+    
+    @title "Metadesk Format Parsing",
     @paste Parsing,
+    
+    @title "Expression Parsing Helper",
     @paste ExpressionParsingHelper,
+    
+    @title "Command Line Parsing Helper",
     @paste CommandLineHelper,
+    
+    @title "File System Helper",
     @paste FileSystemHelper,
+    
+    @title "Helper Macros",
     @paste HelperMacros,
+    
+    @title "Character Helpers",
     @paste Characters,
+    
+    @title "Generation Helpers",
     @paste Output,
+    
 }
 
 ////////////////////////////////
@@ -550,60 +575,75 @@ main:
 //~ Characters
 
 @send(Characters)
+@doc("Returns whether an ASCII character is alphabetic.")
 @func MD_CharIsAlpha: {
     c: MD_u8,
     return: MD_b32,
 };
 
 @send(Characters)
+@doc("Returns whether an ASCII character is alphabetic and upper-case.")
 @func MD_CharIsAlphaUpper: {
     c: MD_u8,
     return: MD_b32,
 };
 
 @send(Characters)
+@doc("Returns whether an ASCII character is alphabetic and lower-case.")
 @func MD_CharIsAlphaLower: {
     c: MD_u8,
     return: MD_b32,
 };
 
 @send(Characters)
+@doc("Returns whether an ASCII character is numeric.")
 @func MD_CharIsDigit: {
     c: MD_u8,
     return: MD_b32,
 };
 
 @send(Characters)
+@doc(```
+     Returns whether an ASCII character is a within the set of characters that Metadesk considers to be symbols: @code '~', @code '!', @code '@', @code '#', @code '$', @code '%', @code '^', @code '&', @code '*', @code '(', @code ')', @code '-', @code '=', @code '+', @code '[', @code ']', @code '{', @code '}', @code ':', @code ';', @code ',', @code '<', @code '.', @code '>', @code '/', @code '?', @code '|', or @code '\\'.
+     ```)
 @func MD_CharIsSymbol: {
     c: MD_u8,
     return: MD_b32,
 };
 
 @send(Characters)
+@doc(```
+     Returns whether an ASCII character is within the set of reserved symbolic characters by the Metadesk language: @code '{', @code '}', @code '(', @code ')', @code '\\', @code '[', @code ']', @code '#', @code ',', @code ';',
+     @code ':', or @code '@'.
+     ```)
 @func MD_CharIsReservedSymbol: {
     c: MD_u8,
     return: MD_b32,
 };
 
 @send(Characters)
+@doc("Return whether an ASCII character is whitespace.")
 @func MD_CharIsSpace: {
     c: MD_u8,
     return: MD_b32,
 };
 
 @send(Characters)
+@doc("Return the alphabetic uppercase equivalent of an ASCII character, or just returns the passed-in character if it is not alphabetic.")
 @func MD_CharToUpper: {
     c: MD_u8,
     return: MD_u8,
 };
 
 @send(Characters)
+@doc("Return the alphabetic lowercase equivalent of an ASCII character, or just returns the passed-in character if it is not alphabetic.")
 @func MD_CharToLower: {
     c: MD_u8,
     return: MD_u8,
 };
 
 @send(Characters)
+@doc("Return a @code '/' if @code '\\' is passed in, otherwise just returns the passed character.")
 @func MD_CorrectSlash: {
     c: MD_u8,
     return: MD_u8,
@@ -613,23 +653,29 @@ main:
 //~ Strings
 
 @send(Strings)
+@doc("Constructs an MD_String8.")
 @func MD_S8: {
-    str: *MD_u8,
-    size: MD_u64,
+    @doc("The base pointer of the returned MD_String8.")
+        str: *MD_u8,
+    @doc("The size of the returned MD_String8.")
+        size: MD_u64,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Constructs an MD_String8 from a C-string by calling an equivalent to @code 'strlen'.")
 @macro MD_S8CString: {
     s,
 };
 
 @send(Strings)
+@doc("Constructs an MD_String8 from a C-string literal by using @code 'sizeof'.")
 @macro MD_S8Lit: {
     s,
 };
 
 @send(Strings)
+@doc("Constructs an MD_String8 from two pointers into the same buffer, corresponding to the beginning and one past the last byte of a string.")
 @func MD_S8Range: {
     str: *MD_u8,
     opl: *MD_u8,
@@ -637,89 +683,134 @@ main:
 };
 
 @send(Strings)
+@doc("Returns an MD_String8 encoding a sub-range of the passed MD_String8.")
 @func MD_StringSubstring: {
-    str: MD_String8,
-    min: MD_u64,
-    max: MD_u64
+    @doc("The string for which the substring is returned.")
+        str: MD_String8,
+    @doc("The offset, from the passed string's base, of the first character of the returned substring.")
+        min: MD_u64,
+    @doc("The offset, from the passed string's base, of one byte past the last character of the returned substring.")
+        max: MD_u64
         return: MD_String8,
 };
 
 @send(Strings)
+@doc("Returns a sub-range of the passed MD_String8, skipping the first @code 'min' bytes.")
 @func MD_StringSkip: {
-    str: MD_String8,
-    min: MD_u64,
+    @doc("The string for which the substring is returned.")
+        str: MD_String8,
+    @doc("The new minimum offset, relative to the base of @code 'str'. Also the number of bytes to skip at the beginning of @code 'str'.")
+        min: MD_u64,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Returns a sub-range of the passed MD_String8, chopping off the last @code 'min' bytes.")
 @func MD_StringChop: {
-    str: MD_String8,
-    nmax: MD_u64,
+    @doc("The string for which the substring is returned.")
+        str: MD_String8,
+    @doc("The number of bytes to chop off at the end of @code 'str'.")
+        nmax: MD_u64,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Returns a prefix of the passed MD_String8.")
 @func MD_StringPrefix: {
-    str: MD_String8,
-    size: MD_u64,
+    @doc("The string for which the substring is returned.")
+        str: MD_String8,
+    @doc("The desired size of the returned prefix.")
+        size: MD_u64,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Returns a suffix of the passed MD_String8.")
 @func MD_StringSuffix: {
-    str: MD_String8,
-    size: MD_u64,
+    @doc("The string for which the substring is returned.")
+        str: MD_String8,
+    @doc("The desired size of the returned suffix.")
+        size: MD_u64,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Compares the passed strings @code 'a' and @code 'b', and determines whether or not the two strings match. The passed MD_MatchFlags argument will modify the string matching algorithm; for example, allowing case insensitivity. Return @code '1' if the strings are found to match, and @code '0' otherwise.")
 @func MD_StringMatch: {
-    a: MD_String8,
-    b: MD_String8,
-    flags: MD_StringMatchFlags,
-    return: MD_b32,
+    @doc("The first string to compare.")
+        a: MD_String8,
+    @doc("The second string to compare.")
+        b: MD_String8,
+    @doc("Controls for the string matching algorithm.")
+        flags: MD_MatchFlags,
+    @doc("@code '1' if the strings match, or @code '0' otherwise.")
+        return: MD_b32,
 };
 
 @send(Strings)
+@doc("Searches @code 'str' for an occurrence of @code 'substring'. The passed @code 'flags' can be used to modify the matching rules. Returns the position at which the search ended; if the return value is equivalent to @code 'str.size', then the substring was not found.")
 @func MD_FindSubstring: {
-    str: MD_String8,
-    substring: MD_String8,
-    start_pos: MD_u64,
-    flags: MD_StringMatchFlags,
-    return: MD_u64,
+    @doc("The string to search within for the substring.")
+        str: MD_String8,
+    @doc("The 'needle' string to find within @code 'str'.")
+        substring: MD_String8,
+    @doc("The first position, in bytes relative to the base of @code 'str', to conduct the search from.")
+        start_pos: MD_u64,
+    @doc("Controls for the string matching algorithm.")
+        flags: MD_MatchFlags,
+    @doc("The last position at which the substring was searched for. Will be equal to @code 'str.size' if the substring was not found. If it is less than that, the substring was found at the returned offset.")
+        return: MD_u64,
 };
 
 @send(Strings)
+@doc("Searches @code 'string' for the last @code '.' character occurring in the string, and chops the @code '.' and anything following after it off of the returned string.")
+@see(MD_StringChop)
 @func MD_ChopExtension: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Searches @code 'string' for the last @code '/' or @code '\' character occurring in the string, and skips it and anything before it in the returned string.")
+@see(MD_StringSkip)
 @func MD_SkipFolder: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Searches @code 'string' for the last @code '.' character, and returns the substring starting at the character after it, to the end of the string. For usual file naming schemes where the extension of a file is encoded by any characters following the last @code '.' of a filename, this will return the extension.")
+@see(MD_FolderFromPath)
+@see(MD_StringSuffix)
+@see(MD_StringSubstring)
+@see(MD_StringChop)
 @func MD_ExtensionFromPath: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Searches @code 'string' for the last @code '/' or @code '\' character, and returns the substring that ends with that character. For usual file naming schemes where folders are encoded with @code '/' or @code '\' characters, this will return the entire path to the passed filename, not including the filename itself.")
+@see(MD_ExtensionFromPath)
+@see(MD_StringPrefix)
+@see(MD_StringSubstring)
+@see(MD_StringSkip)
 @func MD_FolderFromPath: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Copies @code 'string' by allocating an entirely new portion of memory and copying the passed string's memory to the newly allocated memory. Returns the copy of @code 'string' using the new memory.")
 @func MD_PushStringCopy: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
+@doc("Allocates a new string, with the contents of the string being determined by a standard C formatting string passed in @code 'fmt', with a variable-argument list being passed in @code 'args'. Used when composing variable argument lists at multiple levels, and when you need to pass a @code 'va_list'. Before this call, it is expected that you call @code 'va_start' on the passed @code 'va_list', and also that you call @code 'va_end' after the function returns. If you just want to pass variable arguments yourself (instead of a @code 'va_list'), then see MD_PushStringF.")
+@see(MD_PushStringF)
+@see(MD_PushStringCopy)
 @func MD_PushStringFV: {
     fmt: *char,
     args: va_list,
@@ -727,6 +818,9 @@ main:
 };
 
 @send(Strings)
+@doc("Allocates a new string, with the contents of the string being determined by a standard C formatting string passed in @code 'fmt', with variable arguments fitting the expected ones in @code 'fmt' being passed in after. If you are composing this with your own variable-arguments call, use MD_PushStringF instead.")
+@see(MD_PushStringFV)
+@see(MD_PushStringCopy)
 @func MD_PushStringF: {
     fmt: *char,
     "...",
@@ -734,29 +828,55 @@ main:
 };
 
 @send(Strings)
+@doc("This is a helper macro that is normally used with passing an MD_String8 into a @code 'printf' like function, usually used in combination with the @code '%.*s' format specifier. Metadesk uses length-based strings, not null-terminated (like many C functions expect), so this is often convenient when interacting with C-like APIs. This will expand to passing the size of the passed string first, a comma, and the pointer to the base of the string being passed immediately after.")
+@see(MD_String8)
 @macro MD_StringExpand: { s, }
 
 @send(Strings)
+@doc("Pushes a new MD_String8 to an MD_String8List by allocating a new MD_String8Node, filling it with @code 'string', and modifying the existing list elements in @code 'list' to end with the newly allocated node.")
+@see(MD_String8List)
+@see(MD_String8Node)
+@see(MD_String8)
 @func MD_PushStringToList: {
     list: *MD_String8List,
     string: MD_String8,
 };
 
 @send(Strings)
+@doc("Pushes a MD_String8List to another MD_String8List. This will zero all memory in @code 'to_push', so you cannot expect @code 'to_push' to retain any of the list elements it had before this call. This is because no strings nor nodes are copied, so the nodes in @code 'to_push' are repurposed for being a part of @code 'list'.")
+@see(MD_String8List)
+@see(MD_String8Node)
+@see(MD_String8)
+@see(MD_PushStringToList)
 @func MD_PushStringListToList: {
     list: *MD_String8List,
     to_push: *MD_String8List,
 };
 
 @send(Strings)
+@doc("Divides @code 'string' into an MD_String8List, each node of which corresponds to a substring of @code 'string' that was separated by an occurrence of one of the 'splitter's passed in @code 'splits'.")
+@see(MD_String8)
+@see(MD_String8List)
+@see(MD_String8Node)
+@see(MD_JoinStringList)
 @func MD_SplitString: {
-    string: MD_String8,
-    split_count: MD_u32,
-    splits: *MD_String8,
-    return: MD_String8List
+    @doc("The string to search for splitting strings, and to subdivide.")
+        string: MD_String8,
+    @doc("The number of splitting strings to search for.")
+        split_count: MD_u32,
+    @doc("A pointer to an array of strings stored as MD_String8 objects, each corresponding to a string pattern that should split @code 'string'.")
+        splits: *MD_String8,
+    @doc("A list containing all of the strings separated by the passed splitter strings. None of the strings will contain the splitter strings themselves.")
+        return: MD_String8List
 };
 
 @send(Strings)
+@doc("Returns a new MD_String8 that contains the contents of each string in @code 'list', in order, with no separator character.")
+@see(MD_String8)
+@see(MD_String8List)
+@see(MD_String8Node)
+@see(MD_SplitString)
+@see(MD_JoinStringListWithSeparator)
 @func MD_JoinStringList: {
     list: MD_String8List,
     return: MD_String8,

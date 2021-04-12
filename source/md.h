@@ -3,18 +3,20 @@
 
 // TODO List
 //
-// - Expression/Type helper
-//   - Parsing things as a type, getting basic type info
-// - Freeing calls, allow hooking the allocator with an arena or
-//   something so that someone can use this for work at an application/game's
-//   runtime
-// - Outputting anything to MD or C code ideally would do something
-//   smart with auto-indentation, since some people have wanted readable
-//   layout (if they aren't using 4coder with virtual whitespace basically)
-// - Split out C-related stuff into helper language layers
-// - Helpers for parsing NodeFlags, figuring out which nodes in a set are
-//   separated by a semicolon, something like MD_SeekNodeWithFlags(node) -> node ?
-// - Escaping characters from strings
+// [ ] Freeing calls, allow hooking the allocator with an arena or
+//     something so that someone can use this for work at an application/game's
+//     runtime
+// [ ] Outputting anything to MD or C code ideally would do something
+//     smart with auto-indentation, since some people have wanted readable
+//     layout (if they aren't using 4coder with virtual whitespace basically)
+// [ ] Split out C-related stuff into helper language layers
+// [ ] Helpers for parsing NodeFlags, figuring out which nodes in a set are
+//     separated by a semicolon, something like MD_SeekNodeWithFlags(node) -> node ?
+// [ ] Escaping characters from strings
+// [ ] Get rid of MD_JoinStringListWithSeparator, just have a separator argument on
+//     MD_JoinStringList.
+// [ ] MD_StringMap_Next, for iterating matching slots in an MD_Map, that all
+//     share the same key (important in the case of hash collisions)
 
 // NOTE(allen): "Plugin" functionality
 //
