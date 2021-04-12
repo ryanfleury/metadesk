@@ -423,22 +423,7 @@ MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_JoinStringList(MD_String8List list)
-{
-    MD_String8 string = MD_ZERO_STRUCT;
-    string.size = list.total_size;
-    string.str = _MD_PushArray(MD_u8, string.size);
-    MD_u64 write_pos = 0;
-    for(MD_String8Node *node = list.first; node; node = node->next)
-    {
-        _MD_MemoryCopy(string.str + write_pos, node->string.str, node->string.size);
-        write_pos += node->string.size;
-    }
-    return string;
-}
-
-MD_FUNCTION_IMPL MD_String8
-MD_JoinStringListWithSeparator(MD_String8List list, MD_String8 separator)
+MD_JoinStringList(MD_String8List list, MD_String8 separator)
 {
     if (list.node_count == 0)
     {
@@ -1025,6 +1010,24 @@ MD_StringMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, MD_String8 
     }
     
     return !!slot;
+}
+
+MD_FUNCTION_IMPL MD_MapSlot *
+MD_StringMap_Next(MD_MapSlot *slot, MD_String8 key)
+{
+    MD_MapSlot *next = 0;
+    if(slot)
+    {
+        for(MD_MapSlot *candidate = slot->next; candidate; candidate = candidate->next)
+        {
+            if(MD_StringMatch(*(MD_String8 *)candidate->key, key, 0))
+            {
+                next = candidate;
+                break;
+            }
+        }
+    }
+    return next;
 }
 
 /////////////////////////////////////////////
@@ -2191,6 +2194,14 @@ MD_FUNCTION_IMPL MD_Node *
 MD_MakeNodeFromString(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_String8 string)
 {
     return _MD_MakeNode(kind, string, string, filename, file, at);
+}
+
+MD_FUNCTION_IMPL MD_Node *
+MD_MakeNodeReference(MD_Node *target)
+{
+    MD_Node *n = MD_MakeNodeFromString(MD_NodeKind_Reference, MD_S8Lit("`reference node`"), 0, 0, MD_S8Lit("`reference node`"));
+    n->ref_target = target;
+    return n;
 }
 
 MD_FUNCTION_IMPL void

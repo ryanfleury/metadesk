@@ -13,10 +13,11 @@
 // [ ] Helpers for parsing NodeFlags, figuring out which nodes in a set are
 //     separated by a semicolon, something like MD_SeekNodeWithFlags(node) -> node ?
 // [ ] Escaping characters from strings
-// [ ] Get rid of MD_JoinStringListWithSeparator, just have a separator argument on
+// [x] Get rid of MD_JoinStringListWithSeparator, just have a separator argument on
 //     MD_JoinStringList.
-// [ ] MD_StringMap_Next, for iterating matching slots in an MD_Map, that all
+// [x] MD_StringMap_Next, for iterating matching slots in an MD_Map, that all
 //     share the same key (important in the case of hash collisions)
+// [x] Helper for making a reference for a node, e.g. MD_ReferenceFromNode
 
 // NOTE(allen): "Plugin" functionality
 //
@@ -668,9 +669,7 @@ MD_FUNCTION MD_String8     MD_PushStringF(char *fmt, ...);
 MD_FUNCTION void           MD_PushStringToList(MD_String8List *list, MD_String8 string);
 MD_FUNCTION void           MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push);
 MD_FUNCTION MD_String8List MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits);
-// TODO(allen): single joiner with MD_StringJoin optional parameter
-MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list);
-MD_FUNCTION MD_String8     MD_JoinStringListWithSeparator(MD_String8List list, MD_String8 separator);
+MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list, MD_String8 separator);
 MD_FUNCTION MD_i64         MD_I64FromString(MD_String8 string, MD_u32 radix);
 MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_HashString(MD_String8 string);
@@ -693,8 +692,9 @@ MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 
 //~ String-To-Pointer Table
-MD_FUNCTION MD_MapSlot       *MD_StringMap_Lookup(MD_Map *table, MD_String8 string);
+MD_FUNCTION MD_MapSlot *      MD_StringMap_Lookup(MD_Map *table, MD_String8 string);
 MD_FUNCTION MD_b32            MD_StringMap_Insert(MD_Map *table, MD_MapCollisionRule collision_rule, MD_String8 string, void *value);
+MD_FUNCTION MD_MapSlot *      MD_StringMap_Next(MD_MapSlot *slot, MD_String8 key);
 
 //~ Pointer-To-Pointer Table
 MD_FUNCTION MD_MapSlot       *MD_PtrMap_Lookup(MD_Map *map, void *key);
@@ -726,6 +726,7 @@ MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
 MD_FUNCTION MD_Node *MD_MakeNodeFromToken(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_Token token);
 MD_FUNCTION MD_Node *MD_MakeNodeFromString(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_String8 string);
+MD_FUNCTION MD_Node *MD_MakeNodeReference(MD_Node *target);
 MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *parent, MD_Node *new_sibling);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
