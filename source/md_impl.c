@@ -1793,7 +1793,7 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         {
             MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", token.outer_string.str[i_byte]));
         }
-        MD_String8 byte_string = MD_JoinStringListWithSeparator(bytes, MD_S8Lit(" "));
+        MD_String8 byte_string = MD_JoinStringList(bytes, MD_S8Lit(" "));
         _MD_TokenError(ctx, token, MD_MessageKind_Error, "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
         goto retry;
     }

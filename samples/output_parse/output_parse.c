@@ -32,7 +32,7 @@ static void PrintNode(MD_Node* node, FILE* file, int indent_count) {
     Print(file, indent_count+1, "Flags: %s,\n", binary_flags);
     Print(file, indent_count+1, "Flag Names: ", binary_flags);
     MD_String8List flags_list = MD_StringListFromNodeFlags(node->flags);
-    MD_String8 flag_names = MD_JoinStringListWithSeparator(flags_list, MD_S8CString(", "));
+    MD_String8 flag_names = MD_JoinStringList(flags_list, MD_S8CString(", "));
     fprintf(file, "%.*s,\n", MD_StringExpand(flag_names));
     
     if(node->string.size > 0) Print(file, indent_count+1, "String: %.*s,\n", MD_StringExpand(node->string));

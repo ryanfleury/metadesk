@@ -24,13 +24,13 @@ static MD_u32 rand_U32(RandomSeries* rng)
 static RandomSeries rand_seed(MD_u64 initstate, MD_u64 initseq)
 {
     RandomSeries result = {0};
-
+    
     result.state = 0U;
     result.inc = (initseq << 1u) | 1u;        // NOTE: inc must be odd
     rand_U32(&result);
     result.state += initstate;
     rand_U32(&result);
-
+    
     return result;
 }
 
@@ -55,7 +55,7 @@ static void TagSquareBracketSetsAsOptional(MD_Node *node, MD_Node *optional_tag)
             MD_PushTag(node, optional_tag);
         }
     }
-
+    
     for(MD_EachNode(child, node->first_child))
     {
         TagSquareBracketSetsAsOptional(child, optional_tag);
@@ -65,7 +65,7 @@ static void TagSquareBracketSetsAsOptional(MD_Node *node, MD_Node *optional_tag)
 static MD_Node * NewChildLabel(MD_Node *parent, MD_String8 label)
 {
     MD_Node *result = 0;
-
+    
     result = MD_MakeNodeFromString(MD_NodeKind_Label, MD_S8Lit(""), 0, 0, label);
     if(parent)
     {
@@ -87,14 +87,14 @@ static MD_Node * NewChild(MD_Node *parent)
 static void PrintRule(MD_Map *depth_map, MD_Node *rule)
 {
     MD_b32 is_literal_char = rule->flags & MD_NodeFlag_CharLiteral;
-
+    
     MD_b32 optional = MD_NodeHasTag(rule, MD_S8Lit(OPTIONAL_TAG));
-
+    
     if(optional)
     {
         printf("[");
     }
-
+    
     for(MD_EachNode(tag, rule->first_tag))
     {
         if(!MD_StringMatch(tag->string, MD_S8Lit(OPTIONAL_TAG), 0))
@@ -102,22 +102,22 @@ static void PrintRule(MD_Map *depth_map, MD_Node *rule)
             printf("@%.*s ", MD_StringExpand(tag->string));
         }
     }
-
+    
     if(is_literal_char)
     {
         printf("'");
     }
-
+    
     MD_b32 has_children = !MD_NodeIsNil(rule->first_child);
     if(has_children)
     {
         MD_Assert(rule->string.size == 0);
-
+        
         for(MD_EachNode(rule_element, rule->first_child))
         {
             PrintRule(depth_map, rule_element);
             printf(" (%lu) ", (unsigned long)GET_DEPTH(depth_map, rule_element));
-
+            
             if(!MD_NodeIsNil(rule_element->next))
             {
                 printf(" ");
@@ -129,12 +129,12 @@ static void PrintRule(MD_Map *depth_map, MD_Node *rule)
         MD_Assert(rule->string.size > 0);
         printf("%.*s", MD_StringExpand(rule->string));
     }
-
+    
     if(is_literal_char)
     {
         printf("'");
     }
-
+    
     if(optional)
     {
         printf("]");
@@ -166,7 +166,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
         if(MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG)))
         {
             expand = rand_U32(globals.random_series)%2;
-
+            
             if(expand)
             {
                 if(GET_DEPTH(depth_map, rule_element) + depth >= max_depth)
@@ -175,7 +175,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 }
             }
         }
-
+        
         if(expand)
         {
             MD_Node *node_to_tag = 0;
@@ -213,7 +213,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                     MD_Assert(!"Not implemented");
                 }
             }
-
+            
             MD_b32 has_children = !MD_NodeIsNil(rule_element->first_child);
             if(has_children)
             {
@@ -227,20 +227,20 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                     if(rule_element->string.size == 2 && rule_element->string.str[0] == '\\')
                     {
                         switch(rule_element->string.str[1]){
-                          case '\\': c = '\\'; break;
-                          case '\'': c = '\''; break;
-                          case '"':  c = '\"'; break;
-                          case 'n':  c = '\n'; break;
+                            case '\\': c = '\\'; break;
+                            case '\'': c = '\''; break;
+                            case '"':  c = '\"'; break;
+                            case 'n':  c = '\n'; break;
                         }
                     }
                     else
                     {
                         c = rule_element->string.str[0];
                     }
-
+                    
                     MD_String8 character = MD_PushStringF("%c", c);
                     MD_PushStringToList(out_strings, character);
-
+                    
                     if(op_flags & OperationFlag_Fill)
                     {
                         Extend(&cur_node->whole_string, c);
@@ -257,13 +257,13 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                     ExpandProduction(production, out_strings, cur_node, op_flags, depth_map, max_depth, depth+1);
                 }
             }
-
+            
             if(node_to_tag)
             {
                 MD_PushTag(node_to_tag, cur_node);
                 cur_node = node_to_tag;
             }
-
+            
             op_flags = old_op_flags;
         }
     }
@@ -274,22 +274,22 @@ static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *
                              MD_u32 max_depth, MD_u32 depth)
 {
     MD_i64 rule_count = MD_ChildCountFromNode(production);
-
+    
     MD_Assert(GET_DEPTH(depth_map, production)+depth <= max_depth);
-
+    
     MD_Node *rule = 0;
     do{
         int rule_number = rand_U32(globals.random_series)%rule_count;
         rule = MD_ChildFromIndex(production, rule_number);
     }while(GET_DEPTH(depth_map, rule)+depth > max_depth);
-
+    
     ExpandRule(rule, out, cur_node, op_flags, depth_map, max_depth, depth);
 }
 
 static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_Map *visited)
 {
     MD_Node *result = 0;
-
+    
     MD_b32 should_visit = 1;
     if(!MD_NodeIsNil(node->first_child) && node->string.size)
     {
@@ -303,7 +303,7 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_Map *visited)
             MD_Assert(inserted);
         }
     }
-
+    
     if(should_visit)
     {
         if(MD_NodeIsNil(node->first_child))
@@ -337,7 +337,7 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_Map *visited)
             }
         }
     }
-
+    
     return result;
 }
 
@@ -371,13 +371,13 @@ static MD_b32 EqualTrees(MD_Node *a, MD_Node *b)
 static MD_String8 EscapeNewlines(MD_String8 s)
 {
     MD_String8 result = s;
-
+    
     MD_u32 newline_count = 0;
     for(MD_u8 *c = s.str; c < s.str + s.size; ++c)
     {
         newline_count += (*c == '\n');
     }
-
+    
     if(newline_count)
     {
         result.size = s.size + newline_count;
@@ -395,7 +395,7 @@ static MD_String8 EscapeNewlines(MD_String8 s)
             }
         }
     }
-
+    
     return result;
 }
 
@@ -435,7 +435,7 @@ static void ComputeElementDepth(MD_Map *depth_map, MD_Node *re)
             result = GET_DEPTH(depth_map, production)+1;
         }
     }
-
+    
     SET_DEPTH(depth_map, re, result);
 }
 
@@ -475,10 +475,10 @@ FirstBadNodeAtPointer(MD_Node *node)
 {
     MD_Node *result = 0;
     switch(node->kind){
-      case MD_NodeKind_File:
+        case MD_NodeKind_File:
         {
         } break;
-      case MD_NodeKind_Label:
+        case MD_NodeKind_Label:
         {
             if(node->at != node->whole_string.str)
             {
@@ -493,15 +493,15 @@ FirstBadNodeAtPointer(MD_Node *node)
                         result = node;
                     }
                 }
-
+                
                 if(result)
                 {
                     goto end;
                 }
             }
         } break;
-      case MD_NodeKind_List:
-      case MD_NodeKind_Tag:
+        case MD_NodeKind_List:
+        case MD_NodeKind_Tag:
         {
             if(node->at != node->whole_string.str)
             {
@@ -509,10 +509,10 @@ FirstBadNodeAtPointer(MD_Node *node)
                 goto end;
             }
         } break;
-      default:
+        default:
         break;
     }
-
+    
     for(MD_EachNode(child, node->first_child))
     {
         result = FirstBadNodeAtPointer(child);
@@ -523,16 +523,16 @@ FirstBadNodeAtPointer(MD_Node *node)
         result = FirstBadNodeAtPointer(child);
         if(result) goto end;
     }
-
+    
     end:
-
+    
     return result;
 }
 
 int main(int argument_count, char **arguments)
 {
     MD_Node *grammar = MD_ParseWholeFile(MD_S8Lit("tests/grammar.md")).node;
-
+    
     // NOTE(mal): In order to get a BNF-like syntax, I feed the MD output through two transformations:
     //            1) Tag []-style sets as optional 
     MD_Node *optional_tag = 0;
@@ -541,7 +541,7 @@ int main(int argument_count, char **arguments)
         optional_tag = parse_result.node->first_tag;
     }
     TagSquareBracketSetsAsOptional(grammar, optional_tag);
-
+    
     // NOTE(mal): 2) Divide rules around '|' operators and transplant them into a new tree structure
     //               productions > production > rules > rule > rule_element
     MD_Node *productions = NewChild(0);
@@ -552,7 +552,7 @@ int main(int argument_count, char **arguments)
         for(MD_Node *rule_element = symbol->first_child; !MD_NodeIsNil(rule_element); )
         {
             MD_Node *next = rule_element->next;
-
+            
             MD_b32 has_children = !MD_NodeIsNil(rule_element->first_child);
             if(has_children)
             {
@@ -570,11 +570,11 @@ int main(int argument_count, char **arguments)
                     MD_PushChild(rule, rule_element);
                 }
             }
-
+            
             rule_element = next;
         }
     }
-
+    
     // NOTE(mal): Build production hash table
     MD_Map production_table_ = {0};
     globals.production_table = &production_table_;
@@ -584,7 +584,7 @@ int main(int argument_count, char **arguments)
                                               production->string, production);
         MD_Assert(inserted);
     }
-
+    
     // NOTE(mal): Check for root production
     MD_Node* file_production = 0;
     {
@@ -596,10 +596,10 @@ int main(int argument_count, char **arguments)
         }
         file_production = file_production_slot->value;
     }
-
+    
     // NOTE(mal): Check that all branches lead to terminal nodes
     MD_Map visited_productions = {0};
-
+    
     for(MD_EachNode(production, productions->first_child))
     {
         MD_Node *non_terminal_production = FindNonTerminalProduction(production, &visited_productions);
@@ -609,7 +609,7 @@ int main(int argument_count, char **arguments)
             goto error;
         }
     }
-
+    
     // NOTE(mal): Check that all productions are reachable
     for(MD_EachNode(production, productions->first_child))
     {
@@ -619,9 +619,9 @@ int main(int argument_count, char **arguments)
             fprintf(stderr, "Warning: Unreachable production \"%.*s\"\n", MD_StringExpand(production->string));
         }
     }
-
+    
     // NOTE(mal): Compute depth of productions, rules, rule elements
-
+    
     // NOTE(mal): Init all MD_Node depths to 0
     MD_Map depth_map_ = {0};
     MD_Map *depth_map = &depth_map_;
@@ -637,7 +637,7 @@ int main(int argument_count, char **arguments)
             }
         }
     }
-
+    
     MD_b32 progress = 1;
     while(progress)
     {
@@ -653,7 +653,7 @@ int main(int argument_count, char **arguments)
                 {
                     ComputeElementDepth(depth_map, rule_element);
                     MD_u64 depth = GET_DEPTH(depth_map, rule_element);
-
+                    
                     if(!MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG)))
                     {
                         MD_u64 depth = 0;
@@ -664,31 +664,31 @@ int main(int argument_count, char **arguments)
                             depth = GET_DEPTH(depth_map, production);
                         }
                         depth += 1;
-
+                        
                         if(depth > max_mandatory_rule_element_depth)
                         {
                             max_mandatory_rule_element_depth = depth;
                         }
                     }
-
+                    
                     if(depth > max_rule_element_depth)
                     {
                         max_rule_element_depth = depth;
                     }
                 }
-
+                
                 if(max_mandatory_rule_element_depth > GET_DEPTH(depth_map, rule))
                 {
                     progress = 1;
                     SET_DEPTH(depth_map, rule, max_mandatory_rule_element_depth);
                 }
-
+                
                 if(max_mandatory_rule_element_depth < min_rule_depth)
                 {
                     min_rule_depth = max_mandatory_rule_element_depth;
                 }
             }
-
+            
             if(min_rule_depth > GET_DEPTH(depth_map, production))
             {
                 progress = 1;
@@ -696,7 +696,7 @@ int main(int argument_count, char **arguments)
             }
         }
     }
-
+    
 #if DEBUG_RULES_AFTER_TRANSFORMATIONS
     for(MD_EachNode(production, productions->first_child))
     {
@@ -710,11 +710,11 @@ int main(int argument_count, char **arguments)
         }
     }
 #endif
-
+    
     RandomSeries random_series = rand_seed(0, 0);  // NOTE(mal): Reproduceable
     globals.random_series = &random_series;
     MD_Node* file_production_node = MD_StringMap_Lookup(globals.production_table, MD_S8Lit("file"))->value;
-
+    
     // NOTE(mal): Generate test_count unique tests, sorted by complexity
     MD_u32 test_count = 1000;
     MD_u32 max_production_depth = 30;
@@ -726,12 +726,12 @@ int main(int argument_count, char **arguments)
         Test test = {0};
         test.expected_output = NewChild(0);
         test.expected_output->kind = MD_NodeKind_File;
-
+        
         MD_String8List string_list = {0};
         // NOTE(mal): Generate a random MD file
         ExpandProduction(file_production_node, &string_list, test.expected_output, 0, depth_map, max_production_depth, 0);
-        test.input = MD_JoinStringList(string_list);
-
+        test.input = MD_JoinStringList(string_list, MD_S8Lit(""));
+        
         Test *prev = 0;
         for(Test *cur = first_test; cur; cur = cur->next)
         {
@@ -749,7 +749,7 @@ int main(int argument_count, char **arguments)
                 prev = 0;           // NOTE(mal): Repeat node
             }
         }
-
+        
         if(prev)
         {
             Test *stored_test = calloc(1, sizeof(Test));
@@ -759,13 +759,13 @@ int main(int argument_count, char **arguments)
             ++i_test;
         }
     }
-
+    
     MD_u32 i_test = 0;
     for(Test *test = first_test; test; test = test->next)
     {
         MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), test->input).node;
         file_node->string = file_node->whole_string = (MD_String8){0};
-
+        
 #if DEBUG_PRINT_GENERATED_TESTS
         printf("> %.*s <\n", MD_StringExpand(EscapeNewlines(test->input)));
 #endif
@@ -779,7 +779,7 @@ int main(int argument_count, char **arguments)
             MD_OutputTree(stdout, test->expected_output); printf("\n");
             return -1;
         }
-
+        
         MD_Node *bad_at_node = FirstBadNodeAtPointer(file_node);
         if(bad_at_node)
         {
@@ -793,7 +793,7 @@ int main(int argument_count, char **arguments)
         }
         ++i_test;
     }
-
+    
     printf("Passed %d tests\n", test_count);
     
     error:
