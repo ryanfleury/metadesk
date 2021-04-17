@@ -14,11 +14,12 @@ static MD_Map MapFromChildren(MD_Node *node)
     return result;
 }
 
-static void OutputType_C_LHS_Namespace(FILE *file, MD_Map *user_defined_types, MD_String8 prefix, MD_Expr *type)
+static void
+OutputType_C_LHS_Namespace(FILE *file, MD_Map *user_defined_types, MD_String8 prefix, MD_C_Expr *type)
 {
     switch (type->kind)
     {
-        case MD_ExprKind_Atom:
+        case MD_C_ExprKind_Atom:
         {
             MD_Node *node = type->node;
             
@@ -29,7 +30,7 @@ static void OutputType_C_LHS_Namespace(FILE *file, MD_Map *user_defined_types, M
             fprintf(file, "%.*s", MD_StringExpand(node->whole_string));
         }break;
         
-        case MD_ExprKind_Pointer:
+        case MD_C_ExprKind_Pointer:
         {
             OutputType_C_LHS_Namespace(file, user_defined_types, prefix, type->sub[0]);
             if (_MD_OutputType_C_NeedsParens(type))
@@ -39,7 +40,7 @@ static void OutputType_C_LHS_Namespace(FILE *file, MD_Map *user_defined_types, M
             fprintf(file, "*");
         }break;
         
-        case MD_ExprKind_Array:
+        case MD_C_ExprKind_Array:
         {
             OutputType_C_LHS_Namespace(file, user_defined_types, prefix, type->sub[0]);
             if (_MD_OutputType_C_NeedsParens(type))
@@ -48,8 +49,8 @@ static void OutputType_C_LHS_Namespace(FILE *file, MD_Map *user_defined_types, M
             }
         }break;
         
-        case MD_ExprKind_Volatile: { fprintf(file, "volatile "); }break;
-        case MD_ExprKind_Const:    { fprintf(file, "const "); }break;
+        case MD_C_ExprKind_Volatile: { fprintf(file, "volatile "); }break;
+        case MD_C_ExprKind_Const:    { fprintf(file, "const "); }break;
         
         default:
         {
@@ -132,12 +133,12 @@ static void OutputPrefixedType(FILE *f, MD_Map *user_defined_types, MD_String8 p
     }
     else 
     {
-        MD_Expr *type = MD_ParseAsType(node->first_child, node->last_child);
+        MD_C_Expr *type = MD_C_ParseAsType(node->first_child, node->last_child);
         
         I(); 
         OutputType_C_LHS_Namespace(f, user_defined_types, prefix, type);
         fprintf(f, " %.*s", MD_StringExpand(node->string));
-        MD_C_Generate_RHS(f, type);
+        MD_C_Generate_TypeRHS(f, type);
         
         fprintf(f, ";\n");
     }

@@ -452,78 +452,6 @@ main:
 };
 
 ////////////////////////////////
-//~ Expression and Type-Expression parser helper types.
-
-// VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
-// it is kept in-sync with the MD_ExprPrecFromExprKind function.
-
-@send(ExpressionParsingHelper)
-@enum MD_ExprKind: {
-    Nil,
-    
-    // NOTE(rjf): Atom
-    Atom,
-    
-    // NOTE(rjf): Access
-    Dot,
-    Arrow,
-    Call,
-    Subscript,
-    Dereference,
-    Reference,
-    
-    // NOTE(rjf): Arithmetic
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Mod,
-    
-    // NOTE(rjf): Comparison
-    IsEqual,
-    IsNotEqual,
-    LessThan,
-    GreaterThan,
-    LessThanEqualTo,
-    GreaterThanEqualTo,
-    
-    // NOTE(rjf): Bools
-    BoolAnd,
-    BoolOr,
-    BoolNot,
-    
-    // NOTE(rjf): Bitwise
-    BitAnd,
-    BitOr,
-    BitNot,
-    BitXor,
-    LeftShift,
-    RightShift,
-    
-    // NOTE(rjf): Unary numeric
-    Negative,
-    
-    // NOTE(rjf): Type
-    Pointer,
-    Array,
-    Volatile,
-    Const,
-    
-    MAX,
-};
-
-@send(ExpressionParsingHelper)
-@typedef(MD_i32) MD_ExprPrec;
-
-@send(ExpressionParsingHelper)
-@struct MD_Expr: {
-    node: *MD_Node,
-    kind: MD_ExprKind,
-    parent: *MD_Expr,
-    sub: ([2]*MD_Expr),
-};
-
-////////////////////////////////
 //~ Command line parsing helper types.
 
 @send(CommandLineHelper)
@@ -1330,81 +1258,81 @@ main:
 //~ Expression and Type-Expression Helper
 
 @send(ExpressionParsingHelper)
-@func MD_NilExpr: {
-    return: *MD_Expr,
+@func MD_C_NilExpr: {
+    return: *MD_C_Expr,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_ExprIsNil: {
-    expr: *MD_Expr,
+@func MD_C_ExprIsNil: {
+    expr: *MD_C_Expr,
     return: MD_b32,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_PreUnaryExprKindFromNode: {
+@func MD_C_PreUnaryExprKindFromNode: {
     node: *MD_Node,
     return: MD_ExprKind,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_BinaryExprKindFromNode: {
+@func MD_C_BinaryExprKindFromNode: {
     node: *MD_Node,
     return: MD_ExprKind,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_ExprPrecFromExprKind: {
+@func MD_C_ExprPrecFromExprKind: {
     kind: MD_ExprKind,
     return: MD_ExprPrec,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_MakeExpr: {
+@func MD_C_MakeExpr: {
     node: *MD_Node,
     kind: MD_ExprKind,
-    left: *MD_Expr,
-    right: *MD_Expr,
-    return: *MD_Expr,
+    left: *MD_C_Expr,
+    right: *MD_C_Expr,
+    return: *MD_C_Expr,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_ParseAsExpr: {
+@func MD_C_ParseAsExpr: {
     first: *MD_Node,
     last: *MD_Node,
-    return: *MD_Expr,
+    return: *MD_C_Expr,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_ParseAsType: {
+@func MD_C_ParseAsType: {
     first: *MD_Node,
     last: *MD_Node,
-    return: *MD_Expr,
+    return: *MD_C_Expr,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_EvaluateExpr_I64: {
-    expr: *MD_Expr,
+@func MD_C_EvaluateExpr_I64: {
+    expr: *MD_C_Expr,
     return: MD_i64,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_EvaluateExpr_F64: {
-    expr: *MD_Expr,
+@func MD_C_EvaluateExpr_F64: {
+    expr: *MD_C_Expr,
     return: MD_f64,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_ExprMatch: {
-    a: *MD_Expr,
-    b: *MD_Expr,
+@func MD_C_ExprMatch: {
+    a: *MD_C_Expr,
+    b: *MD_C_Expr,
     str_flags: MD_StringMatchFlags,
     return: MD_b32,
 };
 
 @send(ExpressionParsingHelper)
-@func MD_ExprDeepMatch: {
-    a: *MD_Expr,
-    b: *MD_Expr,
+@func MD_C_ExprDeepMatch: {
+    a: *MD_C_Expr,
+    b: *MD_C_Expr,
     str_flags: MD_StringMatchFlags,
     return: MD_b32,
 };
@@ -1443,31 +1371,25 @@ main:
 @func MD_C_Generate_DeclByNameAndType: {
     file: *FILE,
     name: MD_String8,
-    type: *MD_Expr,
+    type: *MD_C_Expr,
 };
 
 @send(Output)
 @func MD_C_Generate_Expr: {
     file: *FILE,
-    expr: *MD_Expr,
+    expr: *MD_C_Expr,
 };
 
 @send(Output)
-@func MD_OutputType: {
+@func MD_C_Generate_TypeLHS: {
     file: *FILE,
-    type: *MD_Expr,
+    type: *MD_C_Expr,
 };
 
 @send(Output)
-@func MD_OutputType_C_LHS: {
+@func MD_C_Generate_TypeRHS: {
     file: *FILE,
-    type: *MD_Expr,
-};
-
-@send(Output)
-@func MD_OutputType_C_RHS: {
-    file: *FILE,
-    type: *MD_Expr,
+    type: *MD_C_Expr,
 };
 
 ////////////////////////////////
@@ -1543,4 +1465,87 @@ main:
     path: MD_String8,
     out_info: *MD_FileInfo,
     return: MD_b32,
+};
+
+////////////////////////////////
+//~ Expression and Type-Expression parser helper types.
+
+// VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
+// it is kept in-sync with the MD_ExprPrecFromExprKind function.
+
+@send(ExpressionParsingHelper)
+@enum MD_C_ExprKind: {
+    Nil,
+    
+    // NOTE(rjf): Atom
+    Atom,
+    
+    // NOTE(rjf): Access
+    Dot,
+    Arrow,
+    Call,
+    Subscript,
+    Dereference,
+    Reference,
+    
+    // NOTE(rjf): Arithmetic
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Mod,
+    
+    // NOTE(rjf): Comparison
+    IsEqual,
+    IsNotEqual,
+    LessThan,
+    GreaterThan,
+    LessThanEqualTo,
+    GreaterThanEqualTo,
+    
+    // NOTE(rjf): Bools
+    BoolAnd,
+    BoolOr,
+    BoolNot,
+    
+    // NOTE(rjf): Bitwise
+    BitAnd,
+    BitOr,
+    BitNot,
+    BitXor,
+    LeftShift,
+    RightShift,
+    
+    // NOTE(rjf): Unary numeric
+    Negative,
+    
+    // NOTE(rjf): Type
+    Pointer,
+    Array,
+    Volatile,
+    Const,
+    
+    MAX,
+};
+
+
+@send(ExpressionParsingHelper)
+@enum MD_C_ExprKindGroup: {
+    Nil,
+    Atom,
+    Binary,
+    PreUnary,
+    PostUnary,
+    Type,
+};
+
+@send(ExpressionParsingHelper)
+@typedef(MD_i32) MD_C_ExprPrec;
+
+@send(ExpressionParsingHelper)
+@struct MD_C_Expr: {
+    node: *MD_Node,
+    kind: MD_ExprKind,
+    parent: *MD_C_Expr,
+    sub: ([2]*MD_C_Expr),
 };

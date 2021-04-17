@@ -5,109 +5,110 @@
 
 //~ Expression and Type-Expression parser helper types.
 
-typedef enum MD_ExprKind
+typedef enum MD_C_ExprKind
 {
     // VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
     // it is kept in-sync with the _MD_MetadataFromExprKind function.
     
-    MD_ExprKind_Nil,
+    MD_C_ExprKind_Nil,
     
     // NOTE(rjf): Atom
-    MD_ExprKind_Atom,
+    MD_C_ExprKind_Atom,
     
     // NOTE(rjf): Access
-    MD_ExprKind_Dot,
-    MD_ExprKind_Arrow,
-    MD_ExprKind_Call,
-    MD_ExprKind_Subscript,
-    MD_ExprKind_Dereference,
-    MD_ExprKind_Reference,
+    MD_C_ExprKind_Dot,
+    MD_C_ExprKind_Arrow,
+    MD_C_ExprKind_Call,
+    MD_C_ExprKind_Subscript,
+    MD_C_ExprKind_Dereference,
+    MD_C_ExprKind_Reference,
     
     // NOTE(rjf): Arithmetic
-    MD_ExprKind_Add,
-    MD_ExprKind_Subtract,
-    MD_ExprKind_Multiply,
-    MD_ExprKind_Divide,
-    MD_ExprKind_Mod,
+    MD_C_ExprKind_Add,
+    MD_C_ExprKind_Subtract,
+    MD_C_ExprKind_Multiply,
+    MD_C_ExprKind_Divide,
+    MD_C_ExprKind_Mod,
     
     // NOTE(rjf): Comparison
-    MD_ExprKind_IsEqual,
-    MD_ExprKind_IsNotEqual,
-    MD_ExprKind_LessThan,
-    MD_ExprKind_GreaterThan,
-    MD_ExprKind_LessThanEqualTo,
-    MD_ExprKind_GreaterThanEqualTo,
+    MD_C_ExprKind_IsEqual,
+    MD_C_ExprKind_IsNotEqual,
+    MD_C_ExprKind_LessThan,
+    MD_C_ExprKind_GreaterThan,
+    MD_C_ExprKind_LessThanEqualTo,
+    MD_C_ExprKind_GreaterThanEqualTo,
     
     // NOTE(rjf): Bools
-    MD_ExprKind_BoolAnd,
-    MD_ExprKind_BoolOr,
-    MD_ExprKind_BoolNot,
-    
+    MD_C_ExprKind_BoolAnd,
+    MD_C_ExprKind_BoolOr,
+    MD_C_ExprKind_BoolNot,
     // NOTE(rjf): Bitwise
-    MD_ExprKind_BitAnd,
-    MD_ExprKind_BitOr,
-    MD_ExprKind_BitNot,
-    MD_ExprKind_BitXor,
-    MD_ExprKind_LeftShift,
-    MD_ExprKind_RightShift,
+    MD_C_ExprKind_BitAnd,
+    MD_C_ExprKind_BitOr,
+    MD_C_ExprKind_BitNot,
+    MD_C_ExprKind_BitXor,
+    MD_C_ExprKind_LeftShift,
+    MD_C_ExprKind_RightShift,
     
     // NOTE(rjf): Unary numeric
-    MD_ExprKind_Negative,
+    MD_C_ExprKind_Negative,
     
     // NOTE(rjf): Type
-    MD_ExprKind_Pointer,
-    MD_ExprKind_Array,
-    MD_ExprKind_Volatile,
-    MD_ExprKind_Const,
+    MD_C_ExprKind_Pointer,
+    MD_C_ExprKind_Array,
+    MD_C_ExprKind_Volatile,
+    MD_C_ExprKind_Const,
     
-    MD_ExprKind_MAX,
+    MD_C_ExprKind_MAX,
 }
-MD_ExprKind;
+MD_C_ExprKind;
 
-typedef enum MD_ExprKindGroup
+typedef enum MD_C_ExprKindGroup
 {
-    MD_ExprKindGroup_Nil,
-    MD_ExprKindGroup_Atom,
-    MD_ExprKindGroup_Binary,
-    MD_ExprKindGroup_PreUnary,
-    MD_ExprKindGroup_PostUnary,
-    MD_ExprKindGroup_Type,
+    MD_C_ExprKindGroup_Nil,
+    MD_C_ExprKindGroup_Atom,
+    MD_C_ExprKindGroup_Binary,
+    MD_C_ExprKindGroup_PreUnary,
+    MD_C_ExprKindGroup_PostUnary,
+    MD_C_ExprKindGroup_Type,
 }
-MD_ExprKindGroup;
+MD_C_ExprKindGroup;
 
-typedef MD_i32 MD_ExprPrec;
+typedef MD_i32 MD_C_ExprPrec;
 
-typedef struct MD_Expr MD_Expr;
-struct MD_Expr
+typedef struct MD_C_Expr MD_C_Expr;
+struct MD_C_Expr
 {
     MD_Node *node;
-    MD_ExprKind kind;
-    MD_Expr *parent;
-    MD_Expr *sub[2];
+    MD_C_ExprKind kind;
+    MD_C_Expr *parent;
+    MD_C_Expr *sub[2];
 };
 
-//~ Expression and Type-Expression Helper
-MD_FUNCTION MD_Expr *     MD_NilExpr(void);
-MD_FUNCTION MD_b32        MD_ExprIsNil(MD_Expr *expr);
-MD_FUNCTION MD_ExprKind   MD_PreUnaryExprKindFromNode(MD_Node *node);
-MD_FUNCTION MD_ExprKind   MD_BinaryExprKindFromNode(MD_Node *node);
-MD_FUNCTION MD_ExprPrec   MD_ExprPrecFromExprKind(MD_ExprKind kind);
-MD_FUNCTION MD_Expr *     MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr *right);
-MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
-MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
-MD_FUNCTION MD_i64        MD_EvaluateExpr_I64(MD_Expr *expr);
-MD_FUNCTION MD_f64        MD_EvaluateExpr_F64(MD_Expr *expr);
-MD_FUNCTION MD_b32        MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags);
-MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags);
+//~ C_Expression and Type-C_Expression Helper
+MD_FUNCTION MD_C_Expr *   MD_C_NilExpr(void);
+MD_FUNCTION MD_b32        MD_C_ExprIsNil(MD_C_Expr *expr);
+MD_FUNCTION MD_C_ExprKind MD_C_PreUnaryExprKindFromNode(MD_Node *node);
+MD_FUNCTION MD_C_ExprKind MD_C_BinaryExprKindFromNode(MD_Node *node);
+MD_FUNCTION MD_C_ExprPrec MD_C_ExprPrecFromExprKind(MD_C_ExprKind kind);
+MD_FUNCTION MD_C_Expr *   MD_C_MakeExpr(MD_Node *node, MD_C_ExprKind kind, MD_C_Expr *left, MD_C_Expr *right);
+MD_FUNCTION MD_C_Expr *   MD_C_ParseAsExpr(MD_Node *first, MD_Node *last);
+MD_FUNCTION MD_C_Expr *   MD_C_ParseAsType(MD_Node *first, MD_Node *last);
+MD_FUNCTION MD_i64        MD_C_EvaluateExpr_I64(MD_C_Expr *expr);
+MD_FUNCTION MD_f64        MD_C_EvaluateExpr_F64(MD_C_Expr *expr);
+MD_FUNCTION MD_b32        MD_C_ExprMatch(MD_C_Expr *a, MD_C_Expr *b, MD_MatchFlags flags);
+MD_FUNCTION MD_b32        MD_C_ExprDeepMatch(MD_C_Expr *a, MD_C_Expr *b, MD_MatchFlags flags);
 
 //~ C Language Generation
 MD_FUNCTION void MD_C_Generate_String(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_C_Generate_Struct(FILE *file, MD_Node *node);
+
+MD_FUNCTION void MD_C_Generate_Expr(FILE *file, MD_C_Expr *expr);
+MD_FUNCTION void MD_C_Generate_TypeLHS(FILE *file, MD_C_Expr *type);
+MD_FUNCTION void MD_C_Generate_TypeRHS(FILE *file, MD_C_Expr *type);
+
+MD_FUNCTION void MD_C_Generate_DeclByNameAndType(FILE *file, MD_String8 name, MD_C_Expr *type);
 MD_FUNCTION void MD_C_Generate_Decl(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_C_Generate_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type);
-MD_FUNCTION void MD_C_Generate_Expr(FILE *file, MD_Expr *expr);
-MD_FUNCTION void MD_C_Generate_LHS(FILE *file, MD_Expr *type);
-MD_FUNCTION void MD_C_Generate_RHS(FILE *file, MD_Expr *type);
 
 #endif //MD_C_HELPERS_H
 

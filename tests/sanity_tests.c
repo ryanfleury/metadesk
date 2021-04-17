@@ -61,22 +61,23 @@ MakeTestNode(MD_NodeKind kind, MD_String8 string)
     return MD_MakeNodeFromString(kind, MD_S8Lit("`TEST_NODE`"), 0, 0, string);
 }
 
-static MD_Expr *
+static MD_C_Expr *
 AtomExpr(char *str)
 {
-    return MD_MakeExpr(MakeTestNode(MD_NodeKind_Label, MD_S8CString(str)), MD_ExprKind_Atom, MD_NilExpr(), MD_NilExpr());
+    return MD_C_MakeExpr(MakeTestNode(MD_NodeKind_Label, MD_S8CString(str)),
+                         MD_C_ExprKind_Atom, MD_C_NilExpr(), MD_C_NilExpr());
 }
 
-static MD_Expr *
-BinOpExpr(MD_ExprKind kind, MD_Expr *left, MD_Expr *right)
+static MD_C_Expr *
+BinOpExpr(MD_C_ExprKind kind, MD_C_Expr *left, MD_C_Expr *right)
 {
-    return MD_MakeExpr(MD_NilNode(), kind, left, right);
+    return MD_C_MakeExpr(MD_NilNode(), kind, left, right);
 }
 
-static MD_Expr *
-TypeExpr(MD_ExprKind kind, MD_Expr *sub)
+static MD_C_Expr *
+TypeExpr(MD_C_ExprKind kind, MD_C_Expr *sub)
 {
-    return MD_MakeExpr(MD_NilNode(), kind, sub, MD_NilExpr());
+    return MD_C_MakeExpr(MD_NilNode(), kind, sub, MD_C_NilExpr());
 }
 
 static MD_b32
@@ -87,19 +88,19 @@ MatchParsedWithNode(MD_String8 string, MD_Node *tree)
 }
 
 static MD_b32
-MatchParsedWithExpr(MD_String8 string, MD_Expr *expr)
+MatchParsedWithExpr(MD_String8 string, MD_C_Expr *expr)
 {
     MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), string);
-    MD_Expr *parse_expr = MD_ParseAsExpr(parse.node->first_child, parse.node->last_child);
-    return MD_ExprDeepMatch(expr, parse_expr, 0);
+    MD_C_Expr *parse_expr = MD_C_ParseAsExpr(parse.node->first_child, parse.node->last_child);
+    return MD_C_ExprDeepMatch(expr, parse_expr, 0);
 }
 
 static MD_b32
-MatchParsedWithType(MD_String8 string, MD_Expr *expr)
+MatchParsedWithType(MD_String8 string, MD_C_Expr *expr)
 {
     MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), string);
-    MD_Expr *parse_expr = MD_ParseAsType(parse.node->first_child, parse.node->last_child);
-    return MD_ExprDeepMatch(expr, parse_expr, 0);
+    MD_C_Expr *parse_expr = MD_C_ParseAsType(parse.node->first_child, parse.node->last_child);
+    return MD_C_ExprDeepMatch(expr, parse_expr, 0);
 }
 
 static MD_b32
@@ -286,34 +287,34 @@ int main(void)
     {
         // NOTE(rjf): 5 + 3
         {
-            MD_Expr *expr = BinOpExpr(MD_ExprKind_Add, AtomExpr("5"), AtomExpr("3"));
-            TestResult(MD_EvaluateExpr_I64(expr) == 8);
+            MD_C_Expr *expr = BinOpExpr(MD_C_ExprKind_Add, AtomExpr("5"), AtomExpr("3"));
+            TestResult(MD_C_EvaluateExpr_I64(expr) == 8);
         }
         
         // NOTE(rjf): 5 - 3
         {
-            MD_Expr *expr = BinOpExpr(MD_ExprKind_Subtract, AtomExpr("5"), AtomExpr("3"));
-            TestResult(MD_EvaluateExpr_I64(expr) == 2);
+            MD_C_Expr *expr = BinOpExpr(MD_C_ExprKind_Subtract, AtomExpr("5"), AtomExpr("3"));
+            TestResult(MD_C_EvaluateExpr_I64(expr) == 2);
         }
         
         // NOTE(rjf): 5 * 3
         {
-            MD_Expr *expr = BinOpExpr(MD_ExprKind_Multiply, AtomExpr("5"), AtomExpr("3"));
-            TestResult(MD_EvaluateExpr_I64(expr) == 15);
+            MD_C_Expr *expr = BinOpExpr(MD_C_ExprKind_Multiply, AtomExpr("5"), AtomExpr("3"));
+            TestResult(MD_C_EvaluateExpr_I64(expr) == 15);
         }
         
         // NOTE(rjf): 10 / 2
         {
-            MD_Expr *expr = BinOpExpr(MD_ExprKind_Divide, AtomExpr("10"), AtomExpr("2"));
-            TestResult(MD_EvaluateExpr_I64(expr) == 5);
+            MD_C_Expr *expr = BinOpExpr(MD_C_ExprKind_Divide, AtomExpr("10"), AtomExpr("2"));
+            TestResult(MD_C_EvaluateExpr_I64(expr) == 5);
         }
         
         // NOTE(rjf): (3 + 4) * (2 + 6)
         {
-            MD_Expr *left  = BinOpExpr(MD_ExprKind_Add, AtomExpr("3"), AtomExpr("4"));
-            MD_Expr *right = BinOpExpr(MD_ExprKind_Add, AtomExpr("2"), AtomExpr("6"));
-            MD_Expr *expr  = BinOpExpr(MD_ExprKind_Multiply, left, right);
-            TestResult(MD_EvaluateExpr_I64(expr) == 56);
+            MD_C_Expr *left  = BinOpExpr(MD_C_ExprKind_Add, AtomExpr("3"), AtomExpr("4"));
+            MD_C_Expr *right = BinOpExpr(MD_C_ExprKind_Add, AtomExpr("2"), AtomExpr("6"));
+            MD_C_Expr *expr  = BinOpExpr(MD_C_ExprKind_Multiply, left, right);
+            TestResult(MD_C_EvaluateExpr_I64(expr) == 56);
         }
     }
     
@@ -321,20 +322,20 @@ int main(void)
     {
         {
             MD_String8 string = MD_S8Lit("(1 + 2)");
-            MD_Expr *expr  = BinOpExpr(MD_ExprKind_Add, AtomExpr("1"), AtomExpr("2"));
+            MD_C_Expr *expr  = BinOpExpr(MD_C_ExprKind_Add, AtomExpr("1"), AtomExpr("2"));
             TestResult(MatchParsedWithExpr(string, expr));
         }
         {
             MD_String8 string = MD_S8Lit("((3 + 4) * (2 + 6))");
-            MD_Expr *left  = BinOpExpr(MD_ExprKind_Add, AtomExpr("3"), AtomExpr("4"));
-            MD_Expr *right = BinOpExpr(MD_ExprKind_Add, AtomExpr("2"), AtomExpr("6"));
-            MD_Expr *expr  = BinOpExpr(MD_ExprKind_Multiply, left, right);
+            MD_C_Expr *left  = BinOpExpr(MD_C_ExprKind_Add, AtomExpr("3"), AtomExpr("4"));
+            MD_C_Expr *right = BinOpExpr(MD_C_ExprKind_Add, AtomExpr("2"), AtomExpr("6"));
+            MD_C_Expr *expr  = BinOpExpr(MD_C_ExprKind_Multiply, left, right);
             TestResult(MatchParsedWithExpr(string, expr));
         }
         {
             MD_String8 string = MD_S8Lit("(1*2+3)");
-            MD_Expr *left  = BinOpExpr(MD_ExprKind_Multiply, AtomExpr("1"), AtomExpr("2"));
-            MD_Expr *expr  = BinOpExpr(MD_ExprKind_Add, left, AtomExpr("3"));
+            MD_C_Expr *left  = BinOpExpr(MD_C_ExprKind_Multiply, AtomExpr("1"), AtomExpr("2"));
+            MD_C_Expr *expr  = BinOpExpr(MD_C_ExprKind_Add, left, AtomExpr("3"));
             TestResult(MatchParsedWithExpr(string, expr));
         }
     }
@@ -343,22 +344,22 @@ int main(void)
     {
         {
             MD_String8 string = MD_S8Lit("(i32)");
-            MD_Expr *expr = AtomExpr("i32");
+            MD_C_Expr *expr = AtomExpr("i32");
             TestResult(MatchParsedWithType(string, expr));
         }
         {
             MD_String8 string = MD_S8Lit("(*i32)");
-            MD_Expr *expr = TypeExpr(MD_ExprKind_Pointer, AtomExpr("i32"));
+            MD_C_Expr *expr = TypeExpr(MD_C_ExprKind_Pointer, AtomExpr("i32"));
             TestResult(MatchParsedWithType(string, expr));
         }
         {
             MD_String8 string = MD_S8Lit("(**i32)");
-            MD_Expr *expr = TypeExpr(MD_ExprKind_Pointer, TypeExpr(MD_ExprKind_Pointer, AtomExpr("i32")));
+            MD_C_Expr *expr = TypeExpr(MD_C_ExprKind_Pointer, TypeExpr(MD_C_ExprKind_Pointer, AtomExpr("i32")));
             TestResult(MatchParsedWithType(string, expr));
         }
         {
             MD_String8 string = MD_S8Lit("(*void)");
-            MD_Expr *expr = TypeExpr(MD_ExprKind_Pointer, AtomExpr("void"));
+            MD_C_Expr *expr = TypeExpr(MD_C_ExprKind_Pointer, AtomExpr("void"));
             TestResult(MatchParsedWithType(string, expr));
         }
     }
