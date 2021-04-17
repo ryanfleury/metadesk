@@ -101,15 +101,13 @@ MD_FUNCTION MD_b32        MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags fla
 MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags);
 
 //~ C Language Generation
-MD_FUNCTION void MD_OutputTree_C_String(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_OutputTree_C_Struct(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_OutputTree_C_Decl(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_Output_C_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type);
-MD_FUNCTION void MD_OutputExpr(FILE *file, MD_Expr *expr);
-MD_FUNCTION void MD_OutputExpr_C(FILE *file, MD_Expr *expr);
-MD_FUNCTION void MD_OutputType(FILE *file, MD_Expr *expr);
-MD_FUNCTION void MD_OutputType_C_LHS(FILE *file, MD_Expr *type);
-MD_FUNCTION void MD_OutputType_C_RHS(FILE *file, MD_Expr *type);
+MD_FUNCTION void MD_C_Generate_String(FILE *file, MD_Node *node);
+MD_FUNCTION void MD_C_Generate_Struct(FILE *file, MD_Node *node);
+MD_FUNCTION void MD_C_Generate_Decl(FILE *file, MD_Node *node);
+MD_FUNCTION void MD_C_Generate_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type);
+MD_FUNCTION void MD_C_Generate_Expr(FILE *file, MD_Expr *expr);
+MD_FUNCTION void MD_C_Generate_LHS(FILE *file, MD_Expr *type);
+MD_FUNCTION void MD_C_Generate_RHS(FILE *file, MD_Expr *type);
 
 #endif //MD_C_HELPERS_H
 

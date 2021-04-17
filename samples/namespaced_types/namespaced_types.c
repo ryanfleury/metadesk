@@ -137,7 +137,7 @@ static void OutputPrefixedType(FILE *f, MD_Map *user_defined_types, MD_String8 p
         I(); 
         OutputType_C_LHS_Namespace(f, user_defined_types, prefix, type);
         fprintf(f, " %.*s", MD_StringExpand(node->string));
-        MD_OutputType_C_RHS(f, type);
+        MD_C_Generate_RHS(f, type);
         
         fprintf(f, ";\n");
     }

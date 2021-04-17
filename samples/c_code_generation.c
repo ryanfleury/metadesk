@@ -29,7 +29,7 @@ int main(int argument_count, char **arguments)
     {
         if(MD_NodeHasTag(node, MD_S8Lit("struct")))
         {
-            MD_OutputTree_C_Struct(stdout, node);
+            MD_C_Generate_Struct(stdout, node);
         }
     }
     printf("\n\n");

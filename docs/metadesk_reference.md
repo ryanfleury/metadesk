@@ -1422,38 +1422,32 @@ main:
 //~ C Language Generation
 
 @send(Output)
-@func MD_OutputTree_C_String: {
+@func MD_C_Generate_String: {
     file: *FILE,
     node: *MD_Node,
 };
 
 @send(Output)
-@func MD_OutputTree_C_Struct: {
+@func MD_C_Generate_Struct: {
     file: *FILE,
     node: *MD_Node,
 };
 
 @send(Output)
-@func MD_OutputTree_C_Decl: {
+@func MD_C_Generate_Decl: {
     file: *FILE,
     node: *MD_Node,
 };
 
 @send(Output)
-@func MD_Output_C_DeclByNameAndType: {
+@func MD_C_Generate_DeclByNameAndType: {
     file: *FILE,
     name: MD_String8,
     type: *MD_Expr,
 };
 
 @send(Output)
-@func MD_OutputExpr: {
-    file: *FILE,
-    expr: *MD_Expr,
-};
-
-@send(Output)
-@func MD_OutputExpr_C: {
+@func MD_C_Generate_Expr: {
     file: *FILE,
     expr: *MD_Expr,
 };

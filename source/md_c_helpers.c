@@ -505,7 +505,7 @@ MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags)
 //~ C Language Generation
 
 MD_FUNCTION_IMPL void
-MD_OutputTree_C_String(FILE *file, MD_Node *node)
+MD_C_Generate_String(FILE *file, MD_Node *node)
 {
     fprintf(file, "\"");
     for(MD_u64 i = 0; i < node->string.size; i += 1)
@@ -528,7 +528,7 @@ MD_OutputTree_C_String(FILE *file, MD_Node *node)
 }
 
 MD_FUNCTION_IMPL void
-MD_OutputTree_C_Struct(FILE *file, MD_Node *node)
+MD_C_Generate_Struct(FILE *file, MD_Node *node)
 {
     if(node)
     {
@@ -538,7 +538,7 @@ MD_OutputTree_C_Struct(FILE *file, MD_Node *node)
         fprintf(file, "struct %.*s\n{\n", MD_StringExpand(node->string));
         for(MD_Node *child = node->first_child; !MD_NodeIsNil(child); child = child->next)
         {
-            MD_OutputTree_C_Decl(file, child);
+            MD_C_Generate_Decl(file, child);
             fprintf(file, ";\n");
         }
         fprintf(file, "};\n\n");
@@ -546,25 +546,25 @@ MD_OutputTree_C_Struct(FILE *file, MD_Node *node)
 }
 
 MD_FUNCTION_IMPL void
-MD_OutputTree_C_Decl(FILE *file, MD_Node *node)
+MD_C_Generate_Decl(FILE *file, MD_Node *node)
 {
     if(node)
     {
         MD_Expr *type = MD_ParseAsType(node->first_child, node->last_child);
-        MD_Output_C_DeclByNameAndType(file, node->string, type);
+        MD_C_Generate_DeclByNameAndType(file, node->string, type);
     }
 }
 
 MD_FUNCTION_IMPL void
-MD_Output_C_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type)
+MD_C_Generate_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type)
 {
-    MD_OutputType_C_LHS(file, type);
+    MD_C_Generate_LHS(file, type);
     fprintf(file, " %.*s", MD_StringExpand(name));
-    MD_OutputType_C_RHS(file, type);
+    MD_C_Generate_RHS(file, type);
 }
 
 MD_FUNCTION_IMPL void
-MD_OutputExpr(FILE *file, MD_Expr *expr)
+MD_C_Generate_Expr(FILE *file, MD_Expr *expr)
 {
     if(!MD_NodeIsNil(expr->node))
     {
@@ -579,9 +579,9 @@ MD_OutputExpr(FILE *file, MD_Expr *expr)
             case MD_ExprKindGroup_Binary:
             {
                 fprintf(file, "(");
-                MD_OutputExpr(file, expr->sub[0]);
+                MD_C_Generate_Expr(file, expr->sub[0]);
                 fprintf(file, " %s ", metadata->symbol);
-                MD_OutputExpr(file, expr->sub[1]);
+                MD_C_Generate_Expr(file, expr->sub[1]);
                 fprintf(file, ")");
             }break;
             
@@ -589,14 +589,14 @@ MD_OutputExpr(FILE *file, MD_Expr *expr)
             {
                 fprintf(file, "%s", metadata->pre_symbol);
                 fprintf(file, "(");
-                MD_OutputExpr(file, expr->sub[0]);
+                MD_C_Generate_Expr(file, expr->sub[0]);
                 fprintf(file, ")");
             }break;
             
             case MD_ExprKindGroup_PostUnary:
             {
                 fprintf(file, "(");
-                MD_OutputExpr(file, expr->sub[0]);
+                MD_C_Generate_Expr(file, expr->sub[0]);
                 fprintf(file, ")");
                 fprintf(file, "%s", metadata->post_symbol);
             }break;
@@ -604,12 +604,6 @@ MD_OutputExpr(FILE *file, MD_Expr *expr)
             default: break;
         }
     }
-}
-
-MD_FUNCTION_IMPL void
-MD_OutputExpr_C(FILE *file, MD_Expr *expr)
-{
-    MD_OutputExpr(file, expr);
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_b32
@@ -625,7 +619,7 @@ _MD_OutputType_C_NeedsParens(MD_Expr *type)
 }
 
 MD_FUNCTION_IMPL void
-MD_OutputType_C_LHS(FILE *file, MD_Expr *type)
+MD_C_Generate_LHS(FILE *file, MD_Expr *type)
 {
     switch (type->kind)
     {
@@ -637,7 +631,7 @@ MD_OutputType_C_LHS(FILE *file, MD_Expr *type)
         
         case MD_ExprKind_Pointer:
         {
-            MD_OutputType_C_LHS(file, type->sub[0]);
+            MD_C_Generate_LHS(file, type->sub[0]);
             if (_MD_OutputType_C_NeedsParens(type))
             {
                 fprintf(file, "(");
@@ -647,7 +641,7 @@ MD_OutputType_C_LHS(FILE *file, MD_Expr *type)
         
         case MD_ExprKind_Array:
         {
-            MD_OutputType_C_LHS(file, type->sub[0]);
+            MD_C_Generate_LHS(file, type->sub[0]);
             if (_MD_OutputType_C_NeedsParens(type))
             {
                 fprintf(file, "(");
@@ -667,7 +661,7 @@ MD_OutputType_C_LHS(FILE *file, MD_Expr *type)
 }
 
 MD_FUNCTION_IMPL void
-MD_OutputType_C_RHS(FILE *file, MD_Expr *type)
+MD_C_Generate_RHS(FILE *file, MD_Expr *type)
 {
     switch (type->kind)
     {
@@ -680,7 +674,7 @@ MD_OutputType_C_RHS(FILE *file, MD_Expr *type)
             {
                 fprintf(file, ")");
             }
-            MD_OutputType_C_RHS(file, type->sub[0]);
+            MD_C_Generate_RHS(file, type->sub[0]);
         }break;
         
         case MD_ExprKind_Array:
@@ -690,9 +684,9 @@ MD_OutputType_C_RHS(FILE *file, MD_Expr *type)
                 fprintf(file, ")");
             }
             fprintf(file, "[");
-            MD_OutputExpr_C(file, type->sub[1]);
+            MD_C_Generate_Expr(file, type->sub[1]);
             fprintf(file, "]");
-            MD_OutputType_C_RHS(file, type->sub[0]);
+            MD_C_Generate_RHS(file, type->sub[0]);
         }break;
         
         case MD_ExprKind_Volatile: { fprintf(file, "volatile "); }break;
