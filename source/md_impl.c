@@ -1603,17 +1603,6 @@ _MD_MakeNodeFromString_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_String8 string
     return _MD_MakeNode(kind, string, string, ctx->filename, ctx->file_contents.str, at);
 }
 
-typedef MD_u32 _MD_ParseSetFlags;
-enum
-{
-    _MD_ParseSetFlag_Paren    = (1<<0),
-    _MD_ParseSetFlag_Brace    = (1<<1),
-    _MD_ParseSetFlag_Bracket  = (1<<2),
-    _MD_ParseSetFlag_Implicit = (1<<3),
-};
-
-MD_PRIVATE_FUNCTION_IMPL MD_ParseResult _MD_ParseOneNode(MD_ParseCtx *ctx);
-MD_PRIVATE_FUNCTION_IMPL void _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags, MD_Node **first_out, MD_Node **last_out);
 MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
 
 MD_PRIVATE_FUNCTION_IMPL MD_NodeFlags
@@ -1649,8 +1638,8 @@ _MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_ParseResult
-_MD_ParseOneNode(MD_ParseCtx *ctx)
+MD_FUNCTION_IMPL MD_ParseResult
+MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
 {
     MD_u8 *at_first = ctx->at;
     
@@ -1720,12 +1709,10 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     {
         result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Label, MD_S8Lit(""), next_token.outer_string.str);
         
-        _MD_ParseSet(ctx, result.node,
-                     _MD_ParseSetFlag_Paren   |
-                     _MD_ParseSetFlag_Brace   |
-                     _MD_ParseSetFlag_Bracket,
-                     &result.node->first_child,
-                     &result.node->last_child);
+        MD_Parse_Set(ctx, result.node,
+                     MD_ParseSetFlag_Paren   |
+                     MD_ParseSetFlag_Brace   |
+                     MD_ParseSetFlag_Bracket);
         goto end_parse;
     }
     
@@ -1764,13 +1751,11 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
         // NOTE(rjf): Children
         if(MD_Parse_Require(ctx, MD_S8Lit(":"), MD_TokenKind_Symbol))
         {
-            _MD_ParseSet(ctx, result.node,
-                         _MD_ParseSetFlag_Paren   |
-                         _MD_ParseSetFlag_Brace   |
-                         _MD_ParseSetFlag_Bracket |
-                         _MD_ParseSetFlag_Implicit,
-                         &result.node->first_child,
-                         &result.node->last_child);
+            MD_Parse_Set(ctx, result.node,
+                         MD_ParseSetFlag_Paren   |
+                         MD_ParseSetFlag_Brace   |
+                         MD_ParseSetFlag_Bracket |
+                         MD_ParseSetFlag_Implicit);
             
             // NOTE(mal): Generate error for tags in positions such as "label:@tag {children}"
             MD_Node *fc = result.node->first_child;
@@ -1850,33 +1835,32 @@ _MD_ParseOneNode(MD_ParseCtx *ctx)
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
-             MD_Node **first_out, MD_Node **last_out)
+MD_FUNCTION_IMPL void
+MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
 {
-    MD_Node *first = MD_NilNode();
-    MD_Node *last = MD_NilNode();
-    
     MD_b32 brace = 0;
     MD_b32 paren = 0;
     MD_b32 bracket = 0;
-    MD_b32 terminate_with_separator = !!(flags & _MD_ParseSetFlag_Implicit);
+    MD_b32 terminate_with_separator = (!!(flags & MD_ParseSetFlag_Implicit));
     
     MD_Token initial_token = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
     
-    if(flags & _MD_ParseSetFlag_Brace && MD_Parse_Require(ctx, MD_S8Lit("{"), MD_TokenKind_Symbol))
+    if((flags & MD_ParseSetFlag_Brace) &&
+       MD_Parse_Require(ctx, MD_S8Lit("{"), MD_TokenKind_Symbol))
     {
         parent->flags |= MD_NodeFlag_BraceLeft;
         brace = 1;
         terminate_with_separator = 0;
     }
-    else if(flags & _MD_ParseSetFlag_Paren && MD_Parse_Require(ctx, MD_S8Lit("("), MD_TokenKind_Symbol))
+    else if((flags & MD_ParseSetFlag_Paren) &&
+            MD_Parse_Require(ctx, MD_S8Lit("("), MD_TokenKind_Symbol))
     {
         parent->flags |= MD_NodeFlag_ParenLeft;
         paren = 1;
         terminate_with_separator = 0;
     }
-    else if(flags & _MD_ParseSetFlag_Bracket && MD_Parse_Require(ctx, MD_S8Lit("["), MD_TokenKind_Symbol))
+    else if((flags & MD_ParseSetFlag_Bracket) &&
+            MD_Parse_Require(ctx, MD_S8Lit("["), MD_TokenKind_Symbol))
     {
         parent->flags |= MD_NodeFlag_BracketLeft;
         bracket = 1;
@@ -1900,12 +1884,14 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
             }
             else if(paren || bracket)
             {
-                if(flags & _MD_ParseSetFlag_Paren && MD_Parse_Require(ctx, MD_S8Lit(")"), MD_TokenKind_Symbol))
+                if((flags & MD_ParseSetFlag_Paren) &&
+                   MD_Parse_Require(ctx, MD_S8Lit(")"), MD_TokenKind_Symbol))
                 {
                     parent->flags |= MD_NodeFlag_ParenRight;
                     goto end_parse;
                 }
-                else if(flags & _MD_ParseSetFlag_Bracket && MD_Parse_Require(ctx, MD_S8Lit("]"), MD_TokenKind_Symbol))
+                else if((flags & MD_ParseSetFlag_Bracket) &&
+                        MD_Parse_Require(ctx, MD_S8Lit("]"), MD_TokenKind_Symbol))
                 {
                     parent->flags |= MD_NodeFlag_BracketRight;
                     goto end_parse;
@@ -1923,7 +1909,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
                 }
             }
             
-            MD_ParseResult parse = _MD_ParseOneNode(ctx);
+            MD_ParseResult parse = MD_ParseOneNodeFromCtx(ctx);
             MD_Node *child = parse.node;
             child->flags |= next_child_flags;
             next_child_flags = 0;
@@ -1941,7 +1927,7 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
             }
             else
             {
-                _MD_PushNodeToList(&first, &last, parent, child);
+                _MD_PushNodeToList(&parent->first_child, &parent->last_child, parent, child);
             }
             
             // NOTE(rjf): Separators.
@@ -1978,8 +1964,6 @@ _MD_ParseSet(MD_ParseCtx *ctx, MD_Node *parent, _MD_ParseSetFlags flags,
     }
     
     end_parse:;
-    *first_out = first;
-    *last_out = last;
 }
 
 MD_PRIVATE_FUNCTION_IMPL void
@@ -2003,7 +1987,7 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
                 MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
                 if(MD_StringMatch(token.string, MD_S8Lit("("), 0))
                 {
-                    _MD_ParseSet(ctx, tag, _MD_ParseSetFlag_Paren, &tag->first_child, &tag->last_child);
+                    MD_Parse_Set(ctx, tag, MD_ParseSetFlag_Paren);
                 }
                 _MD_PushNodeToList(&first, &last, MD_NilNode(), tag);
             }
@@ -2030,7 +2014,7 @@ MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseOneNode(MD_String8 filename, MD_String8 contents)
 {
     MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, contents);
-    return _MD_ParseOneNode(&ctx);
+    return MD_ParseOneNodeFromCtx(&ctx);
 }
 
 MD_PRIVATE_FUNCTION_IMPL void
@@ -2097,7 +2081,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                 }
             }
             
-            MD_ParseResult parse = _MD_ParseOneNode(&ctx);
+            MD_ParseResult parse = MD_ParseOneNodeFromCtx(&ctx);
             MD_Node *child = parse.node;
             child->flags |= next_child_flags;
             next_child_flags = 0;

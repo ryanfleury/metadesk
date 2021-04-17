@@ -306,6 +306,9 @@ typedef enum MD_NodeKind
     MD_NodeKind_File,
     MD_NodeKind_List,
     MD_NodeKind_Reference,
+    // TODO(allen): Proposal names for "Label"
+    //  String, Value, Content, Center, Trunk, Branch,
+    //  Cell, Entity, Node, Code
     MD_NodeKind_Label,
     MD_NodeKind_Tag,
     MD_NodeKind_ErrorMarker,
@@ -492,6 +495,15 @@ struct MD_Error
     MD_MessageKind kind;
 };
 
+typedef MD_u32 MD_ParseSetFlags;
+enum
+{
+    MD_ParseSetFlag_Paren    = (1<<0),
+    MD_ParseSetFlag_Brace    = (1<<1),
+    MD_ParseSetFlag_Bracket  = (1<<2),
+    MD_ParseSetFlag_Implicit = (1<<3),
+};
+
 typedef struct MD_ParseCtx MD_ParseCtx;
 struct MD_ParseCtx
 {
@@ -643,9 +655,15 @@ MD_FUNCTION MD_Token       MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroup
 MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_MatchFlags flags);
 MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string, MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token);
-MD_FUNCTION MD_ParseResult MD_ParseOneNode     (MD_String8 filename, MD_String8 contents);
-MD_FUNCTION MD_ParseResult MD_ParseWholeString (MD_String8 filename, MD_String8 contents);
-MD_FUNCTION MD_ParseResult MD_ParseWholeFile   (MD_String8 filename);
+
+MD_FUNCTION void           MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent,
+                                        MD_ParseSetFlags flags);
+
+MD_FUNCTION MD_ParseResult MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx);
+
+MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 filename, MD_String8 contents);
+MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
+MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_String8 filename);
 
 //~ Location Conversion
 MD_FUNCTION MD_CodeLoc MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u8 *off);
