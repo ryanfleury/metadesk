@@ -507,8 +507,6 @@ enum
 typedef struct MD_ParseCtx MD_ParseCtx;
 struct MD_ParseCtx
 {
-    MD_Node *first_root;
-    MD_Node *last_root;
     MD_Error *first_error;
     MD_Error *last_error;
     MD_u8 *at;

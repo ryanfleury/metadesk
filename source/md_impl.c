@@ -1139,7 +1139,6 @@ MD_FUNCTION_IMPL MD_ParseCtx
 MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents)
 {
     MD_ParseCtx ctx = MD_ZERO_STRUCT;
-    ctx.first_root = ctx.last_root = MD_NilNode();
     ctx.at = contents.str;
     ctx.file_contents = contents;
     ctx.filename = filename;

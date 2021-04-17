@@ -432,8 +432,6 @@ main:
 
 @send(Parsing)
 @struct MD_ParseCtx: {
-    first_root: *MD_Node,
-    last_root: *MD_Node,
     first_error: *MD_Error,
     last_error: *MD_Error,
     at: *MD_u8,
