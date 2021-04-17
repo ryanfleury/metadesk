@@ -1255,6 +1255,177 @@ main:
 };
 
 ////////////////////////////////
+//~ Generation
+
+@send(Output)
+@func MD_OutputTree: {
+    file: *FILE,
+    node: *MD_Node,
+};
+
+////////////////////////////////
+//~ Command Line Argument Helper
+
+@send(CommandLineHelper)
+@func MD_CommandLine_Start: {
+    argument_count: int,
+    arguments: **char,
+    return: MD_CommandLine,
+};
+
+@send(CommandLineHelper)
+@func MD_CommandLine_Flag: {
+    cmdln: *MD_CommandLine,
+    string: MD_String8,
+    return: MD_b32,
+};
+
+@send(CommandLineHelper)
+@func MD_CommandLine_FlagStrings: {
+    cmdln: *MD_CommandLine,
+    string: MD_String8,
+    out_count: int,
+    out: *MD_String8,
+    return: MD_b32,
+};
+
+@send(CommandLineHelper)
+@func MD_CommandLine_FlagIntegers: {
+    cmdln: *MD_CommandLine,
+    string: MD_String8,
+    out_count: int,
+    out: *MD_i64,
+    return: MD_b32,
+};
+
+@send(CommandLineHelper)
+@func MD_CommandLine_FlagString: {
+    cmdln: *MD_CommandLine,
+    string: MD_String8,
+    out: *MD_String8,
+    return: MD_b32,
+};
+
+@send(CommandLineHelper)
+@func MD_CommandLine_FlagInteger: {
+    cmdln: *MD_CommandLine,
+    string: MD_String8,
+    out: *MD_i64,
+    return: MD_b32,
+};
+
+@send(CommandLineHelper)
+@func MD_CommandLine_Increment: {
+    cmdln: *MD_CommandLine,
+    string_ptr: **MD_String8,
+    return: MD_b32,
+};
+
+////////////////////////////////
+//~ File System
+
+@send(FileSystemHelper)
+@func MD_LoadEntireFile: {
+    filename: MD_String8,
+    return: MD_String8,
+};
+
+@send(FileSystemHelper)
+@func MD_FileIterIncrement: {
+    it: *MD_FileIter,
+    path: MD_String8,
+    out_info: *MD_FileInfo,
+    return: MD_b32,
+};
+
+////////////////////////////////
+//~ C Helper
+////////////////////////////////
+
+
+////////////////////////////////
+//~ Expression and Type-Expression parser helper types.
+
+// VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
+// it is kept in-sync with the MD_ExprPrecFromExprKind function.
+
+@send(ExpressionParsingHelper)
+@enum MD_C_ExprKind: {
+    Nil,
+    
+    // NOTE(rjf): Atom
+    Atom,
+    
+    // NOTE(rjf): Access
+    Dot,
+    Arrow,
+    Call,
+    Subscript,
+    Dereference,
+    Reference,
+    
+    // NOTE(rjf): Arithmetic
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Mod,
+    
+    // NOTE(rjf): Comparison
+    IsEqual,
+    IsNotEqual,
+    LessThan,
+    GreaterThan,
+    LessThanEqualTo,
+    GreaterThanEqualTo,
+    
+    // NOTE(rjf): Bools
+    BoolAnd,
+    BoolOr,
+    BoolNot,
+    
+    // NOTE(rjf): Bitwise
+    BitAnd,
+    BitOr,
+    BitNot,
+    BitXor,
+    LeftShift,
+    RightShift,
+    
+    // NOTE(rjf): Unary numeric
+    Negative,
+    
+    // NOTE(rjf): Type
+    Pointer,
+    Array,
+    Volatile,
+    Const,
+    
+    MAX,
+};
+
+@send(ExpressionParsingHelper)
+@enum MD_C_ExprKindGroup: {
+    Nil,
+    Atom,
+    Binary,
+    PreUnary,
+    PostUnary,
+    Type,
+};
+
+@send(ExpressionParsingHelper)
+@typedef(MD_i32) MD_C_ExprPrec;
+
+@send(ExpressionParsingHelper)
+@struct MD_C_Expr: {
+    node: *MD_Node,
+    kind: MD_ExprKind,
+    parent: *MD_C_Expr,
+    sub: ([2]*MD_C_Expr),
+};
+
+////////////////////////////////
 //~ Expression and Type-Expression Helper
 
 @send(ExpressionParsingHelper)
@@ -1338,15 +1509,6 @@ main:
 };
 
 ////////////////////////////////
-//~ Generation
-
-@send(Output)
-@func MD_OutputTree: {
-    file: *FILE,
-    node: *MD_Node,
-};
-
-////////////////////////////////
 //~ C Language Generation
 
 @send(Output)
@@ -1390,162 +1552,4 @@ main:
 @func MD_C_Generate_TypeRHS: {
     file: *FILE,
     type: *MD_C_Expr,
-};
-
-////////////////////////////////
-//~ Command Line Argument Helper
-
-@send(CommandLineHelper)
-@func MD_CommandLine_Start: {
-    argument_count: int,
-    arguments: **char,
-    return: MD_CommandLine,
-};
-
-@send(CommandLineHelper)
-@func MD_CommandLine_Flag: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    return: MD_b32,
-};
-
-@send(CommandLineHelper)
-@func MD_CommandLine_FlagStrings: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    out_count: int,
-    out: *MD_String8,
-    return: MD_b32,
-};
-
-@send(CommandLineHelper)
-@func MD_CommandLine_FlagIntegers: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    out_count: int,
-    out: *MD_i64,
-    return: MD_b32,
-};
-
-@send(CommandLineHelper)
-@func MD_CommandLine_FlagString: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    out: *MD_String8,
-    return: MD_b32,
-};
-
-@send(CommandLineHelper)
-@func MD_CommandLine_FlagInteger: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    out: *MD_i64,
-    return: MD_b32,
-};
-
-@send(CommandLineHelper)
-@func MD_CommandLine_Increment: {
-    cmdln: *MD_CommandLine,
-    string_ptr: **MD_String8,
-    return: MD_b32,
-};
-
-////////////////////////////////
-//~ File System
-
-@send(FileSystemHelper)
-@func MD_LoadEntireFile: {
-    filename: MD_String8,
-    return: MD_String8,
-};
-
-@send(FileSystemHelper)
-@func MD_FileIterIncrement: {
-    it: *MD_FileIter,
-    path: MD_String8,
-    out_info: *MD_FileInfo,
-    return: MD_b32,
-};
-
-////////////////////////////////
-//~ Expression and Type-Expression parser helper types.
-
-// VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
-// it is kept in-sync with the MD_ExprPrecFromExprKind function.
-
-@send(ExpressionParsingHelper)
-@enum MD_C_ExprKind: {
-    Nil,
-    
-    // NOTE(rjf): Atom
-    Atom,
-    
-    // NOTE(rjf): Access
-    Dot,
-    Arrow,
-    Call,
-    Subscript,
-    Dereference,
-    Reference,
-    
-    // NOTE(rjf): Arithmetic
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Mod,
-    
-    // NOTE(rjf): Comparison
-    IsEqual,
-    IsNotEqual,
-    LessThan,
-    GreaterThan,
-    LessThanEqualTo,
-    GreaterThanEqualTo,
-    
-    // NOTE(rjf): Bools
-    BoolAnd,
-    BoolOr,
-    BoolNot,
-    
-    // NOTE(rjf): Bitwise
-    BitAnd,
-    BitOr,
-    BitNot,
-    BitXor,
-    LeftShift,
-    RightShift,
-    
-    // NOTE(rjf): Unary numeric
-    Negative,
-    
-    // NOTE(rjf): Type
-    Pointer,
-    Array,
-    Volatile,
-    Const,
-    
-    MAX,
-};
-
-
-@send(ExpressionParsingHelper)
-@enum MD_C_ExprKindGroup: {
-    Nil,
-    Atom,
-    Binary,
-    PreUnary,
-    PostUnary,
-    Type,
-};
-
-@send(ExpressionParsingHelper)
-@typedef(MD_i32) MD_C_ExprPrec;
-
-@send(ExpressionParsingHelper)
-@struct MD_C_Expr: {
-    node: *MD_Node,
-    kind: MD_ExprKind,
-    parent: *MD_C_Expr,
-    sub: ([2]*MD_C_Expr),
 };
