@@ -1,5 +1,13 @@
 //~ Expression and Type-Expression Helper
 
+MD_GLOBAL MD_Expr _md_nil_expr =
+{
+    &_md_nil_node,
+    MD_ExprKind_Nil,
+    &_md_nil_expr,
+    {&_md_nil_expr, &_md_nil_expr },
+};
+
 MD_FUNCTION_IMPL MD_Expr *
 MD_NilExpr(void)
 {
@@ -12,21 +20,10 @@ MD_ExprIsNil(MD_Expr *expr)
     return expr == 0 || expr == &_md_nil_expr || expr->kind == MD_ExprKind_Nil;
 }
 
-typedef enum _MD_ExprKindGroup
-{
-    _MD_ExprKindGroup_Nil,
-    _MD_ExprKindGroup_Atom,
-    _MD_ExprKindGroup_Binary,
-    _MD_ExprKindGroup_PreUnary,
-    _MD_ExprKindGroup_PostUnary,
-    _MD_ExprKindGroup_Type,
-}
-_MD_ExprKindGroup;
-
 typedef struct _MD_ExprKindMetadata _MD_ExprKindMetadata;
 struct _MD_ExprKindMetadata
 {
-    _MD_ExprKindGroup group;
+    MD_ExprKindGroup group;
     MD_ExprPrec prec;
     char *symbol;
     char *pre_symbol;
@@ -51,39 +48,59 @@ _MD_MetadataFromExprKind(MD_ExprKind kind)
     // 1:  ||
     static _MD_ExprKindMetadata metadata[] =
     {
-        {_MD_ExprKindGroup_Nil,       +0, "NIL",   "",  "" },  // MD_ExprKind_Nil
-        {_MD_ExprKindGroup_Atom,      +0, "NIL",   "",  "" },  // MD_ExprKind_Atom
-        {_MD_ExprKindGroup_Binary,    +11, ".",     "",  "" },  // MD_ExprKind_Dot
-        {_MD_ExprKindGroup_Binary,    +11, "->",    "",  "" },  // MD_ExprKind_Arrow
-        {_MD_ExprKindGroup_PostUnary, +11, "",      "(", ")"},  // MD_ExprKind_Call
-        {_MD_ExprKindGroup_PostUnary, +11, "",      "[", "]"},  // MD_ExprKind_Subscript
-        {_MD_ExprKindGroup_PreUnary,  +12, "",      "*", "" },  // MD_ExprKind_Dereference
-        {_MD_ExprKindGroup_PreUnary,  +12, "",      "&", "" },  // MD_ExprKind_Reference
-        {_MD_ExprKindGroup_Binary,    +9,  "+",     "",  "" },  // MD_ExprKind_Add
-        {_MD_ExprKindGroup_Binary,    +9,  "-",     "",  "" },  // MD_ExprKind_Subtract
-        {_MD_ExprKindGroup_Binary,    +10, "*",     "",  "" },  // MD_ExprKind_Multiply
-        {_MD_ExprKindGroup_Binary,    +10, "/",     "",  "" },  // MD_ExprKind_Divide
-        {_MD_ExprKindGroup_Binary,    +10, "%",     "",  "" },  // MD_ExprKind_Mod
-        {_MD_ExprKindGroup_Binary,    +6,  "==",    "",  "" },  // MD_ExprKind_IsEqual
-        {_MD_ExprKindGroup_Binary,    +6,  "!=",    "",  "" },  // MD_ExprKind_IsNotEqual
-        {_MD_ExprKindGroup_Binary,    +7,  "<",     "",  "" },  // MD_ExprKind_LessThan
-        {_MD_ExprKindGroup_Binary,    +7,  ">",     "",  "" },  // MD_ExprKind_GreaterThan
-        {_MD_ExprKindGroup_Binary,    +7,  "<=",    "",  "" },  // MD_ExprKind_LessThanEqualTo
-        {_MD_ExprKindGroup_Binary,    +7,  ">=",    "",  "" },  // MD_ExprKind_GreaterThanEqualTo
-        {_MD_ExprKindGroup_Binary,    +2,  "&&",    "",  "" },  // MD_ExprKind_BoolAnd
-        {_MD_ExprKindGroup_Binary,    +1,  "||",    "",  "" },  // MD_ExprKind_BoolOr
-        {_MD_ExprKindGroup_PreUnary,  +12, "",      "!", "" },  // MD_ExprKind_BoolNot
-        {_MD_ExprKindGroup_Binary,    +5,  "&",     "",  "" },  // MD_ExprKind_BitAnd
-        {_MD_ExprKindGroup_Binary,    +3,  "|",     "",  "" },  // MD_ExprKind_BitOr
-        {_MD_ExprKindGroup_PreUnary,  +12, "",      "~", "" },  // MD_ExprKind_BitNot
-        {_MD_ExprKindGroup_Binary,    +4,  "^",     "",  "" },  // MD_ExprKind_BitXor
-        {_MD_ExprKindGroup_Binary,    +8,  "<<",    "",  "" },  // MD_ExprKind_LeftShift
-        {_MD_ExprKindGroup_Binary,    +8,  ">>",    "",  "" },  // MD_ExprKind_RightShift
-        {_MD_ExprKindGroup_PreUnary,  +12, "",      "-", "" },  // MD_ExprKind_Negative
-        {_MD_ExprKindGroup_Type,      +0,  "*",     "",  "" },  // MD_ExprKind_Pointer
-        {_MD_ExprKindGroup_Type,      +0,  "",      "[", "]"},  // MD_ExprKind_Array
+        {MD_ExprKindGroup_Nil,       +0, "NIL",   "",  "" },  // MD_ExprKind_Nil
+        {MD_ExprKindGroup_Atom,      +0, "NIL",   "",  "" },  // MD_ExprKind_Atom
+        {MD_ExprKindGroup_Binary,    +11, ".",     "",  "" },  // MD_ExprKind_Dot
+        {MD_ExprKindGroup_Binary,    +11, "->",    "",  "" },  // MD_ExprKind_Arrow
+        {MD_ExprKindGroup_PostUnary, +11, "",      "(", ")"},  // MD_ExprKind_Call
+        {MD_ExprKindGroup_PostUnary, +11, "",      "[", "]"},  // MD_ExprKind_Subscript
+        {MD_ExprKindGroup_PreUnary,  +12, "",      "*", "" },  // MD_ExprKind_Dereference
+        {MD_ExprKindGroup_PreUnary,  +12, "",      "&", "" },  // MD_ExprKind_Reference
+        {MD_ExprKindGroup_Binary,    +9,  "+",     "",  "" },  // MD_ExprKind_Add
+        {MD_ExprKindGroup_Binary,    +9,  "-",     "",  "" },  // MD_ExprKind_Subtract
+        {MD_ExprKindGroup_Binary,    +10, "*",     "",  "" },  // MD_ExprKind_Multiply
+        {MD_ExprKindGroup_Binary,    +10, "/",     "",  "" },  // MD_ExprKind_Divide
+        {MD_ExprKindGroup_Binary,    +10, "%",     "",  "" },  // MD_ExprKind_Mod
+        {MD_ExprKindGroup_Binary,    +6,  "==",    "",  "" },  // MD_ExprKind_IsEqual
+        {MD_ExprKindGroup_Binary,    +6,  "!=",    "",  "" },  // MD_ExprKind_IsNotEqual
+        {MD_ExprKindGroup_Binary,    +7,  "<",     "",  "" },  // MD_ExprKind_LessThan
+        {MD_ExprKindGroup_Binary,    +7,  ">",     "",  "" },  // MD_ExprKind_GreaterThan
+        {MD_ExprKindGroup_Binary,    +7,  "<=",    "",  "" },  // MD_ExprKind_LessThanEqualTo
+        {MD_ExprKindGroup_Binary,    +7,  ">=",    "",  "" },  // MD_ExprKind_GreaterThanEqualTo
+        {MD_ExprKindGroup_Binary,    +2,  "&&",    "",  "" },  // MD_ExprKind_BoolAnd
+        {MD_ExprKindGroup_Binary,    +1,  "||",    "",  "" },  // MD_ExprKind_BoolOr
+        {MD_ExprKindGroup_PreUnary,  +12, "",      "!", "" },  // MD_ExprKind_BoolNot
+        {MD_ExprKindGroup_Binary,    +5,  "&",     "",  "" },  // MD_ExprKind_BitAnd
+        {MD_ExprKindGroup_Binary,    +3,  "|",     "",  "" },  // MD_ExprKind_BitOr
+        {MD_ExprKindGroup_PreUnary,  +12, "",      "~", "" },  // MD_ExprKind_BitNot
+        {MD_ExprKindGroup_Binary,    +4,  "^",     "",  "" },  // MD_ExprKind_BitXor
+        {MD_ExprKindGroup_Binary,    +8,  "<<",    "",  "" },  // MD_ExprKind_LeftShift
+        {MD_ExprKindGroup_Binary,    +8,  ">>",    "",  "" },  // MD_ExprKind_RightShift
+        {MD_ExprKindGroup_PreUnary,  +12, "",      "-", "" },  // MD_ExprKind_Negative
+        {MD_ExprKindGroup_Type,      +0,  "*",     "",  "" },  // MD_ExprKind_Pointer
+        {MD_ExprKindGroup_Type,      +0,  "",      "[", "]"},  // MD_ExprKind_Array
     };
     return &metadata[kind];
+}
+
+MD_FUNCTION_IMPL MD_ExprKind
+MD_PostUnaryExprKindFromNode(MD_Node *node)
+{
+    MD_ExprKind kind = MD_ExprKind_Nil;
+    if(!MD_NodeIsNil(node->first_child))
+    {
+        if(node->flags & MD_NodeFlag_ParenLeft &&
+           node->flags & MD_NodeFlag_ParenRight)
+        {
+            kind = MD_ExprKind_Call;
+        }
+        else if(node->flags & MD_NodeFlag_BracketLeft &&
+                node->flags & MD_NodeFlag_BracketRight)
+        {
+            kind = MD_ExprKind_Subscript;
+        }
+    }
+    return kind;
 }
 
 MD_FUNCTION_IMPL MD_ExprKind
@@ -110,7 +127,7 @@ MD_PreUnaryExprKindFromNode(MD_Node *node)
             kind_it = (MD_ExprKind)((int)kind_it + 1))
         {
             _MD_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(kind_it);
-            if(metadata->group == _MD_ExprKindGroup_PreUnary)
+            if(metadata->group == MD_ExprKindGroup_PreUnary)
             {
                 if(MD_StringMatch(node->string, MD_S8CString(metadata->pre_symbol), 0))
                 {
@@ -133,7 +150,7 @@ MD_BinaryExprKindFromNode(MD_Node *node)
             kind_it = (MD_ExprKind)((int)kind_it + 1))
         {
             _MD_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(kind_it);
-            if(metadata->group == _MD_ExprKindGroup_Binary)
+            if(metadata->group == MD_ExprKindGroup_Binary)
             {
                 if(MD_StringMatch(node->string, MD_S8CString(metadata->symbol), 0))
                 {
@@ -554,12 +571,12 @@ MD_OutputExpr(FILE *file, MD_Expr *expr)
         _MD_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(expr->kind);
         switch(metadata->group)
         {
-            case _MD_ExprKindGroup_Atom:
+            case MD_ExprKindGroup_Atom:
             {
                 fprintf(file, "%.*s", MD_StringExpand(expr->node->string));
             }break;
             
-            case _MD_ExprKindGroup_Binary:
+            case MD_ExprKindGroup_Binary:
             {
                 fprintf(file, "(");
                 MD_OutputExpr(file, expr->sub[0]);
@@ -568,7 +585,7 @@ MD_OutputExpr(FILE *file, MD_Expr *expr)
                 fprintf(file, ")");
             }break;
             
-            case _MD_ExprKindGroup_PreUnary:
+            case MD_ExprKindGroup_PreUnary:
             {
                 fprintf(file, "%s", metadata->pre_symbol);
                 fprintf(file, "(");
@@ -576,7 +593,7 @@ MD_OutputExpr(FILE *file, MD_Expr *expr)
                 fprintf(file, ")");
             }break;
             
-            case _MD_ExprKindGroup_PostUnary:
+            case MD_ExprKindGroup_PostUnary:
             {
                 fprintf(file, "(");
                 MD_OutputExpr(file, expr->sub[0]);
@@ -686,3 +703,12 @@ MD_OutputType_C_RHS(FILE *file, MD_Expr *type)
     }
 }
 
+/*
+Copyright 2021 Dion Systems LLC
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/

@@ -18,6 +18,8 @@
 // [x] MD_StringMap_Next, for iterating matching slots in an MD_Map, that all
 //     share the same key (important in the case of hash collisions)
 // [x] Helper for making a reference for a node, e.g. MD_ReferenceFromNode
+// [ ] Organization decision for C generator helpers: splitting from md.h? file name? folder?
+
 
 // NOTE(allen): "Plugin" functionality
 //
@@ -510,78 +512,6 @@ struct MD_ParseResult
     MD_Error *first_error;
     MD_u64 bytes_parsed;
     MD_Node *namespaces;
-};
-
-//~ Expression and Type-Expression parser helper types.
-
-typedef enum MD_ExprKind
-{
-    // VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
-    // it is kept in-sync with the _MD_MetadataFromExprKind function.
-    
-    MD_ExprKind_Nil,
-    
-    // NOTE(rjf): Atom
-    MD_ExprKind_Atom,
-    
-    // NOTE(rjf): Access
-    MD_ExprKind_Dot,
-    MD_ExprKind_Arrow,
-    MD_ExprKind_Call,
-    MD_ExprKind_Subscript,
-    MD_ExprKind_Dereference,
-    MD_ExprKind_Reference,
-    
-    // NOTE(rjf): Arithmetic
-    MD_ExprKind_Add,
-    MD_ExprKind_Subtract,
-    MD_ExprKind_Multiply,
-    MD_ExprKind_Divide,
-    MD_ExprKind_Mod,
-    
-    // NOTE(rjf): Comparison
-    MD_ExprKind_IsEqual,
-    MD_ExprKind_IsNotEqual,
-    MD_ExprKind_LessThan,
-    MD_ExprKind_GreaterThan,
-    MD_ExprKind_LessThanEqualTo,
-    MD_ExprKind_GreaterThanEqualTo,
-    
-    // NOTE(rjf): Bools
-    MD_ExprKind_BoolAnd,
-    MD_ExprKind_BoolOr,
-    MD_ExprKind_BoolNot,
-    
-    // NOTE(rjf): Bitwise
-    MD_ExprKind_BitAnd,
-    MD_ExprKind_BitOr,
-    MD_ExprKind_BitNot,
-    MD_ExprKind_BitXor,
-    MD_ExprKind_LeftShift,
-    MD_ExprKind_RightShift,
-    
-    // NOTE(rjf): Unary numeric
-    MD_ExprKind_Negative,
-    
-    // NOTE(rjf): Type
-    MD_ExprKind_Pointer,
-    MD_ExprKind_Array,
-    MD_ExprKind_Volatile,
-    MD_ExprKind_Const,
-    
-    MD_ExprKind_MAX,
-}
-MD_ExprKind;
-
-typedef MD_i32 MD_ExprPrec;
-
-typedef struct MD_Expr MD_Expr;
-struct MD_Expr
-{
-    MD_Node *node;
-    MD_ExprKind kind;
-    MD_Expr *parent;
-    MD_Expr *sub[2];
 };
 
 //~ Command line parsing helper types.

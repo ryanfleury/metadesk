@@ -2465,34 +2465,6 @@ MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, ...)
     va_end(args);
 }
 
-MD_GLOBAL MD_Expr _md_nil_expr =
-{
-    &_md_nil_node,
-    MD_ExprKind_Nil,
-    &_md_nil_expr,
-    {&_md_nil_expr, &_md_nil_expr },
-};
-
-MD_FUNCTION_IMPL MD_ExprKind
-MD_PostUnaryExprKindFromNode(MD_Node *node)
-{
-    MD_ExprKind kind = MD_ExprKind_Nil;
-    if(!MD_NodeIsNil(node->first_child))
-    {
-        if(node->flags & MD_NodeFlag_ParenLeft &&
-           node->flags & MD_NodeFlag_ParenRight)
-        {
-            kind = MD_ExprKind_Call;
-        }
-        else if(node->flags & MD_NodeFlag_BracketLeft &&
-                node->flags & MD_NodeFlag_BracketRight)
-        {
-            kind = MD_ExprKind_Subscript;
-        }
-    }
-    return kind;
-}
-
 MD_FUNCTION_IMPL void
 MD_OutputTree(FILE *file, MD_Node *node)
 {
