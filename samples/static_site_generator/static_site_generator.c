@@ -74,7 +74,7 @@ int main(int argument_count, char **arguments)
                 MD_String8 path = MD_PushStringF("%.*s/%.*s",
                                                  MD_StringExpand(folder),
                                                  MD_StringExpand(file_info.filename));
-                MD_PushSibling(&first_root, &last_root, MD_NilNode(), MD_ParseWholeFile(path).node);
+                MD_PushSibling(&first_root, &last_root, MD_ParseWholeFile(path).node);
             }
         }
     }

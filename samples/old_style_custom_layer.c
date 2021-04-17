@@ -29,7 +29,7 @@ int main(int argument_count, char **arguments)
     for(int i = 1; i < argument_count; i += 1)
     {
         MD_Node *root = MD_ParseWholeFile(MD_S8CString(arguments[i])).node;
-        MD_PushSibling(&first, &last, MD_NilNode(), root);
+        MD_PushSibling(&first, &last, root);
     }
     
     // NOTE(rjf): Call "custom layer" back.

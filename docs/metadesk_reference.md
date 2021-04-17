@@ -1109,7 +1109,6 @@ main:
 @func MD_PushSibling: {
     first: **MD_Node,
     last: **MD_Node,
-    parent: *MD_Node,
     new_sibling: *MD_Node,
 };
 

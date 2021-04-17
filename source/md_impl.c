@@ -1146,31 +1146,6 @@ MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents)
     return ctx;
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_PushNodeToList(MD_Node **firstp, MD_Node **lastp, MD_Node *parent, MD_Node *node)
-{
-    if(!MD_NodeIsNil(node))
-    {
-        MD_Node *first = *firstp;
-        MD_Node *last = *lastp;
-        if(MD_NodeIsNil(last))
-        {
-            first = last = node;
-            node->next = node->prev = MD_NilNode();
-        }
-        else
-        {
-            last->next = node;
-            node->next = MD_NilNode();
-            node->prev = last;
-            last = last->next;
-        }
-        *firstp = first;
-        *lastp = last;
-        node->parent = parent;
-    }
-}
-
 MD_FUNCTION_IMPL void
 MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token)
 {
@@ -1568,39 +1543,36 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
 #define _MD_TokenError(ctx, token, kind, fmt, ...) \
 _MD_Error(ctx, _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_ErrorMarker, token), kind, fmt, __VA_ARGS__)
 
-MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_String8 filename,
-             MD_u8 *file_contents, MD_u8 *at)
+MD_FUNCTION_IMPL MD_Node *
+MD_MakeNode(MD_NodeKind kind, MD_String8 string,
+            MD_String8 whole_string, MD_String8 filename,
+            MD_u8 *file_contents, MD_u8 *at)
 {
     MD_Node *node = _MD_PushArray(MD_Node, 1);
-    if(node)
-    {
-        node->kind = kind;
-        node->string = string;
-        node->whole_string = whole_string;
-        node->next = node->prev = node->parent = node->first_child = node->last_child = node->first_tag = node->last_tag = node->ref_target = MD_NilNode();
-        node->filename = filename;
-        node->file_contents = file_contents;
-        node->at = at;
-    }
-    else
-    {
-        node = MD_NilNode();
-    }
+    node->kind = kind;
+    node->string = string;
+    node->whole_string = whole_string;
+    node->next = node->prev = node->parent =
+        node->first_child = node->last_child =
+        node->first_tag = node->last_tag = node->ref_target = MD_NilNode();
+    node->filename = filename;
+    node->file_contents = file_contents;
+    node->at = at;
     return node;
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
 _MD_MakeNodeFromToken_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_Token token)
 {
-    return _MD_MakeNode(kind, token.string, token.outer_string, ctx->filename, ctx->file_contents.str,
-                        token.outer_string.str);
+    return MD_MakeNode(kind, token.string, token.outer_string, ctx->filename,
+                       ctx->file_contents.str,
+                       token.outer_string.str);
 }
 
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
 _MD_MakeNodeFromString_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_String8 string, MD_u8 *at)
 {
-    return _MD_MakeNode(kind, string, string, ctx->filename, ctx->file_contents.str, at);
+    return MD_MakeNode(kind, string, string, ctx->filename, ctx->file_contents.str, at);
 }
 
 MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
@@ -1927,7 +1899,8 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
             }
             else
             {
-                _MD_PushNodeToList(&parent->first_child, &parent->last_child, parent, child);
+                MD_PushSibling(&parent->first_child, &parent->last_child, child);
+                child->parent = parent;
             }
             
             // NOTE(rjf): Separators.
@@ -1989,7 +1962,7 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
                 {
                     MD_Parse_Set(ctx, tag, MD_ParseSetFlag_Paren);
                 }
-                _MD_PushNodeToList(&first, &last, MD_NilNode(), tag);
+                MD_PushSibling(&first, &last, tag);
             }
             else
             {
@@ -2017,16 +1990,17 @@ MD_ParseOneNode(MD_String8 filename, MD_String8 contents)
     return MD_ParseOneNodeFromCtx(&ctx);
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
+MD_FUNCTION_IMPL void
 MD_InsertToNamespace(MD_Node *ns, MD_Node *node)
 {
-    MD_Node *ref = _MD_MakeNode(MD_NodeKind_Reference, node->string, node->whole_string, node->filename,
-                                node->file_contents, node->at);
+    MD_Node *ref = MD_MakeNode(MD_NodeKind_Reference, node->string,
+                               node->whole_string, node->filename,
+                               node->file_contents, node->at);
     ref->ref_target = node;
     MD_PushChild(ns, ref);
 }
 
-MD_FUNCTION MD_ParseResult
+MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
 {
     MD_ParseResult result = MD_ZERO_STRUCT;
@@ -2091,7 +2065,8 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
             }
             else
             {
-                _MD_PushNodeToList(&root->first_child, &root->last_child, root, child);
+                MD_PushSibling(&root->first_child, &root->last_child, child);
+                child->parent = root;
                 MD_InsertToNamespace(selected_namespace, child);
             }
             
@@ -2171,13 +2146,13 @@ MD_NilNode(void) { return &_md_nil_node; }
 MD_FUNCTION_IMPL MD_Node *
 MD_MakeNodeFromToken(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_Token token)
 {
-    return _MD_MakeNode(kind, token.string, token.outer_string, filename, file, at);
+    return MD_MakeNode(kind, token.string, token.outer_string, filename, file, at);
 }
 
 MD_FUNCTION_IMPL MD_Node *
 MD_MakeNodeFromString(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_String8 string)
 {
-    return _MD_MakeNode(kind, string, string, filename, file, at);
+    return MD_MakeNode(kind, string, string, filename, file, at);
 }
 
 MD_FUNCTION_IMPL MD_Node *
@@ -2189,21 +2164,41 @@ MD_MakeNodeReference(MD_Node *target)
 }
 
 MD_FUNCTION_IMPL void
-MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *parent, MD_Node *new_sibling)
+MD_PushSibling(MD_Node **firstp, MD_Node **lastp, MD_Node *node)
 {
-    _MD_PushNodeToList(first, last, parent, new_sibling);
+    if(!MD_NodeIsNil(node))
+    {
+        MD_Node *first = *firstp;
+        MD_Node *last = *lastp;
+        if(MD_NodeIsNil(last))
+        {
+            first = last = node;
+            node->next = node->prev = MD_NilNode();
+        }
+        else
+        {
+            last->next = node;
+            node->next = MD_NilNode();
+            node->prev = last;
+            last = last->next;
+        }
+        *firstp = first;
+        *lastp = last;
+    }
 }
 
 MD_FUNCTION_IMPL void
 MD_PushChild(MD_Node *parent, MD_Node *new_child)
 {
-    _MD_PushNodeToList(&parent->first_child, &parent->last_child, parent, new_child);
+    MD_PushSibling(&parent->first_child, &parent->last_child, new_child);
+    new_child->parent = parent;
 }
 
 MD_FUNCTION_IMPL void
 MD_PushTag(MD_Node *node, MD_Node *tag)
 {
-    _MD_PushNodeToList(&node->first_tag, &node->last_tag, node, tag);
+    MD_PushSibling(&node->first_tag, &node->last_tag, tag);
+    tag->parent = node;
 }
 
 MD_FUNCTION_IMPL MD_b32

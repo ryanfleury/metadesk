@@ -672,10 +672,13 @@ MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 //~ Tree/List Building
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
+MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string,
+                                 MD_String8 whole_string, MD_String8 filename,
+                                 MD_u8 *file_contents, MD_u8 *at);
 MD_FUNCTION MD_Node *MD_MakeNodeFromToken(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_Token token);
 MD_FUNCTION MD_Node *MD_MakeNodeFromString(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_String8 string);
 MD_FUNCTION MD_Node *MD_MakeNodeReference(MD_Node *target);
-MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *parent, MD_Node *new_sibling);
+MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *new_sibling);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 MD_FUNCTION void     MD_InsertToNamespace(MD_Node *ns, MD_Node *node);
