@@ -54,25 +54,25 @@
 #  error architecture not supported yet
 # endif
 
-#if _MSC_VER >= 1920
-#define MD_COMPILER_CL_YEAR 2019
-#elif _MSC_VER >= 1910
-#define MD_COMPILER_CL_YEAR 2017
-#elif _MSC_VER >= 1900
-#define MD_COMPILER_CL_YEAR 2015
-#elif _MSC_VER >= 1800
-#define MD_COMPILER_CL_YEAR 2013
-#elif _MSC_VER >= 1700
-#define MD_COMPILER_CL_YEAR 2012
-#elif _MSC_VER >= 1600
-#define MD_COMPILER_CL_YEAR 2010
-#elif _MSC_VER >= 1500
-#define MD_COMPILER_CL_YEAR 2008
-#elif _MSC_VER >= 1400
-#define MD_COMPILER_CL_YEAR 2005
-#else
-#define MD_COMPILER_CL_YEAR 0
-#endif
+# if _MSC_VER >= 1920
+#  define MD_COMPILER_CL_YEAR 2019
+# elif _MSC_VER >= 1910
+#  define MD_COMPILER_CL_YEAR 2017
+# elif _MSC_VER >= 1900
+#  define MD_COMPILER_CL_YEAR 2015
+# elif _MSC_VER >= 1800
+#  define MD_COMPILER_CL_YEAR 2013
+# elif _MSC_VER >= 1700
+#  define MD_COMPILER_CL_YEAR 2012
+# elif _MSC_VER >= 1600
+#  define MD_COMPILER_CL_YEAR 2010
+# elif _MSC_VER >= 1500
+#  define MD_COMPILER_CL_YEAR 2008
+# elif _MSC_VER >= 1400
+#  define MD_COMPILER_CL_YEAR 2005
+# else
+#  define MD_COMPILER_CL_YEAR 0
+# endif
 
 #elif defined(__clang__)
 
@@ -142,46 +142,46 @@
 // zeroify
 
 #if !defined(MD_ARCH_32BIT)
-#define MD_ARCH_32BIT 0
+# define MD_ARCH_32BIT 0
 #endif
 #if !defined(MD_ARCH_64BIT)
-#define MD_ARCH_64BIT 0
+# define MD_ARCH_64BIT 0
 #endif
 #if !defined(MD_ARCH_X64)
-#define MD_ARCH_X64 0
+# define MD_ARCH_X64 0
 #endif
 #if !defined(MD_ARCH_X86)
-#define MD_ARCH_X86 0
+# define MD_ARCH_X86 0
 #endif
 #if !defined(MD_ARCH_ARM64)
-#define MD_ARCH_ARM64 0
+# define MD_ARCH_ARM64 0
 #endif
 #if !defined(MD_ARCH_ARM32)
-#define MD_ARCH_ARM32 0
+# define MD_ARCH_ARM32 0
 #endif
 #if !defined(MD_COMPILER_CL)
-#define MD_COMPILER_CL 0
+# define MD_COMPILER_CL 0
 #endif
 #if !defined(MD_COMPILER_GCC)
-#define MD_COMPILER_GCC 0
+# define MD_COMPILER_GCC 0
 #endif
 #if !defined(MD_COMPILER_CLANG)
-#define MD_COMPILER_CLANG 0
+# define MD_COMPILER_CLANG 0
 #endif
 #if !defined(MD_OS_WINDOWS)
-#define MD_OS_WINDOWS 0
+# define MD_OS_WINDOWS 0
 #endif
 #if !defined(MD_OS_LINUX)
-#define MD_OS_LINUX 0
+# define MD_OS_LINUX 0
 #endif
 #if !defined(MD_OS_MAC)
-#define MD_OS_MAC 0
+# define MD_OS_MAC 0
 #endif
 #if !defined(MD_LANG_C)
-#define MD_LANG_C 0
+# define MD_LANG_C 0
 #endif
 #if !defined(MD_LANG_CPP)
-#define MD_LANG_CPP 0
+# define MD_LANG_CPP 0
 #endif
 
 #define MD_FUNCTION
@@ -638,9 +638,9 @@ MD_FUNCTION MD_String8     MD_S8(MD_u8 *str, MD_u64 size);
 #define MD_S8CString(s)    MD_S8((MD_u8 *)(s), MD_CalculateCStringLength(s))
 
 #if MD_LANG_C
-#define MD_S8Lit(s)        (MD_String8){(MD_u8 *)(s), sizeof(s)-1}
+# define MD_S8Lit(s)        (MD_String8){(MD_u8 *)(s), sizeof(s)-1}
 #elif MD_LANG_CPP
-#define MD_S8Lit(s)        MD_S8((MD_u8*)(s), sizeof(s) - 1)
+# define MD_S8Lit(s)        MD_S8((MD_u8*)(s), sizeof(s) - 1)
 #endif
 
 MD_FUNCTION MD_String8     MD_S8Range(MD_u8 *str, MD_u8 *opl);
@@ -760,33 +760,8 @@ MD_FUNCTION void MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, 
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags node_flags);
 
-//~ Expression and Type-Expression Helper
-MD_FUNCTION MD_Expr *     MD_NilExpr(void);
-MD_FUNCTION MD_b32        MD_ExprIsNil(MD_Expr *expr);
-MD_FUNCTION MD_ExprKind   MD_PreUnaryExprKindFromNode(MD_Node *node);
-MD_FUNCTION MD_ExprKind   MD_BinaryExprKindFromNode(MD_Node *node);
-MD_FUNCTION MD_ExprPrec   MD_ExprPrecFromExprKind(MD_ExprKind kind);
-MD_FUNCTION MD_Expr *     MD_MakeExpr(MD_Node *node, MD_ExprKind kind, MD_Expr *left, MD_Expr *right);
-MD_FUNCTION MD_Expr *     MD_ParseAsExpr(MD_Node *first, MD_Node *last);
-MD_FUNCTION MD_Expr *     MD_ParseAsType(MD_Node *first, MD_Node *last);
-MD_FUNCTION MD_i64        MD_EvaluateExpr_I64(MD_Expr *expr);
-MD_FUNCTION MD_f64        MD_EvaluateExpr_F64(MD_Expr *expr);
-MD_FUNCTION MD_b32        MD_ExprMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags);
-MD_FUNCTION MD_b32        MD_ExprDeepMatch(MD_Expr *a, MD_Expr *b, MD_MatchFlags flags);
-
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
-
-//~ C Language Generation
-MD_FUNCTION void MD_OutputTree_C_String(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_OutputTree_C_Struct(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_OutputTree_C_Decl(FILE *file, MD_Node *node);
-MD_FUNCTION void MD_Output_C_DeclByNameAndType(FILE *file, MD_String8 name, MD_Expr *type);
-MD_FUNCTION void MD_OutputExpr(FILE *file, MD_Expr *expr);
-MD_FUNCTION void MD_OutputExpr_C(FILE *file, MD_Expr *expr);
-MD_FUNCTION void MD_OutputType(FILE *file, MD_Expr *expr);
-MD_FUNCTION void MD_OutputType_C_LHS(FILE *file, MD_Expr *type);
-MD_FUNCTION void MD_OutputType_C_RHS(FILE *file, MD_Expr *type);
 
 // TODO(allen): needs another pass
 //~ Command Line Argument Helper

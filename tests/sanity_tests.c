@@ -1,5 +1,8 @@
 #include "md.h"
+#include "md_c_helpers.h"
+
 #include "md.c"
+#include "md_c_helpers.c"
 
 static struct
 {

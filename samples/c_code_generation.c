@@ -2,7 +2,10 @@
 // and generates valid C code from it.
 
 #include "md.h"
+#include "md_c_helpers.h"
+
 #include "md.c"
+#include "md_c_helpers.c"
 
 int main(int argument_count, char **arguments)
 {
