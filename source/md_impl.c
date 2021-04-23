@@ -2482,132 +2482,167 @@ MD_OutputTree(FILE *file, MD_Node *node)
     }
 }
 
-MD_FUNCTION_IMPL MD_CommandLine
-MD_CommandLine_Start(int argument_count, char **arguments)
+MD_FUNCTION MD_String8List
+MD_StringListFromArgCV(int argument_count, char **arguments)
+{
+    MD_String8List options = MD_ZERO_STRUCT;
+    for(int i = 0; i < argument_count; i += 1)
+    {
+        MD_PushStringToList(&options, MD_S8CString(arguments[i]));
+    }
+    return options;
+}
+
+MD_FUNCTION MD_CommandLine
+MD_CommandLineFromOptions(MD_String8List options)
 {
     MD_CommandLine cmdln = MD_ZERO_STRUCT;
-    cmdln.arguments = _MD_PushArray(MD_String8, argument_count-1);
-    for(int i = 1; i < argument_count; i += 1)
+    cmdln.arguments = options;
+    
+    for(MD_String8Node *n = options.first, *next = 0;
+        n; n = next)
     {
-        cmdln.arguments[i-1] = MD_PushStringF("%s", arguments[i]);
+        next = n->next;
+        
+        //- rjf: figure out whether or not this is an option by checking for `-` or `--`
+        // from the beginning of the string
+        MD_String8 option_name = MD_ZERO_STRUCT;
+        if(MD_StringMatch(MD_StringPrefix(n->string, 2), MD_S8Lit("--"), 0))
+        {
+            option_name = MD_StringSkip(n->string, 2);
+        }
+        else if(MD_StringMatch(MD_StringPrefix(n->string, 1), MD_S8Lit("-"), 0))
+        {
+            option_name = MD_StringSkip(n->string, 1);
+        }
+        //- rjf: trim off anything after a `:` or `=`, use that as the first value string
+        MD_String8 first_value = MD_ZERO_STRUCT;
+        MD_b32 has_many_values = 0;
+        if(option_name.size != 0)
+        {
+            MD_u64 colon_signifier_pos = MD_FindSubstring(option_name, MD_S8Lit(":"), 0, 0);
+            MD_u64 equal_signifier_pos = MD_FindSubstring(option_name, MD_S8Lit("="), 0, 0);
+            MD_u64 signifier_pos = colon_signifier_pos > equal_signifier_pos ? equal_signifier_pos : colon_signifier_pos;
+            if(signifier_pos < option_name.size)
+            {
+                first_value = MD_StringSkip(option_name, signifier_pos+1);
+                option_name = MD_StringPrefix(option_name, signifier_pos);
+                if(MD_StringMatch(MD_StringSuffix(first_value, 1), MD_S8Lit(","), 0))
+                {
+                    has_many_values = 1;
+                }
+            }
+        }
+        
+        //- rjf: gather arguments
+        if(option_name.size != 0)
+        {
+            MD_String8List option_values = MD_ZERO_STRUCT;
+            
+            //- rjf: push first value
+            if(first_value.size != 0)
+            {
+                MD_PushStringToList(&option_values, first_value);
+            }
+            
+            //- rjf: scan next string values, add them to option values until we hit a lack
+            // of a ',' between values
+            if(has_many_values)
+            {
+                for(MD_String8Node *v = next; v; v = v->next, next = v)
+                {
+                    MD_String8 value_str = v->string;
+                    MD_b32 next_has_arguments = MD_StringMatch(MD_StringSuffix(value_str, 1), MD_S8Lit(","), 0);
+                    MD_b32 in_quotes = 0;
+                    MD_u64 start = 0;
+                    for(MD_u64 i = 0; i <= value_str.size; i += 1)
+                    {
+                        if(i == value_str.size || (value_str.str[i] == ',' && in_quotes == 0))
+                        {
+                            if(start != i)
+                            {
+                                MD_PushStringToList(&option_values, MD_StringSubstring(value_str, start, i));
+                            }
+                            start = i+1;
+                        }
+                        else if(value_str.str[i] == '"')
+                        {
+                            in_quotes = !in_quotes;
+                        }
+                    }
+                    if(next_has_arguments == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            
+            //- rjf: insert the fully parsed option
+            {
+                MD_CommandLineOption *opt = _MD_PushArray(MD_CommandLineOption, 1);
+                _MD_MemoryZero(opt, sizeof(*opt));
+                opt->name = option_name;
+                opt->values = option_values;
+                if(cmdln.last_option == 0)
+                {
+                    cmdln.first_option = cmdln.last_option = opt;
+                }
+                else
+                {
+                    cmdln.last_option->next = opt;
+                    cmdln.last_option = cmdln.last_option->next;
+                }
+            }
+        }
+        
+        //- rjf: this argument is not an option, push it to regular inputs list.
+        else
+        {
+            MD_PushStringToList(&cmdln.inputs, n->string);
+        }
     }
-    cmdln.argument_count = argument_count-1;
+    
     return cmdln;
 }
 
-MD_FUNCTION_IMPL MD_b32
-MD_CommandLine_Flag(MD_CommandLine *cmdln, MD_String8 string)
+MD_FUNCTION MD_String8List
+MD_CommandLineOptionValues(MD_CommandLine cmdln, MD_String8 name)
+{
+    MD_String8List values = MD_ZERO_STRUCT;
+    for(MD_CommandLineOption *opt = cmdln.first_option; opt; opt = opt->next)
+    {
+        if(MD_StringMatch(opt->name, name, 0))
+        {
+            values = opt->values;
+            break;
+        }
+    }
+    return values;
+}
+
+MD_FUNCTION MD_b32
+MD_CommandLineOptionPassed(MD_CommandLine cmdln, MD_String8 name)
 {
     MD_b32 result = 0;
-    for(int i = 0; i < cmdln->argument_count; i += 1)
+    for(MD_CommandLineOption *opt = cmdln.first_option; opt; opt = opt->next)
     {
-        if(MD_StringMatch(string, cmdln->arguments[i], 0))
+        if(MD_StringMatch(opt->name, name, 0))
         {
             result = 1;
-            cmdln->arguments[i].str = 0;
-            cmdln->arguments[i].size = 0;
             break;
         }
     }
     return result;
 }
 
-MD_FUNCTION_IMPL MD_b32
-MD_CommandLine_FlagStrings(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_String8 *out)
+MD_FUNCTION MD_i64
+MD_CommandLineOptionI64(MD_CommandLine cmdln, MD_String8 name)
 {
-    MD_b32 result = 0;
-    for(int i = 0; i < cmdln->argument_count; i += 1)
-    {
-        if(MD_StringMatch(string, cmdln->arguments[i], 0))
-        {
-            cmdln->arguments[i].str = 0;
-            cmdln->arguments[i].size = 0;
-            if(cmdln->argument_count > i + out_count)
-            {
-                for(int out_idx = 0; out_idx < out_count; out_idx += 1)
-                {
-                    out[out_idx] = cmdln->arguments[i+out_idx+1];
-                    cmdln->arguments[i+out_idx+1].str = 0;
-                    cmdln->arguments[i+out_idx+1].size = 0;
-                }
-                result = 1;
-                break;
-            }
-        }
-    }
-    return result;
-}
-
-MD_FUNCTION_IMPL MD_b32
-MD_CommandLine_FlagIntegers(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_i64 *out)
-{
-    MD_b32 result = 0;
-    for(int i = 0; i < cmdln->argument_count; i += 1)
-    {
-        if(MD_StringMatch(string, cmdln->arguments[i], 0))
-        {
-            cmdln->arguments[i].str = 0;
-            cmdln->arguments[i].size = 0;
-            if(cmdln->argument_count > i + out_count)
-            {
-                for(int out_idx = 0; out_idx < out_count; out_idx += 1)
-                {
-                    out[out_idx] = MD_I64FromString(cmdln->arguments[i+out_idx+1], 10);
-                    cmdln->arguments[i+out_idx+1].str = 0;
-                    cmdln->arguments[i+out_idx+1].size = 0;
-                }
-                result = 1;
-                break;
-            }
-        }
-    }
-    return result;
-}
-
-MD_FUNCTION_IMPL MD_b32
-MD_CommandLine_FlagString(MD_CommandLine *cmdln, MD_String8 string, MD_String8 *out)
-{
-    return MD_CommandLine_FlagStrings(cmdln, string, 1, out);
-}
-
-MD_FUNCTION_IMPL MD_b32
-MD_CommandLine_FlagInteger(MD_CommandLine *cmdln, MD_String8 string, MD_i64 *out)
-{
-    return MD_CommandLine_FlagIntegers(cmdln, string, 1, out);
-}
-
-MD_FUNCTION_IMPL MD_b32
-MD_CommandLine_Increment(MD_CommandLine *cmdln, MD_String8 **string_ptr)
-{
-    MD_b32 result = 0;
-    MD_String8 *string = *string_ptr;
-    if(string == 0)
-    {
-        for(int i = 0; i < cmdln->argument_count; i += 1)
-        {
-            if(cmdln->arguments[i].str)
-            {
-                string = &cmdln->arguments[i];
-                break;
-            }
-        }
-    }
-    else
-    {
-        int idx = (int)(string - cmdln->arguments);
-        string = 0;
-        for(int i = idx+1; i < cmdln->argument_count; i += 1)
-        {
-            if(cmdln->arguments[i].str)
-            {
-                string = &cmdln->arguments[i];
-                break;
-            }
-        }
-    }
-    *string_ptr = string;
-    result = !!string;
-    return result;
+    MD_i64 v = 0;
+    MD_String8List values = MD_CommandLineOptionValues(cmdln, name);
+    MD_String8 value_str = MD_JoinStringList(values, MD_S8Lit(""));
+    v = MD_I64FromString(value_str, 10);
+    return v;
 }
 
 MD_FUNCTION_IMPL MD_String8

@@ -525,12 +525,22 @@ struct MD_ParseResult
 };
 
 //~ Command line parsing helper types.
+
+typedef struct MD_CommandLineOption MD_CommandLineOption;
+struct MD_CommandLineOption
+{
+    MD_CommandLineOption *next;
+    MD_String8 name;
+    MD_String8List values;
+};
+
 typedef struct MD_CommandLine MD_CommandLine;
 struct MD_CommandLine
 {
-    // TODO(rjf): Linked-list vs. array?
-    MD_String8 *arguments;
-    int argument_count;
+    MD_String8List arguments;
+    MD_String8List inputs;
+    MD_CommandLineOption *first_option;
+    MD_CommandLineOption *last_option;
 };
 
 //~ File system access types.
@@ -712,15 +722,12 @@ MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags node_f
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
 
-// TODO(allen): needs another pass
 //~ Command Line Argument Helper
-MD_FUNCTION MD_CommandLine MD_CommandLine_Start(int argument_count, char **arguments);
-MD_FUNCTION MD_b32         MD_CommandLine_Flag(MD_CommandLine *cmdln, MD_String8 string);
-MD_FUNCTION MD_b32         MD_CommandLine_FlagStrings(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_String8 *out);
-MD_FUNCTION MD_b32         MD_CommandLine_FlagIntegers(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_i64 *out);
-MD_FUNCTION MD_b32         MD_CommandLine_FlagString(MD_CommandLine *cmdln, MD_String8 string, MD_String8 *out);
-MD_FUNCTION MD_b32         MD_CommandLine_FlagInteger(MD_CommandLine *cmdln, MD_String8 string, MD_i64 *out);
-MD_FUNCTION MD_b32         MD_CommandLine_Increment(MD_CommandLine *cmdln, MD_String8 **string_ptr);
+MD_FUNCTION MD_String8List MD_StringListFromArgCV(int argument_count, char **arguments);
+MD_FUNCTION MD_CommandLine MD_CommandLineFromOptions(MD_String8List options);
+MD_FUNCTION MD_String8List MD_CommandLineOptionValues(MD_CommandLine cmdln, MD_String8 name);
+MD_FUNCTION MD_b32 MD_CommandLineOptionPassed(MD_CommandLine cmdln, MD_String8 name);
+MD_FUNCTION MD_i64 MD_CommandLineOptionI64(MD_CommandLine cmdln, MD_String8 name);
 
 //~ File System
 MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_String8 filename);

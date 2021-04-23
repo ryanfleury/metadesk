@@ -34,7 +34,7 @@ pushd static_site_generator
 pushd example_site
 if not exist generated mkdir generated
 pushd generated
-..\..\..\..\build\static_site_generator.exe --siteinfo ..\site_info.md --pagedir ..\
+..\..\..\..\build\static_site_generator.exe --siteinfo:..\site_info.md --pagedir:..\
 popd
 popd
 popd
