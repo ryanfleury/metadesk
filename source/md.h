@@ -629,21 +629,26 @@ MD_FUNCTION MD_String16    MD_S16FromS8(MD_String8 str);
 MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 
-//~ String-To-Pointer Table
+//~ Map Table Data Structure
+
+MD_FUNCTION MD_u64 MD_HashPointer(void *p);
+
+//- String-To-Pointer Table
 MD_FUNCTION MD_MapSlot *      MD_StringMap_Lookup(MD_Map *table, MD_String8 string);
 MD_FUNCTION MD_b32            MD_StringMap_Insert(MD_Map *table, MD_MapCollisionRule collision_rule, MD_String8 string, void *value);
 MD_FUNCTION MD_MapSlot *      MD_StringMap_Next(MD_MapSlot *slot, MD_String8 key);
 
-//~ Pointer-To-Pointer Table
+//- Pointer-To-Pointer Table
 MD_FUNCTION MD_MapSlot       *MD_PtrMap_Lookup(MD_Map *map, void *key);
 MD_FUNCTION MD_b32            MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, void *value);
 
 //~ Parsing
+
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
-MD_FUNCTION MD_ParseCtx    MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents);
 
+MD_FUNCTION MD_ParseCtx    MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents);
 MD_FUNCTION void           MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token);
 MD_FUNCTION void           MD_Parse_BumpNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_LexNext(MD_ParseCtx *ctx);
