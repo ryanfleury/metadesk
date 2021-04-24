@@ -2356,6 +2356,14 @@ MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, int n)
     return MD_ChildFromIndex(tag, n);
 }
 
+MD_FUNCTION_IMPL MD_Node *
+MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_String8 arg_string)
+{
+    MD_Node *tag = MD_TagFromString(node, tag_string);
+    MD_Node *arg = MD_ChildFromString(tag, arg_string);
+    return arg;
+}
+
 MD_FUNCTION_IMPL MD_b32
 MD_NodeHasTag(MD_Node *node, MD_String8 tag_string)
 {
@@ -2412,12 +2420,28 @@ MD_TagCountFromNodeAndString(MD_Node *node, MD_String8 string, MD_MatchFlags fla
     return result;
 }
 
-MD_FUNCTION_IMPL MD_Node *  MD_Deref(MD_Node *node)
+MD_FUNCTION_IMPL MD_Node *
+MD_Deref(MD_Node *node)
 {
     MD_Node *result = node;
     while(result->kind == MD_NodeKind_Reference)
     {
         result = result->ref_target;
+    }
+    return result;
+}
+
+MD_FUNCTION MD_Node *
+MD_SeekNodeWithFlags(MD_Node *start, MD_NodeFlags one_past_last_flags)
+{
+    MD_Node *result = start;
+    for(MD_EachNode(it, start->next))
+    {
+        if(it->flags & one_past_last_flags)
+        {
+            break;
+        }
+        result = it;
     }
     return result;
 }

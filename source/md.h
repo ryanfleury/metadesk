@@ -18,8 +18,7 @@
 // [x] MD_StringMap_Next, for iterating matching slots in an MD_Map, that all
 //     share the same key (important in the case of hash collisions)
 // [x] Helper for making a reference for a node, e.g. MD_ReferenceFromNode
-// [ ] Organization decision for C generator helpers: splitting from md.h? file name? folder?
-
+// [x] Organization decision for C generator helpers: splitting from md.h? file name? folder?
 
 // NOTE(allen): "Plugin" functionality
 //
@@ -132,9 +131,6 @@
 # define MD_ARCH_32BIT 1
 #endif
 
-// NOTE(allen): Review @rjf; Building in C++
-// Added language cracking. Handy for a few pesky problems that can't be solved
-// strictly within the intersection of C & C++
 #if defined(__cplusplus)
 # define MD_LANG_CPP 1
 #else
@@ -195,12 +191,6 @@
 # define MD_ZERO_STRUCT {0}
 #endif
 
-// NOTE(allen): Review @rjf; Building in C++
-// In order to link to C functions from C++ code, we need to mark them as using
-// C linkage. In particular I mean FindFirstFileA, FindNextFileA right now.
-// We don't necessarily need to apply this to the DD functions if the user is
-// building from source, so I haven't done that.
-
 #if MD_LANG_C
 # define MD_C_LINKAGE_BEGIN
 # define MD_C_LINKAGE_END
@@ -213,8 +203,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-// NOTE(allen): Review @rjf; Building in C++
-// In C++ compiler I have to include this to get memset and memcpy to compile
 #include <string.h>
 
 typedef int8_t   MD_i8;
@@ -701,10 +689,13 @@ MD_FUNCTION MD_Node *  MD_TagFromString(MD_Node *node, MD_String8 tag_string);
 MD_FUNCTION MD_Node *  MD_ChildFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *  MD_TagFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *  MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, int n);
+MD_FUNCTION MD_Node *  MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_String8 arg_string);
 MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_Deref(MD_Node *node);
+MD_FUNCTION MD_Node *  MD_SeekNodeWithFlags(MD_Node *start, MD_NodeFlags one_past_last_flags);
+
 // NOTE(rjf): For-Loop Helpers
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
 #define MD_EachNodeRef(it, first) MD_Node *it##_r = (first), *it = MD_Deref(it##_r); \
