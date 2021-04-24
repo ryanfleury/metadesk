@@ -212,7 +212,13 @@ MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_NodeParse_ConsumeSet(_MD_NodeParseCtx *ctx, MD_Node **out)
 {
     MD_b32 result = 0;
-    if(!MD_NodeIsNil(ctx->at->first_child))
+    if(!MD_NodeIsNil(ctx->at->first_child) ||
+       ctx->at->flags & MD_NodeFlag_ParenLeft ||
+       ctx->at->flags & MD_NodeFlag_ParenRight ||
+       ctx->at->flags & MD_NodeFlag_BracketLeft ||
+       ctx->at->flags & MD_NodeFlag_BracketRight ||
+       ctx->at->flags & MD_NodeFlag_BraceLeft ||
+       ctx->at->flags & MD_NodeFlag_BraceRight)
     {
         if(out)
         {
@@ -311,6 +317,19 @@ _MD_ParseUnaryExpr(_MD_NodeParseCtx *ctx)
     else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("!"), &node))
     {
         result = MD_C_MakeExpr(node, MD_C_ExprKind_BoolNot, 0, _MD_ParseExpr(ctx));
+    }
+    
+    // NOTE(rjf): Post-Unary Sets (calls and subscripts)
+    if(_MD_NodeParse_ConsumeSet(ctx, &set))
+    {
+        if(set->flags & MD_NodeFlag_ParenLeft && set->flags & MD_NodeFlag_ParenRight)
+        {
+            result = MD_C_MakeExpr(set, MD_C_ExprKind_Call, result, 0);
+        }
+        else if(set->flags & MD_NodeFlag_BracketLeft && set->flags & MD_NodeFlag_BracketRight)
+        {
+            result = MD_C_MakeExpr(set, MD_C_ExprKind_Subscript, result, MD_C_ParseAsExpr(set->first_child, set->last_child));
+        }
     }
     
     return result;
@@ -456,7 +475,7 @@ MD_C_EvaluateExpr_F64(MD_C_Expr *expr)
     MD_f64 result = 0;
     switch(expr->kind)
     {
-#define _MD_BinaryOp(name, op) case MD_C_ExprKind_##name: { result = MD_C_EvaluateExpr_I64(expr->sub[0]) op MD_C_EvaluateExpr_F64(expr->sub[1]); }break
+#define _MD_BinaryOp(name, op) case MD_C_ExprKind_##name: { result = MD_C_EvaluateExpr_F64(expr->sub[0]) op MD_C_EvaluateExpr_F64(expr->sub[1]); }break
         _MD_BinaryOp(Add,      +);
         _MD_BinaryOp(Subtract, -);
         _MD_BinaryOp(Multiply, *);

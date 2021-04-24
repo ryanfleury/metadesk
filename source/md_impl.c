@@ -2510,7 +2510,7 @@ MD_FUNCTION MD_String8List
 MD_StringListFromArgCV(int argument_count, char **arguments)
 {
     MD_String8List options = MD_ZERO_STRUCT;
-    for(int i = 0; i < argument_count; i += 1)
+    for(int i = 1; i < argument_count; i += 1)
     {
         MD_PushStringToList(&options, MD_S8CString(arguments[i]));
     }
