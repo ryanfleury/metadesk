@@ -3,13 +3,6 @@
 #include "md.c"
 #include "md_c_helpers.c"
 
-typedef struct NodeSubList NodeSubList;
-struct NodeSubList
-{
-    MD_Node *first;
-    MD_Node *last;
-};
-
 typedef struct NamespaceNode NamespaceNode;
 struct NamespaceNode
 {
@@ -17,58 +10,94 @@ struct NamespaceNode
     MD_Map symbol_map;
 };
 
-static NodeSubList
-MakeNodeSubList(MD_Node *first, MD_Node *last)
+typedef enum ValueKind
 {
-    NodeSubList sublist = { first, last };
-    return sublist;
+    ValueKind_Null,
+    ValueKind_Number,
+    ValueKind_Procedure,
+}
+ValueKind;
+
+typedef struct Value Value;
+struct Value
+{
+    ValueKind kind;
+    MD_f64 number;
+    MD_Node *node;
+};
+
+static Value
+MakeValue_Number(MD_f64 v)
+{
+    Value value = {0};
+    value.kind = ValueKind_Number;
+    value.number = v;
+    return value;
+}
+
+static Value
+MakeValue_Procedure(MD_Node *node)
+{
+    Value value = {0};
+    value.kind = ValueKind_Procedure;
+    value.node = node;
+    return value;
 }
 
 static void
-InsertNodeSubListToNamespace(NamespaceNode *ns, MD_String8 string, NodeSubList sublist)
+InsertValueToNamespace(NamespaceNode *ns, MD_String8 string, Value v)
 {
-    NodeSubList *sublist_store = malloc(sizeof(*sublist_store));
-    *sublist_store = sublist;
-    MD_StringMap_Insert(&ns->symbol_map, MD_MapCollisionRule_Chain, string, sublist_store);
+    Value *v_store = malloc(sizeof(*v_store));
+    *v_store = v;
+    MD_StringMap_Insert(&ns->symbol_map, MD_MapCollisionRule_Overwrite, string, v_store);
 }
 
-static NodeSubList
-NodeSubListFromNamespaceAndString(NamespaceNode *ns, MD_String8 string)
+static Value
+ValueFromString(NamespaceNode *ns, MD_String8 string)
 {
-    NodeSubList sublist = {MD_NilNode(), MD_NilNode()};
+    Value v = {0};
     for(NamespaceNode *n = ns; n; n = n->parent)
     {
         MD_MapSlot *slot = MD_StringMap_Lookup(&n->symbol_map, string);
         if(slot && slot->value)
         {
-            sublist = *(NodeSubList *)slot->value;
+            v = *(Value *)slot->value;
             break;
         }
     }
-    return sublist;
+    return v;
 }
 
-static MD_f64 EvaluateScope(NamespaceNode *ns, MD_Node *code);
-static MD_f64 EvaluateExpr(NamespaceNode *ns, MD_C_Expr *expr);
+static Value EvaluateScope(NamespaceNode *ns, MD_Node *code);
+static Value EvaluateExpr(NamespaceNode *ns, MD_C_Expr *expr);
 
-static MD_f64
+static Value
 EvaluateExpr(NamespaceNode *ns, MD_C_Expr *expr)
 {
-    MD_f64 result = 0;
+    Value result = {0};
     switch(expr->kind)
     {
-#define BinaryOp(name, op) case MD_C_ExprKind_##name: { result = EvaluateExpr(ns, expr->sub[0]) op EvaluateExpr(ns, expr->sub[1]); }break
+        
+#define BinaryOp(name, op) \
+case MD_C_ExprKind_##name:\
+{\
+Value left = EvaluateExpr(ns, expr->sub[0]);\
+Value right = EvaluateExpr(ns, expr->sub[1]);\
+result = MakeValue_Number(left.number op right.number);\
+}break
+        
         BinaryOp(Add,      +);
         BinaryOp(Subtract, -);
         BinaryOp(Multiply, *);
         BinaryOp(Divide,   /);
+        
 #undef BinaryOp
         
         case MD_C_ExprKind_Call:
         {
             MD_Node *call = expr->node;
-            NodeSubList callee = NodeSubListFromNamespaceAndString(ns, expr->sub[0]->node->string);
-            if(!MD_NodeIsNil(callee.first) && !MD_NodeIsNil(callee.last))
+            Value callee = ValueFromString(ns, expr->sub[0]->node->string);
+            if(!MD_NodeIsNil(callee.node))
             {
                 //- rjf: find top-level namespace
                 NamespaceNode *top_level_ns = ns;
@@ -79,16 +108,17 @@ EvaluateExpr(NamespaceNode *ns, MD_C_Expr *expr)
                 
                 //- rjf: build namespace for function
                 NamespaceNode args_ns = {0};
-                MD_Node *param = callee.first->first_child;
+                MD_Node *param = callee.node->first_child;
                 for(MD_Node *arg_first = call->first_child; !MD_NodeIsNil(arg_first); param = param->next)
                 {
                     MD_Node *arg_last = MD_SeekNodeWithFlags(arg_first, MD_NodeFlag_AfterComma|MD_NodeFlag_AfterSemicolon);
-                    InsertNodeSubListToNamespace(&args_ns, param->string, MakeNodeSubList(arg_first, arg_last));
+                    MD_C_Expr *expr = MD_C_ParseAsExpr(arg_first, arg_last);
+                    InsertValueToNamespace(&args_ns, param->string, EvaluateExpr(ns, expr));
                     arg_first = arg_last->next;
                 }
                 
-                args_ns.parent = ns;
-                result = EvaluateScope(&args_ns, callee.first->next);
+                args_ns.parent = top_level_ns;
+                result = EvaluateScope(&args_ns, callee.node->next);
             }
         }break;
         
@@ -96,13 +126,11 @@ EvaluateExpr(NamespaceNode *ns, MD_C_Expr *expr)
         {
             if(expr->node->flags & MD_NodeFlag_Identifier)
             {
-                NodeSubList decl_value = NodeSubListFromNamespaceAndString(ns, expr->node->string);
-                MD_C_Expr *decl_expr = MD_C_ParseAsExpr(decl_value.first, decl_value.last);
-                result = EvaluateExpr(ns, decl_expr);
+                result = ValueFromString(ns, expr->node->string);
             }
             else if(expr->node->flags & MD_NodeFlag_Numeric)
             {
-                result = MD_F64FromString(expr->node->string);
+                result = MakeValue_Number(MD_F64FromString(expr->node->string));
             }
         }break;
         
@@ -111,10 +139,10 @@ EvaluateExpr(NamespaceNode *ns, MD_C_Expr *expr)
     return result;
 }
 
-static MD_f64
+static Value
 EvaluateScope(NamespaceNode *ns, MD_Node *code)
 {
-    MD_f64 result = 0;
+    Value result = {0};
     
     NamespaceNode local_namespace = {0};
     local_namespace.parent = ns;
@@ -126,8 +154,8 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
         //- rjf: declaration
         if(first == last && first->string.size != 0 && !MD_NodeIsNil(first->first_child))
         {
-            InsertNodeSubListToNamespace(&local_namespace, first->string,
-                                         MakeNodeSubList(first->first_child, first->last_child));
+            MD_C_Expr *expr = MD_C_ParseAsExpr(first->first_child, first->last_child);
+            InsertValueToNamespace(&local_namespace, first->string, EvaluateExpr(&local_namespace, expr));
         }
         //- rjf: expr
         else
@@ -166,18 +194,17 @@ int main(int argument_count, char **arguments)
     {
         for(MD_EachNode(top_level, file->first_child))
         {
-            if(top_level->string.size > 0)
+            if(MD_NodeHasTag(top_level, MD_S8Lit("proc")))
             {
-                InsertNodeSubListToNamespace(&global_ns_node, top_level->string,
-                                             MakeNodeSubList(top_level, top_level));
+                InsertValueToNamespace(&global_ns_node, top_level->string, MakeValue_Procedure(top_level));
             }
         }
     }
     
     //- rjf: find `main` procedure
-    NodeSubList main_proc = NodeSubListFromNamespaceAndString(&global_ns_node, MD_S8Lit("main"));
-    MD_Node *main_code = main_proc.first->next;
-    if(MD_NodeIsNil(main_proc.first))
+    Value main_proc = ValueFromString(&global_ns_node, MD_S8Lit("main"));
+    MD_Node *main_code = main_proc.node->next;
+    if(MD_NodeIsNil(main_proc.node))
     {
         fprintf(stderr, "no `main` procedure found");
         goto end;
@@ -191,8 +218,25 @@ int main(int argument_count, char **arguments)
     }
     
     //- rjf: start interpreting at `main`
-    MD_f64 result = EvaluateScope(&global_ns_node, main_code);
-    printf("result: %f\n", result);
+    Value result = EvaluateScope(&global_ns_node, main_code);
+    switch(result.kind)
+    {
+        default:
+        case ValueKind_Null:
+        {
+            printf("[null]\n");
+        }break;
+        
+        case ValueKind_Number:
+        {
+            printf("[number] %f\n", result.number);
+        }break;
+        
+        case ValueKind_Procedure:
+        {
+            printf("[proc] %.*s\n", MD_StringExpand(result.node->string));
+        }break;
+    }
     
     end:;
     return 0;

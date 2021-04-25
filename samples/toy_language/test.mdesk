@@ -1,8 +1,10 @@
-add: (x, y) { x + y }
 
-main:()
+@proc foo:(x, y, z)
 {
-  a: 1;
-  b: 2;
-  add(a, b);
+ (x + y) * z
+}
+
+@proc main:()
+{
+ foo(10, 20, 30);
 }
