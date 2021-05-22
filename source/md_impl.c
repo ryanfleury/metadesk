@@ -2,7 +2,7 @@
 
 #define MD_FUNCTION_IMPL MD_FUNCTION
 #define MD_PRIVATE_FUNCTION_IMPL MD_FUNCTION_IMPL
-#define _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN 20
+#define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
 //~
 
@@ -33,41 +33,32 @@ static MD_Node _md_nil_node =
     &_md_nil_node,         // ref_target
 };
 
+//~ Memory Operations
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_MemoryZero(void *memory, MD_u64 size)
+MD_MemoryZero(void *memory, MD_u64 size)
 {
     memset(memory, 0, size);
 }
 
 MD_PRIVATE_FUNCTION_IMPL void
-_MD_MemoryCopy(void *dest, void *src, MD_u64 size)
+MD_MemoryCopy(void *dest, void *src, MD_u64 size)
 {
     memcpy(dest, src, size);
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_WriteStringToBuffer(MD_String8 string, MD_u64 max, void *dest)
-{
-    MD_u64 write_size = string.size;
-    if(write_size > max-1) write_size = max-1;
-    _MD_MemoryCopy(dest, string.str, write_size);
-    ((MD_u8 *)dest)[write_size] = 0;
-}
-
 MD_PRIVATE_FUNCTION_IMPL void *
-_MD_AllocZero(MD_u64 size)
+MD_AllocZero(MD_u64 size)
 {
 #if !defined(MD_IMPL_Alloc)
 # error Missing implementation detail MD_IMPL_Alloc
 #else
     void *result = MD_IMPL_Alloc(size);
-    _MD_MemoryZero(result, size);
+    MD_MemoryZero(result, size);
     return(result);
 #endif
 }
 
-#define _MD_PushArray(type, count) (type *)_MD_AllocZero(sizeof(type)*(count))
-
+//~ Characters
 MD_FUNCTION_IMPL MD_b32
 MD_CharIsAlpha(MD_u8 c)
 {
@@ -135,6 +126,7 @@ MD_CorrectSlash(MD_u8 c)
     return (c == '\\' ? '/' : c);
 }
 
+//~ Strings
 MD_FUNCTION_IMPL MD_String8
 MD_S8(MD_u8 *str, MD_u64 size)
 {
@@ -306,9 +298,9 @@ MD_PushStringCopy(MD_String8 string)
 {
     MD_String8 res;
     res.size = string.size;
-    res.str = _MD_PushArray(MD_u8, string.size+1);
-    _MD_MemoryCopy(res.str, string.str, string.size);
-    return res;
+    res.str = MD_PushArray(MD_u8, string.size + 1);
+    MD_MemoryCopy(res.str, string.str, string.size);
+    return(res);
 }
 
 MD_FUNCTION_IMPL MD_String8
@@ -318,7 +310,7 @@ MD_PushStringFV(char *fmt, va_list args)
     va_list args2;
     va_copy(args2, args);
     MD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
-    result.str = _MD_PushArray(MD_u8, needed_bytes);
+    result.str = MD_PushArray(MD_u8, needed_bytes);
     result.size = needed_bytes-1;
     vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
@@ -341,7 +333,7 @@ MD_PushStringToList(MD_String8List *list, MD_String8 string)
     list->node_count += 1;
     list->total_size += string.size;
     
-    MD_String8Node *node = _MD_PushArray(MD_String8Node, 1);
+    MD_String8Node *node = MD_PushArray(MD_String8Node, 1);
     node->next = 0;
     node->string = string;
     if(list->last == 0)
@@ -373,7 +365,7 @@ MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push)
             list->last = to_push->last;
         }
     }
-    _MD_MemoryZero(to_push, sizeof(*to_push));
+    MD_MemoryZero(to_push, sizeof(*to_push));
 }
 
 MD_FUNCTION_IMPL MD_String8List
@@ -431,14 +423,14 @@ MD_JoinStringList(MD_String8List list, MD_String8 separator)
     }
     MD_String8 string = MD_ZERO_STRUCT;
     string.size = list.total_size + (list.node_count - 1)*separator.size;
-    string.str = _MD_PushArray(MD_u8, string.size);
+    string.str = MD_PushArray(MD_u8, string.size);
     MD_u64 write_pos = 0;
     for(MD_String8Node *node = list.first; node; node = node->next)
     {
-        _MD_MemoryCopy(string.str + write_pos, node->string.str, node->string.size);
+        MD_MemoryCopy(string.str + write_pos, node->string.str, node->string.size);
         write_pos += node->string.size;
         if (node != list.last){
-            _MD_MemoryCopy(string.str + write_pos, separator.str, separator.size);
+            MD_MemoryCopy(string.str + write_pos, separator.str, separator.size);
             write_pos += separator.size;
         }
     }
@@ -486,8 +478,13 @@ MD_FUNCTION_IMPL MD_f64
 MD_F64FromString(MD_String8 string)
 {
     char str[64];
-    _MD_WriteStringToBuffer(string, sizeof(str), str);
-    return atof(str);
+    MD_u64 str_size = string.size;
+    if (str_size > sizeof(str) - 1){
+        str_size = sizeof(str) - 1;
+    }
+    MD_MemoryCopy(str, string.str, str_size);
+    str[str_size] = 0;
+    return(atof(str));
 }
 
 MD_FUNCTION_IMPL MD_u64
@@ -570,7 +567,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
     {
         result.size += separator.size*(words.node_count-1);
     }
-    result.str = _MD_PushArray(MD_u8, result.size);
+    result.str = MD_PushArray(MD_u8, result.size);
     
     {
         MD_u64 write_pos = 0;
@@ -579,7 +576,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
             
             // NOTE(rjf): Write word string to result.
             {
-                _MD_MemoryCopy(result.str + write_pos, node->string.str, node->string.size);
+                MD_MemoryCopy(result.str + write_pos, node->string.str, node->string.size);
                 
                 // NOTE(rjf): Transform string based on word style.
                 switch(word_style)
@@ -626,7 +623,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
             
             if(node->next)
             {
-                _MD_MemoryCopy(result.str + write_pos, separator.str, separator.size);
+                MD_MemoryCopy(result.str + write_pos, separator.str, separator.size);
                 write_pos += separator.size;
             }
         }
@@ -851,7 +848,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS16(MD_String16 in)
 {
     MD_u64 cap = in.size*3;
-    MD_u8 *str = _MD_PushArray(MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArray(MD_u8, cap + 1);
     MD_u16 *ptr = in.str;
     MD_u16 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -870,7 +867,7 @@ MD_FUNCTION MD_String16
 MD_S16FromS8(MD_String8 in)
 {
     MD_u64 cap = in.size*2;
-    MD_u16 *str = _MD_PushArray(MD_u16, (cap + 1));
+    MD_u16 *str = MD_PushArray(MD_u16, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -890,7 +887,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS32(MD_String32 in)
 {
     MD_u64 cap = in.size*4;
-    MD_u8 *str = _MD_PushArray(MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArray(MD_u8, cap + 1);
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -907,7 +904,7 @@ MD_FUNCTION MD_String32
 MD_S32FromS8(MD_String8 in)
 {
     MD_u64 cap = in.size;
-    MD_u32 *str = _MD_PushArray(MD_u32, (cap + 1));
+    MD_u32 *str = MD_PushArray(MD_u32, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -932,7 +929,7 @@ _MD_Map_Initialize(MD_Map *map)
     if(map->table_size == 0)
     {
         map->table_size = 4096;
-        map->table = _MD_PushArray(MD_MapSlot *, map->table_size);
+        map->table = MD_PushArray(MD_MapSlot *, map->table_size);
     }
 }
 
@@ -978,7 +975,7 @@ MD_StringMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, MD_String8 
     
     if(slot == 0 || (slot != 0 && collision_rule == MD_MapCollisionRule_Chain))
     {
-        slot = _MD_PushArray(MD_MapSlot, 1);
+        slot = MD_PushArray(MD_MapSlot, 1);
         if(slot)
         {
             slot->next = 0;
@@ -1004,7 +1001,7 @@ MD_StringMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, MD_String8 
     {
         slot->value = value;
         slot->hash = hash;
-        MD_String8 *string_copy =  _MD_PushArray(MD_String8, 1);
+        MD_String8 *string_copy =  MD_PushArray(MD_String8, 1);
         *string_copy = MD_PushStringCopy(string);
         slot->key = string_copy;
     }
@@ -1051,7 +1048,6 @@ MD_PtrMap_Lookup(MD_Map *map, void *key)
     _MD_Map_Initialize(map);
     
     MD_MapSlot *slot = 0;
-    
     MD_u64 hash = MD_HashPointer(key);
     MD_u64 index = hash % map->table_size;
     for(MD_MapSlot *candidate = map->table[index]; candidate; candidate = candidate->next)
@@ -1086,7 +1082,7 @@ MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, voi
     
     if(slot == 0 || (slot != 0 && collision_rule == MD_MapCollisionRule_Chain))
     {
-        slot = _MD_PushArray(MD_MapSlot, 1);
+        slot = MD_PushArray(MD_MapSlot, 1);
         if(slot)
         {
             slot->next = 0;
@@ -1167,7 +1163,7 @@ _MD_TokenizerScanEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
         else at += 1;
     }
     
-    if (*at == c) at += 1;
+    if (at < one_past_last && *at == c) at += 1;
     
     return at;
 }
@@ -1215,7 +1211,7 @@ MD_FUNCTION_IMPL MD_Token
 MD_Parse_LexNext(MD_ParseCtx *ctx)
 {
     MD_Token token;
-    _MD_MemoryZero(&token, sizeof(token));
+    MD_MemoryZero(&token, sizeof(token));
     
     MD_u8 *one_past_last = ctx->file_contents.str + ctx->file_contents.size;
     MD_u8 *first = ctx->at;
@@ -1407,7 +1403,7 @@ MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups)
     MD_b32 skip_regular    = (skip_groups & MD_TokenGroup_Regular);
     
     MD_Token result;
-    _MD_MemoryZero(&result, sizeof(result));
+    MD_MemoryZero(&result, sizeof(result));
     
     loop:
     {
@@ -1509,7 +1505,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
     // NOTE(mal): Ignore errors after first catastrophic error
     if(ctx->error_level < MD_MessageKind_CatastrophicError || !prev_error || prev_error->next)
     {
-        MD_Error *error = _MD_PushArray(MD_Error, 1);
+        MD_Error *error = MD_PushArray(MD_Error, 1);
         error->node = node;
         error->kind = kind;
         va_list args;
@@ -1547,7 +1543,7 @@ MD_MakeNode(MD_NodeKind kind, MD_String8 string,
             MD_String8 whole_string, MD_String8 filename,
             MD_u8 *file_contents, MD_u8 *at)
 {
-    MD_Node *node = _MD_PushArray(MD_Node, 1);
+    MD_Node *node = MD_PushArray(MD_Node, 1);
     node->kind = kind;
     node->string = string;
     node->whole_string = whole_string;
@@ -1620,7 +1616,7 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
     MD_Error *ctx_last_error = ctx->last_error;
     
     MD_Token token;
-    _MD_MemoryZero(&token, sizeof(token));
+    MD_MemoryZero(&token, sizeof(token));
     
     MD_Node *first_tag = 0;
     MD_Node *last_tag = 0;
@@ -1647,7 +1643,7 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
                 }
                 else if(MD_Parse_RequireKind(ctx, MD_TokenKind_Newline, 0))
                 {
-                    _MD_MemoryZero(&comment_token, sizeof(comment_token));
+                    MD_MemoryZero(&comment_token, sizeof(comment_token));
                 }
             }
             else if(MD_TokenKindIsWhitespace(token.kind))
@@ -1662,8 +1658,9 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         comment_before = comment_token.string;
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
-            _MD_TokenError(ctx, comment_token, MD_MessageKind_CatastrophicError, "Unterminated comment \"%.*s\"",
-                           MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
+            MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
+            _MD_TokenError(ctx, comment_token, MD_MessageKind_CatastrophicError,
+                           "Unterminated comment \"%.*s\"", MD_StringExpand(capped));
         }
     }
     
@@ -1702,8 +1699,9 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         {
             if(!_MD_StringLiteralIsBalanced(token))
             {
-                _MD_Error(ctx, result.node, MD_MessageKind_CatastrophicError, "Unterminated text literal \"%.*s\"",
-                          MD_StringExpand(MD_StringPrefix(token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
+                MD_String8 capped = MD_StringPrefix(token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
+                _MD_Error(ctx, result.node, MD_MessageKind_CatastrophicError,
+                          "Unterminated text literal \"%.*s\"", MD_StringExpand(capped));
             }
         }
         else if(token.kind == MD_TokenKind_Symbol && token.string.size == 1 && MD_CharIsReservedSymbol(token.string.str[0]))
@@ -1785,8 +1783,9 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         comment_after = comment_token.string;
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
-            _MD_TokenError(ctx, comment_token, MD_MessageKind_CatastrophicError, "Unterminated comment \"%.*s\"",
-                           MD_StringExpand(MD_StringPrefix(comment_token.outer_string, _MD_MAX_UNTERMINATED_TOKEN_ERROR_LEN)));
+            MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
+            _MD_TokenError(ctx, comment_token, MD_MessageKind_CatastrophicError,
+                           "Unterminated comment \"%.*s\"", MD_StringExpand(capped));
         }
     }
     
@@ -2486,7 +2485,7 @@ MD_FUNCTION_IMPL MD_CommandLine
 MD_CommandLine_Start(int argument_count, char **arguments)
 {
     MD_CommandLine cmdln = MD_ZERO_STRUCT;
-    cmdln.arguments = _MD_PushArray(MD_String8, argument_count-1);
+    cmdln.arguments = MD_PushArray(MD_String8, argument_count-1);
     for(int i = 1; i < argument_count; i += 1)
     {
         cmdln.arguments[i-1] = MD_PushStringF("%s", arguments[i]);
@@ -2620,7 +2619,7 @@ MD_LoadEntireFile(MD_String8 filename)
         fseek(file, 0, SEEK_END);
         MD_u64 file_size = ftell(file);
         fseek(file, 0, SEEK_SET);
-        file_contents.str = _MD_PushArray(MD_u8, file_size+1);
+        file_contents.str = MD_PushArray(MD_u8, file_size+1);
         if(file_contents.str)
         {
             file_contents.size = file_size;

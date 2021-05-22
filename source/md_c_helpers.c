@@ -173,7 +173,7 @@ MD_C_ExprPrecFromExprKind(MD_C_ExprKind kind)
 MD_FUNCTION_IMPL MD_C_Expr *
 MD_C_MakeExpr(MD_Node *node, MD_C_ExprKind kind, MD_C_Expr *left, MD_C_Expr *right)
 {
-    MD_C_Expr *expr = _MD_PushArray(MD_C_Expr, 1);
+    MD_C_Expr *expr = MD_PushArray(MD_C_Expr, 1);
     if(left == 0)  left  = MD_C_NilExpr();
     if(right == 0) right = MD_C_NilExpr();
     expr->node = node;

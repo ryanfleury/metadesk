@@ -561,6 +561,13 @@ struct MD_FileIter
 #define MD_StaticAssert(c,label) MD_u8 MD_static_assert_##label[(c)?(1):(-1)]
 #define MD_ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
 
+//~ Memory Operations
+MD_FUNCTION void MD_MemoryZero(void *memory, MD_u64 size);
+MD_FUNCTION void MD_MemoryCopy(void *dst, void *src, MD_u64 size);
+
+MD_FUNCTION void* MD_AllocZero(MD_u64 size);
+#define MD_PushArray(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
+
 //~ Characters
 MD_FUNCTION MD_b32 MD_CharIsAlpha(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaUpper(MD_u8 c);
@@ -630,6 +637,17 @@ MD_FUNCTION MD_String8     MD_S8FromS16(MD_String16 str);
 MD_FUNCTION MD_String16    MD_S16FromS8(MD_String8 str);
 MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
+
+//~ Allen's Map Proposoal
+#if 0
+MD_FUNCTION void        MD_MapInit(MD_Map *map);
+MD_FUNCTION MD_MapSlot* MD_MapLookupString(MD_Map *map, MD_String8 key);
+MD_FUNCTION MD_MapSlot* MD_MapLookupPtr(MD_Map *map, void *key);
+MD_FUNCTION MD_b32      MD_MapInsertString(MD_Map *map, MD_String8 key, void *val);
+MD_FUNCTION MD_b32      MD_MapInsertPtr(MD_Map *map, void *key, void *val);
+MD_FUNCTION MD_MapSlot* MD_MapNextString(MD_MapSlot *slot, MD_String8 key);
+MD_FUNCTION MD_MapSlot* MD_MapNextPtr(MD_MapSlot *slot, void *key);
+#endif
 
 //~ String-To-Pointer Table
 MD_FUNCTION MD_MapSlot *      MD_StringMap_Lookup(MD_Map *table, MD_String8 string);
@@ -712,7 +730,6 @@ MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags node_f
 //~ Generation
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
 
-// TODO(allen): needs another pass
 //~ Command Line Argument Helper
 MD_FUNCTION MD_CommandLine MD_CommandLine_Start(int argument_count, char **arguments);
 MD_FUNCTION MD_b32         MD_CommandLine_Flag(MD_CommandLine *cmdln, MD_String8 string);
