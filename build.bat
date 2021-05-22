@@ -8,6 +8,7 @@ pushd build
 echo.
 echo ~~~ Build All Samples ~~~
 cl %compile_flags% ..\samples\old_style_custom_layer.c
+cl %compile_flags% ..\samples\toy_language\toy_language.c
 cl %compile_flags% ..\samples\static_site_generator\static_site_generator.c
 cl %compile_flags% ..\samples\output_parse\output_parse.c
 cl %compile_flags% ..\samples\c_code_generation.c
@@ -34,7 +35,7 @@ pushd static_site_generator
 pushd example_site
 if not exist generated mkdir generated
 pushd generated
-..\..\..\..\build\static_site_generator.exe --siteinfo ..\site_info.md --pagedir ..\
+..\..\..\..\build\static_site_generator.exe --siteinfo:..\site_info.md --pagedir:..\
 popd
 popd
 popd

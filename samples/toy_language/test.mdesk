@@ -1,0 +1,10 @@
+
+@proc foo:(x, y, z)
+{
+ (x + y) * z
+}
+
+@proc main:()
+{
+ foo(10, 20, 30);
+}

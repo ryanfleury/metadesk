@@ -593,5 +593,53 @@ int main(void)
         }
     }
     
+    Test("Node-With-Flags Seeking")
+    {
+        
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("foo:{x y z; a b c}"));
+            MD_Node *node = parse.node;
+            MD_Node *group_first = node->first_child;
+            MD_Node *group_last = MD_SeekNodeWithFlags(group_first, MD_NodeFlag_AfterSemicolon);
+            
+            TestResult(MD_StringMatch(group_first->string,       MD_S8Lit("x"), 0));
+            TestResult(MD_StringMatch(group_first->next->string, MD_S8Lit("y"), 0));
+            TestResult(MD_StringMatch(group_last->string,        MD_S8Lit("z"), 0));
+            
+            group_first = group_last->next;
+            group_last = MD_SeekNodeWithFlags(group_first, MD_NodeFlag_AfterSemicolon);
+            
+            TestResult(MD_StringMatch(group_first->string,       MD_S8Lit("a"), 0));
+            TestResult(MD_StringMatch(group_first->next->string, MD_S8Lit("b"), 0));
+            TestResult(MD_StringMatch(group_last->string,        MD_S8Lit("c"), 0));
+        }
+        
+        {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("foo:{a b c , d e f , g h i}"));
+            MD_Node *node = parse.node;
+            MD_Node *group_first = 0;
+            MD_Node *group_last = 0;
+            
+            group_first = node->first_child;
+            group_last = MD_SeekNodeWithFlags(group_first, MD_NodeFlag_AfterComma);
+            TestResult(MD_StringMatch(group_first->string,       MD_S8Lit("a"), 0));
+            TestResult(MD_StringMatch(group_first->next->string, MD_S8Lit("b"), 0));
+            TestResult(MD_StringMatch(group_last->string,        MD_S8Lit("c"), 0));
+            
+            group_first = group_last->next;
+            group_last = MD_SeekNodeWithFlags(group_first, MD_NodeFlag_AfterComma);
+            TestResult(MD_StringMatch(group_first->string,       MD_S8Lit("d"), 0));
+            TestResult(MD_StringMatch(group_first->next->string, MD_S8Lit("e"), 0));
+            TestResult(MD_StringMatch(group_last->string,        MD_S8Lit("f"), 0));
+            
+            group_first = group_last->next;
+            group_last = MD_SeekNodeWithFlags(group_first, MD_NodeFlag_AfterComma);
+            TestResult(MD_StringMatch(group_first->string,       MD_S8Lit("g"), 0));
+            TestResult(MD_StringMatch(group_first->next->string, MD_S8Lit("h"), 0));
+            TestResult(MD_StringMatch(group_last->string,        MD_S8Lit("i"), 0));
+        }
+        
+    }
+    
     return 0;
 }

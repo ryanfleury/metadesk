@@ -18,8 +18,7 @@
 // [x] MD_StringMap_Next, for iterating matching slots in an MD_Map, that all
 //     share the same key (important in the case of hash collisions)
 // [x] Helper for making a reference for a node, e.g. MD_ReferenceFromNode
-// [ ] Organization decision for C generator helpers: splitting from md.h? file name? folder?
-
+// [x] Organization decision for C generator helpers: splitting from md.h? file name? folder?
 
 // NOTE(allen): "Plugin" functionality
 //
@@ -132,9 +131,6 @@
 # define MD_ARCH_32BIT 1
 #endif
 
-// NOTE(allen): Review @rjf; Building in C++
-// Added language cracking. Handy for a few pesky problems that can't be solved
-// strictly within the intersection of C & C++
 #if defined(__cplusplus)
 # define MD_LANG_CPP 1
 #else
@@ -195,12 +191,6 @@
 # define MD_ZERO_STRUCT {0}
 #endif
 
-// NOTE(allen): Review @rjf; Building in C++
-// In order to link to C functions from C++ code, we need to mark them as using
-// C linkage. In particular I mean FindFirstFileA, FindNextFileA right now.
-// We don't necessarily need to apply this to the DD functions if the user is
-// building from source, so I haven't done that.
-
 #if MD_LANG_C
 # define MD_C_LINKAGE_BEGIN
 # define MD_C_LINKAGE_END
@@ -213,8 +203,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-// NOTE(allen): Review @rjf; Building in C++
-// In C++ compiler I have to include this to get memset and memcpy to compile
 #include <string.h>
 
 typedef int8_t   MD_i8;
@@ -525,12 +513,22 @@ struct MD_ParseResult
 };
 
 //~ Command line parsing helper types.
+
+typedef struct MD_CommandLineOption MD_CommandLineOption;
+struct MD_CommandLineOption
+{
+    MD_CommandLineOption *next;
+    MD_String8 name;
+    MD_String8List values;
+};
+
 typedef struct MD_CommandLine MD_CommandLine;
 struct MD_CommandLine
 {
-    // TODO(rjf): Linked-list vs. array?
-    MD_String8 *arguments;
-    int argument_count;
+    MD_String8List arguments;
+    MD_String8List inputs;
+    MD_CommandLineOption *first_option;
+    MD_CommandLineOption *last_option;
 };
 
 //~ File system access types.
@@ -649,21 +647,27 @@ MD_FUNCTION MD_MapSlot* MD_MapNextString(MD_MapSlot *slot, MD_String8 key);
 MD_FUNCTION MD_MapSlot* MD_MapNextPtr(MD_MapSlot *slot, void *key);
 #endif
 
-//~ String-To-Pointer Table
+
+//~ Map Table Data Structure
+
+MD_FUNCTION MD_u64 MD_HashPointer(void *p);
+
+//- String-To-Pointer Table
 MD_FUNCTION MD_MapSlot *      MD_StringMap_Lookup(MD_Map *table, MD_String8 string);
 MD_FUNCTION MD_b32            MD_StringMap_Insert(MD_Map *table, MD_MapCollisionRule collision_rule, MD_String8 string, void *value);
 MD_FUNCTION MD_MapSlot *      MD_StringMap_Next(MD_MapSlot *slot, MD_String8 key);
 
-//~ Pointer-To-Pointer Table
+//- Pointer-To-Pointer Table
 MD_FUNCTION MD_MapSlot       *MD_PtrMap_Lookup(MD_Map *map, void *key);
 MD_FUNCTION MD_b32            MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, void *value);
 
 //~ Parsing
+
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
-MD_FUNCTION MD_ParseCtx    MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents);
 
+MD_FUNCTION MD_ParseCtx    MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents);
 MD_FUNCTION void           MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token);
 MD_FUNCTION void           MD_Parse_BumpNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_LexNext(MD_ParseCtx *ctx);
@@ -709,10 +713,13 @@ MD_FUNCTION MD_Node *  MD_TagFromString(MD_Node *node, MD_String8 tag_string);
 MD_FUNCTION MD_Node *  MD_ChildFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *  MD_TagFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *  MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, int n);
+MD_FUNCTION MD_Node *  MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_String8 arg_string);
 MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_Deref(MD_Node *node);
+MD_FUNCTION MD_Node *  MD_SeekNodeWithFlags(MD_Node *start, MD_NodeFlags one_past_last_flags);
+
 // NOTE(rjf): For-Loop Helpers
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
 #define MD_EachNodeRef(it, first) MD_Node *it##_r = (first), *it = MD_Deref(it##_r); \
@@ -731,13 +738,11 @@ MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags node_f
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
 
 //~ Command Line Argument Helper
-MD_FUNCTION MD_CommandLine MD_CommandLine_Start(int argument_count, char **arguments);
-MD_FUNCTION MD_b32         MD_CommandLine_Flag(MD_CommandLine *cmdln, MD_String8 string);
-MD_FUNCTION MD_b32         MD_CommandLine_FlagStrings(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_String8 *out);
-MD_FUNCTION MD_b32         MD_CommandLine_FlagIntegers(MD_CommandLine *cmdln, MD_String8 string, int out_count, MD_i64 *out);
-MD_FUNCTION MD_b32         MD_CommandLine_FlagString(MD_CommandLine *cmdln, MD_String8 string, MD_String8 *out);
-MD_FUNCTION MD_b32         MD_CommandLine_FlagInteger(MD_CommandLine *cmdln, MD_String8 string, MD_i64 *out);
-MD_FUNCTION MD_b32         MD_CommandLine_Increment(MD_CommandLine *cmdln, MD_String8 **string_ptr);
+MD_FUNCTION MD_String8List MD_StringListFromArgCV(int argument_count, char **arguments);
+MD_FUNCTION MD_CommandLine MD_CommandLineFromOptions(MD_String8List options);
+MD_FUNCTION MD_String8List MD_CommandLineOptionValues(MD_CommandLine cmdln, MD_String8 name);
+MD_FUNCTION MD_b32 MD_CommandLineOptionPassed(MD_CommandLine cmdln, MD_String8 name);
+MD_FUNCTION MD_i64 MD_CommandLineOptionI64(MD_CommandLine cmdln, MD_String8 name);
 
 //~ File System
 MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_String8 filename);
