@@ -34,11 +34,11 @@ int main(int argument_count, char **arguments)
 {
     
     //~ NOTE(rjf): Parse command line arguments.
-    MD_String8 site_info_path = {0};
-    MD_String8 page_dir_path = {0};
-    MD_CommandLine cmdln = MD_CommandLine_Start(argument_count, arguments);
-    if(!MD_CommandLine_FlagString(&cmdln, MD_S8Lit("--siteinfo"), &site_info_path) ||
-       !MD_CommandLine_FlagString(&cmdln, MD_S8Lit("--pagedir"), &page_dir_path))
+    MD_CommandLine cmdln = MD_CommandLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
+    MD_String8 site_info_path = MD_JoinStringList(MD_CommandLineOptionValues(cmdln, MD_S8Lit("siteinfo")), MD_S8Lit(""));
+    MD_String8 page_dir_path = MD_JoinStringList(MD_CommandLineOptionValues(cmdln, MD_S8Lit("pagedir")), MD_S8Lit(""));
+    if(!MD_CommandLineOptionPassed(cmdln, MD_S8Lit("siteinfo")) ||
+       !MD_CommandLineOptionPassed(cmdln, MD_S8Lit("pagedir")))
     {
         fprintf(stderr, "USAGE: %s --siteinfo <path to site info file> --pagedir <path to directory with pages> ...\n", arguments[0]);
         goto end;

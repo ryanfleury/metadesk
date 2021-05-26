@@ -58,14 +58,8 @@ MD_AllocZero(MD_u64 size)
 #endif
 }
 
-<<<<<<< HEAD
 //~ Characters
-=======
-#define _MD_PushArray(type, count) (type *)_MD_AllocZero(sizeof(type)*(count))
 
-//~ Basic Utilities
-
->>>>>>> 25a80c1def53e88e06b7738998a58871ec2b8521
 MD_FUNCTION_IMPL MD_b32
 MD_CharIsAlpha(MD_u8 c)
 {
@@ -134,10 +128,7 @@ MD_CorrectSlash(MD_u8 c)
 }
 
 //~ Strings
-<<<<<<< HEAD
-=======
 
->>>>>>> 25a80c1def53e88e06b7738998a58871ec2b8521
 MD_FUNCTION_IMPL MD_String8
 MD_S8(MD_u8 *str, MD_u64 size)
 {
@@ -1145,7 +1136,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
     // NOTE(mal): Ignore errors after first catastrophic error
     if(ctx->error_level < MD_MessageKind_CatastrophicError || !prev_error || prev_error->next)
     {
-        MD_Error *error = _MD_PushArray(MD_Error, 1);
+        MD_Error *error = MD_PushArray(MD_Error, 1);
         error->node = node;
         error->kind = kind;
         va_list args;
@@ -1676,84 +1667,6 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
     // NOTE(rjf): Parse children.
     if(brace || paren || bracket || terminate_with_separator)
     {
-<<<<<<< HEAD
-        MD_Error *error = MD_PushArray(MD_Error, 1);
-        error->node = node;
-        error->kind = kind;
-        va_list args;
-        va_start(args, fmt);
-        error->string = MD_PushStringFV(fmt, args);
-        va_end(args);
-        
-        if(prev_error)
-        {
-            error->next = prev_error->next;
-            prev_error->next = error;
-        }
-        else
-        {
-            error->next = ctx->first_error;
-            ctx->first_error = error;
-        }
-        
-        if(!ctx->last_error || ctx->last_error == prev_error)
-        {
-            ctx->last_error = error;
-        }
-        
-        if(kind > ctx->error_level)
-        {
-            ctx->error_level = kind;
-        }
-    }
-}
-#define _MD_TokenError(ctx, token, kind, fmt, ...) \
-_MD_Error(ctx, _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_ErrorMarker, token), kind, fmt, __VA_ARGS__)
-
-MD_FUNCTION_IMPL MD_Node *
-MD_MakeNode(MD_NodeKind kind, MD_String8 string,
-            MD_String8 whole_string, MD_String8 filename,
-            MD_u8 *file_contents, MD_u8 *at)
-{
-    MD_Node *node = MD_PushArray(MD_Node, 1);
-    node->kind = kind;
-    node->string = string;
-    node->whole_string = whole_string;
-    node->next = node->prev = node->parent =
-        node->first_child = node->last_child =
-        node->first_tag = node->last_tag = node->ref_target = MD_NilNode();
-    node->filename = filename;
-    node->file_contents = file_contents;
-    node->at = at;
-    return node;
-}
-
-MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNodeFromToken_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_Token token)
-{
-    return MD_MakeNode(kind, token.string, token.outer_string, ctx->filename,
-                       ctx->file_contents.str,
-                       token.outer_string.str);
-}
-
-MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNodeFromString_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_String8 string, MD_u8 *at)
-{
-    return MD_MakeNode(kind, string, string, ctx->filename, ctx->file_contents.str, at);
-}
-
-MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
-
-MD_PRIVATE_FUNCTION_IMPL MD_NodeFlags
-_MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
-{
-    MD_NodeFlags result = 0;
-    switch (kind){
-        case MD_TokenKind_Identifier:     result = MD_NodeFlag_Identifier;    break;
-        case MD_TokenKind_NumericLiteral: result = MD_NodeFlag_Numeric;       break;
-        case MD_TokenKind_StringLiteral:  result = MD_NodeFlag_StringLiteral; break;
-        case MD_TokenKind_CharLiteral:    result = MD_NodeFlag_CharLiteral;   break;
-=======
         MD_u8 *at_before_children = ctx->at;
         MD_NodeFlags next_child_flags = 0;
         for(MD_u64 child_idx = 0;; child_idx += 1)
@@ -1846,7 +1759,6 @@ _MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
                 }
             }
         }
->>>>>>> 25a80c1def53e88e06b7738998a58871ec2b8521
     }
     
     end_parse:;
@@ -2210,7 +2122,7 @@ MD_MakeNode(MD_NodeKind kind, MD_String8 string,
             MD_String8 whole_string, MD_String8 filename,
             MD_u8 *file_contents, MD_u8 *at)
 {
-    MD_Node *node = _MD_PushArray(MD_Node, 1);
+    MD_Node *node = MD_PushArray(MD_Node, 1);
     node->kind = kind;
     node->string = string;
     node->whole_string = whole_string;
@@ -2582,12 +2494,7 @@ MD_OutputTree(FILE *file, MD_Node *node)
 MD_FUNCTION MD_String8List
 MD_StringListFromArgCV(int argument_count, char **arguments)
 {
-<<<<<<< HEAD
-    MD_CommandLine cmdln = MD_ZERO_STRUCT;
-    cmdln.arguments = MD_PushArray(MD_String8, argument_count-1);
-=======
     MD_String8List options = MD_ZERO_STRUCT;
->>>>>>> 25a80c1def53e88e06b7738998a58871ec2b8521
     for(int i = 1; i < argument_count; i += 1)
     {
         MD_PushStringToList(&options, MD_S8CString(arguments[i]));
@@ -2681,8 +2588,8 @@ MD_CommandLineFromOptions(MD_String8List options)
             
             //- rjf: insert the fully parsed option
             {
-                MD_CommandLineOption *opt = _MD_PushArray(MD_CommandLineOption, 1);
-                _MD_MemoryZero(opt, sizeof(*opt));
+                MD_CommandLineOption *opt = MD_PushArray(MD_CommandLineOption, 1);
+                MD_MemoryZero(opt, sizeof(*opt));
                 opt->name = option_name;
                 opt->values = option_values;
                 if(cmdln.last_option == 0)
