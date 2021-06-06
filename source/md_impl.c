@@ -1115,64 +1115,6 @@ MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, voi
 
 //~ Parsing
 
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
-{
-    // NOTE(mal): Sort errors. Traverse the whole list assuming it will be short.
-    //            The alternative is to drop a prev pointer into MD_Error and search backwards
-    MD_Error *prev_error = 0;
-    for(MD_Error *e = ctx->first_error; e; e = e->next)
-    {
-        if(e->node->at < node->at)
-        {
-            prev_error = e;
-        }
-        else
-        {
-            break;
-        }
-    }
-    
-    // NOTE(mal): Ignore errors after first catastrophic error
-    if(ctx->error_level < MD_MessageKind_CatastrophicError || !prev_error || prev_error->next)
-    {
-        MD_Error *error = MD_PushArray(MD_Error, 1);
-        error->node = node;
-        error->kind = kind;
-        va_list args;
-        va_start(args, fmt);
-        error->string = MD_PushStringFV(fmt, args);
-        va_end(args);
-        
-        if(prev_error)
-        {
-            error->next = prev_error->next;
-            prev_error->next = error;
-        }
-        else
-        {
-            error->next = ctx->first_error;
-            ctx->first_error = error;
-        }
-        
-        if(!ctx->last_error || ctx->last_error == prev_error)
-        {
-            ctx->last_error = error;
-        }
-        
-        if(kind > ctx->error_level)
-        {
-            ctx->error_level = kind;
-        }
-    }
-}
-
-#define _MD_TokenError(ctx, token, kind, fmt, ...) \
-_MD_Error(ctx, _MD_MakeNode_Ctx(ctx, MD_NodeKind_ErrorMarker,\
-token.string, token.outer_string,\
-token.outer_string.str), \
-kind, fmt, __VA_ARGS__)
-
 // TODO(allen): This helper only helps because `ctx` bundles two elements together
 // that the "low level" MD_MakeNode treats as seperate. However they aren't very
 // useful as seperate concepts. If we get the "handle of file" concept down to
@@ -1248,8 +1190,9 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             else
             {
                 MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
-                _MD_TokenError(ctx, token, MD_MessageKind_Error, "\"%.*s\" is not a proper tag identifier",
-                               MD_StringExpand(token.outer_string));
+                MD_PushTokenErrorF(ctx, token, MD_MessageKind_Error,
+                                   "\"%.*s\" is not a proper tag identifier",
+                                   MD_StringExpand(token.outer_string));
                 // NOTE(mal): There are reasons to consume the non-tag token, but also to leave it.
                 break;
             }
@@ -1280,6 +1223,85 @@ MD_FUNCTION_IMPL MD_b32
 MD_TokenKindIsRegular(MD_TokenKind kind)
 {
     return(kind > MD_TokenKind_RegularMin && kind < MD_TokenKind_RegularMax);
+}
+
+MD_FUNCTION void
+MD_PushNodeError(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_String8 str){
+    // TODO(allen): pass over this... the catastrophic error logic is a bit hard
+    // for me to follow.
+    
+    // NOTE(mal): Sort errors. Traverse the whole list assuming it will be short.
+    //            The alternative is to drop a prev pointer into MD_Error and search backwards
+    MD_Error *prev_error = 0;
+    for(MD_Error *e = ctx->first_error; e; e = e->next)
+    {
+        if(e->node->at < node->at)
+        {
+            prev_error = e;
+        }
+        else
+        {
+            break;
+        }
+    }
+    
+    // NOTE(mal): Ignore errors after first catastrophic error
+    if(ctx->error_level < MD_MessageKind_CatastrophicError || !prev_error || prev_error->next)
+    {
+        // TODO(allen): put memory on ctx? put memory on persistent arena?
+        // alloc and fill error
+        MD_Error *error = MD_PushArray(MD_Error, 1);
+        error->node = node;
+        error->kind = kind;
+        error->string = str;
+        
+        // insert error
+        if(prev_error)
+        {
+            error->next = prev_error->next;
+            prev_error->next = error;
+        }
+        else
+        {
+            error->next = ctx->first_error;
+            ctx->first_error = error;
+        }
+        if(ctx->last_error == prev_error)
+        {
+            ctx->last_error = error;
+        }
+        
+        // set error level
+        if(kind > ctx->error_level)
+        {
+            ctx->error_level = kind;
+        }
+    }
+}
+
+MD_FUNCTION void
+MD_PushNodeErrorF(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...){
+    // TODO(allen): use memory from ctx? use persistent memory?
+    va_list args;
+    va_start(args, fmt);
+    MD_PushNodeError(ctx, node, kind, MD_PushStringFV(fmt, args));
+    va_end(args);
+}
+
+MD_FUNCTION void
+MD_PushTokenError(MD_ParseCtx *ctx, MD_Token token, MD_MessageKind kind, MD_String8 str){
+    MD_Node *stub = _MD_MakeNode_Ctx(ctx, MD_NodeKind_ErrorMarker,
+                                     token.string, token.outer_string, token.outer_string.str);
+    MD_PushNodeError(ctx, stub, kind, str);
+}
+
+MD_FUNCTION void
+MD_PushTokenErrorF(MD_ParseCtx *ctx, MD_Token token, MD_MessageKind kind, char *fmt, ...){
+    // TODO(allen): use memory from ctx? use persistent memory?
+    va_list args;
+    va_start(args, fmt);
+    MD_PushTokenError(ctx, token, kind, MD_PushStringFV(fmt, args));
+    va_end(args);
 }
 
 MD_FUNCTION_IMPL MD_ParseCtx
@@ -1721,7 +1743,8 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
                     if(brace) delimiter_char = '{';
                     else if(paren) delimiter_char = '(';
                     else if(bracket) delimiter_char = '[';
-                    _MD_TokenError(ctx, initial_token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", delimiter_char);
+                    MD_PushTokenErrorF(ctx, initial_token, MD_MessageKind_CatastrophicError,
+                                       "Unbalanced \"%c\"", delimiter_char);
                 }
                 goto end_parse;
             }
@@ -1821,8 +1844,8 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
             MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
-            _MD_TokenError(ctx, comment_token, MD_MessageKind_CatastrophicError,
-                           "Unterminated comment \"%.*s\"", MD_StringExpand(capped));
+            MD_PushTokenErrorF(ctx, comment_token, MD_MessageKind_CatastrophicError,
+                               "Unterminated comment \"%.*s\"", MD_StringExpand(capped));
         }
     }
     
@@ -1864,8 +1887,8 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
             if(!_MD_StringLiteralIsBalanced(token))
             {
                 MD_String8 capped = MD_StringPrefix(token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
-                _MD_Error(ctx, result.node, MD_MessageKind_CatastrophicError,
-                          "Unterminated text literal \"%.*s\"", MD_StringExpand(capped));
+                MD_PushNodeErrorF(ctx, result.node, MD_MessageKind_CatastrophicError,
+                                  "Unterminated text literal \"%.*s\"", MD_StringExpand(capped));
             }
         }
         else if(token.kind == MD_TokenKind_Symbol && token.string.size == 1 && MD_CharIsReservedSymbol(token.string.str[0]))
@@ -1873,11 +1896,12 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
             MD_u8 c = token.string.str[0];
             if(c == '}' || c == ']' || c == ')')
             {
-                _MD_TokenError(ctx, token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", c);
+                MD_PushTokenErrorF(ctx, token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", c);
             }
             else
             {
-                _MD_TokenError(ctx, token, MD_MessageKind_Error, "Unexpected reserved symbol \"%c\"", c);
+                MD_PushTokenErrorF(ctx, token, MD_MessageKind_Error, "Unexpected reserved symbol \"%c\"",
+                                   c);
             }
         }
         
@@ -1897,7 +1921,8 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
             {
                 for(MD_EachNode(tag, fc->first_tag))
                 {
-                    _MD_Error(ctx, tag, MD_MessageKind_Error, "Invalid position for tag \"%.*s\"", MD_StringExpand(tag->string));
+                    MD_PushNodeErrorF(ctx, tag, MD_MessageKind_Error,
+                                      "Invalid position for tag \"%.*s\"", MD_StringExpand(tag->string));
                 }
             }
         }
@@ -1909,10 +1934,12 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         MD_String8List bytes = {0};
         for(int i_byte = 0; i_byte < token.outer_string.size; ++i_byte)
         {
+            // TODO(allen): tighten up with good integer <-> string helpers
             MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", token.outer_string.str[i_byte]));
         }
         MD_String8 byte_string = MD_JoinStringList(bytes, MD_S8Lit(" "));
-        _MD_TokenError(ctx, token, MD_MessageKind_Error, "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
+        MD_PushTokenErrorF(ctx, token, MD_MessageKind_Error,
+                           "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
         goto retry;
     }
     
@@ -1948,8 +1975,8 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
             MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
-            _MD_TokenError(ctx, comment_token, MD_MessageKind_CatastrophicError,
-                           "Unterminated comment \"%.*s\"", MD_StringExpand(capped));
+            MD_PushTokenErrorF(ctx, comment_token, MD_MessageKind_CatastrophicError,
+                               "Unterminated comment \"%.*s\"", MD_StringExpand(capped));
         }
     }
     
@@ -2058,8 +2085,8 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                 else
                 {
                     MD_Token token = MD_Parse_PeekSkipSome(&ctx, 0);
-                    _MD_TokenError(&ctx, token, MD_MessageKind_Error, "Invalid hash directive \"%.*s\"",
-                                   MD_StringExpand(token.outer_string));
+                    MD_PushTokenErrorF(&ctx, token, MD_MessageKind_Error, "Invalid '#' directive \"%.*s\"",
+                                       MD_StringExpand(token.outer_string));
                 }
             }
             
@@ -2106,8 +2133,8 @@ MD_ParseWholeFile(MD_String8 filename)
     if(file_contents.str == 0)
     {
         MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, MD_S8Lit(""));
-        _MD_Error(&ctx, parse.node, MD_MessageKind_CatastrophicError, "Could not read file \"%.*s\"",
-                  MD_StringExpand(filename));
+        MD_PushNodeErrorF(&ctx, parse.node, MD_MessageKind_CatastrophicError,
+                          "Could not read file \"%.*s\"", MD_StringExpand(filename));
         parse.first_error = ctx.first_error;
     }
     return parse;
@@ -2404,8 +2431,13 @@ MD_SeekNodeWithFlags(MD_Node *start, MD_NodeFlags one_past_last_flags)
 MD_FUNCTION void
 MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
 {
-    const char *kind_name = ((kind == MD_MessageKind_Error) ? "error" : "warning");
-    fprintf(out, "%.*s:%i:%i: %s: %.*s\n",
+    const char *kind_name = "";
+    switch (kind){
+        case MD_MessageKind_Warning: kind_name = "warning: "; break;
+        case MD_MessageKind_Error: kind_name = "error: "; break;
+        case MD_MessageKind_CatastrophicError: kind_name = "fatal error: "; break;
+    }
+    fprintf(out, "%.*s:%i:%i: %s%.*s\n",
             MD_StringExpand(loc.filename), loc.line, loc.column,
             kind_name, MD_StringExpand(str));
 }
