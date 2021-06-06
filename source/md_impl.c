@@ -2017,6 +2017,9 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
             // want to disallow back-to-back `#` cases, right? And we'd want an
             // actual error detection path for that rule too, right? Sorting
             // these out "later" makes me nervous.
+            // NOTE(allen): I've brain stormed some ideas on what it might look
+            // like to address some of these concerns. Ideas in the comments.
+            // Search for `Allen's Namespace Ideas`
             
             // NOTE(rjf): #-things (just namespaces right now, but can be used for other such
             // 'directives' in the future maybe)
@@ -2714,6 +2717,61 @@ MD_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info)
     return(MD_IMPL_FileIterIncrement(it, path, out_info));
 #endif
 }
+
+// NOTE(allen): Allen's Namespace Ideas
+// 1. > '#' handling goes into 'ParseOneNode'.
+//    > 'ParseResult' from 'ParseOneNode' can indicate that a node is a 'namespace'.
+//    > The parse loop does all parsing through 'ParseOneNode' first and then 
+//      packages the results into the larger structure in different ways based on
+//      what came from from 'ParseOneNode'.
+//
+//    Strength: + unify what counts as "valid metadesk"
+//              + simplify the 'ParseWholeString' loop by driving it with
+//                'ParseOneNode' entirely
+//    Weakness: - boxes us in; we're now committed to all '#' meaning a single node
+//              - lacks discussion of the difference between '#' at top-level and 
+//                anywhere else
+//
+// 2. > '#' handling goes into 'ParseOneNode'.
+//    > Until a non-'#' is consumed, 'ParseOneNode' keeps parsing, and combines all the
+//      '#' effects it sees along the way.
+//    > The parse loop does all parsing through 'ParseOneNode' and does not special
+//      handling of it's own.
+//
+//    Strength: + unify what counts as "valid metadesk"
+//              + simplify the 'ParseWholeString' loop by driving it with
+//                'ParseOneNode' entirely
+//              + simplify the 'ParseWholeString' loop by taking away any
+//                responsibility for constructing the result
+//    Weakness: - boxes us in; we're now committed to all '#' being processed in
+//                one go without a chance in the API for intervention from the user
+//              - lots of state handled between calls of 'ParseOneNode' getting
+//                carried through the context -> likely hard to provide simple APIs,
+//                more lock in of systems hurting long term maintenance, higher
+//                likelihood of bugs.
+//
+// 3. > '#' handling stays where it is
+//      (except maybe with helper functions involved if that helps anything)
+//    > We fix the bugs that are there and make things work as they are
+//
+//    Strength: + not a lot of work in the short term
+//              + no possibility of hidden change in the way namespaces work
+//    Weakness: - there is no unification between what is "valid metadesk"
+//                between 'ParseOneNode' and 'ParseWholeString'
+//              - lacks discussion of the long term maintenance plan for '#' features.
+//
+// 4. > cut '#' and namespace, reserve '#' as a character for future expansion
+//
+//    Strength: + end up with less code, easy
+//              + not boxed into any particular direction for '#'
+//    Weakness: - *may* just be throwing away something we actually want only to
+//                force ourselves to face this issue again later
+//              - may have to track down and modify some existing code? (I couldn't
+//                find much besides our samples, but who knows?)
+//    Observation: The reasons I wanted namespaces in Datadesk are actually less
+//                 relevant in Metadesk. There is no restriction against name collision.
+//                 I can easily create my own namespace concept if I really need it with
+//                 `@namespace foo;`
 
 /*
 Copyright 2021 Dion Systems LLC
