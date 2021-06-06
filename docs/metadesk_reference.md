@@ -978,6 +978,40 @@ main:
 };
 
 @send(Parsing)
+@func MD_PushNodeError: {
+    ctx: *MD_ParseCtx,
+    node: *MD_Node,
+    kind: MD_MessageKind,
+    str: MD_String8,
+};
+
+@send(Parsing)
+@func MD_PushNodeErrorF: {
+    ctx: *MD_ParseCtx,
+    node: *MD_Node,
+    kind: MD_MessageKind,
+    fmt: *char,
+    "..."
+};
+
+@send(Parsing)
+@func MD_PushTokenError: {
+    ctx: *MD_ParseCtx,
+    token: MD_Token,
+    kind: MD_MessageKind,
+    str: MD_String8,
+};
+
+@send(Parsing)
+@func MD_PushTokenErrorF: {
+    ctx: *MD_ParseCtx,
+    token: MD_Token,
+    kind: MD_MessageKind,
+    fmt: *char,
+    "..."
+};
+
+@send(Parsing)
 @func MD_Parse_InitializeCtx: {
     filename: MD_String8,
     contents: MD_String8,

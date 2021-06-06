@@ -1151,6 +1151,8 @@ _MD_StringLiteralIsBalanced(MD_Token token)
     return result;
 }
 
+// TODO(allen): wouldn't the lexer have already figured this out? Why not just make
+// it a flag or a kind on the token?
 MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
 {
@@ -1161,6 +1163,7 @@ _MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
     MD_b32 result = !incorrect;
     return result;
 }
+
 MD_PRIVATE_FUNCTION_IMPL void
 _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
 {
@@ -1326,60 +1329,6 @@ MD_Parse_BumpNext(MD_ParseCtx *ctx)
     MD_Parse_Bump(ctx, MD_Parse_LexNext(ctx));
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_u8 *
-_MD_TokenizerScanEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
-{
-    while(at < one_past_last)
-    {
-        if(*at == c || *at == '\n') break;
-        else if(at[0] == '\\' && at + 1 < one_past_last && (at[1] == c || at[1] == '\\')) at += 2;
-        else at += 1;
-    }
-    
-    if (at < one_past_last && *at == c) at += 1;
-    
-    return at;
-}
-
-MD_PRIVATE_FUNCTION_IMPL MD_u8 *
-_MD_TokenizerScanTripletEscaped(MD_u8 *at, MD_u8 *one_past_last, MD_u8 c)
-{
-    MD_u32 consecutive_c = 0;
-    while(at < one_past_last && consecutive_c < 3)
-    {
-        if(at[0] == c)
-        {
-            consecutive_c += 1;
-        }
-        else
-        {
-            consecutive_c = 0;
-            if(at[0] == '\\' && at + 1 < one_past_last)
-            {
-                if(at[1] == c || at[1] == '\\')
-                {
-                    at += 1;
-                }
-            }
-        }
-        at += 1;
-    }
-    return at;
-}
-
-MD_PRIVATE_FUNCTION_IMPL MD_u32
-_MD_ComputeTextLiteralChop(MD_u32 bytes_to_skip, MD_u8 *beg, MD_u8 *end)
-{
-    MD_u32 result = 0;
-    MD_u8 *skip_end = beg + bytes_to_skip;
-    MD_u8 *chop_beg = end - bytes_to_skip;
-    if(skip_end <= chop_beg && MD_StringMatch(MD_S8(beg, bytes_to_skip), MD_S8(chop_beg, bytes_to_skip), 0))
-    {
-        result = bytes_to_skip;
-    }
-    return result;
-}
-
 MD_FUNCTION_IMPL MD_Token
 MD_Parse_LexNext(MD_ParseCtx *ctx)
 {
@@ -1420,25 +1369,37 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                     if (at[1] == '/')
                     {
                         
+                        // TODO(allen): This seems like an odd choice to me. What about two spaces!?
+                        // What about an extra /? I'm wondering if there are other places where we make
+                        // this kind of judgement call a lot, or is this the only one? Maybe the user
+                        // should just always skip-chop whitespace if they want to clean this kind of
+                        // thing up? They're going to have to if they ever use two spaces anyways, right?
+                        
                         // NOTE(rjf): Trim off the first //, and a space after it if one is there.
+                        if(at+2 < one_past_last &&
+                           at[2] == ' ')
                         {
-                            if(at+2 < one_past_last &&
-                               at[2] == ' ')
-                            {
-                                skip_n = 3;
-                            }
-                            else
-                            {
-                                skip_n = 2;
-                            }
+                            skip_n = 3;
+                        }
+                        else
+                        {
+                            skip_n = 2;
                         }
                         
-                        at += 2;
+                        at += skip_n;
                         token.kind = MD_TokenKind_Comment;
                         MD_TokenizerScan(*at != '\n' && *at != '\r');
                     }
                     else if (at[1] == '*')
                     {
+                        // TODO(allen): proposal:
+                        // 1. only set `kind = Comment` in the `counter == 0` case
+                        // 2. otherwise set `kind = RunOnComment` (or something)
+                        //    maybe also emit an error *from here* or signal to a system that
+                        //    runs later that there are token errors to emit.
+                        // Or: keep the `kind = Comment` but in the `counter != 0` case
+                        //     set some kind of error/unclosed/run-on flag on the token.
+                        
                         at += 2;
                         token.kind = MD_TokenKind_Comment;
                         skip_n = 2;
@@ -1468,60 +1429,106 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 if (token.kind == MD_TokenKind_Nil) goto symbol_lex;
             }break;
             
+            // NOTE(allen): Strings
+            case '"':
+            case '\'':
+            
             // NOTE(rjf): "Bundle-of-tokens" strings (`stuff` or ```stuff```)
             // In practice no different than a regular string, but provides an
             // alternate syntax which will allow tools like 4coder to treat the
             // contents as regular tokens.
             case '`':
             {
-                token.kind = MD_TokenKind_StringLiteral;
-                if (at + 2 < one_past_last && at[1] == '`' && at[2] == '`')
+                // TODO(allen): proposal:
+                // go see the proposal in the block comment lexer, same idea here?
+                
+                // determine delimiter setup
+                MD_u8 d = *at;
+                MD_b32 is_triplet = (at + 2 < one_past_last && at[1] == d && at[2] == d);
+                
+                // lex triple-delimiter string
+                if (is_triplet)
                 {
                     skip_n = 3;
-                    at = _MD_TokenizerScanTripletEscaped(at+3, one_past_last, '`');
+                    at += 3;
+                    MD_u32 consecutive_d = 0;
+                    for (;;)
+                    {
+                        // fail condition
+                        if (at >= one_past_last){
+                            break;
+                        }
+                        
+                        if(at[0] == d)
+                        {
+                            consecutive_d += 1;
+                            at += 1;
+                            // close condition
+                            if (consecutive_d == 3){
+                                chop_n = 3;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            consecutive_d = 0;
+                            
+                            // escaping rule
+                            if(at[0] == '\\')
+                            {
+                                at += 1;
+                                if(at < one_past_last && (at[0] == d || at[0] == '\\'))
+                                {
+                                    at += 1;
+                                }
+                            }
+                            else{
+                                at += 1;
+                            }
+                        }
+                    }
                 }
-                else
-                {
-                    skip_n = 1;
-                    at = _MD_TokenizerScanEscaped(at+1, one_past_last, '`');
-                }
-                chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
-            }break;
-            
-            // NOTE(allen): Strings
-            case '"':
-            {
-                token.kind = MD_TokenKind_StringLiteral;
-                if (at + 2 < one_past_last && at[1] == '"' && at[2] == '"')
-                {
-                    skip_n = 3;
-                    at = _MD_TokenizerScanTripletEscaped(at+3, one_past_last, '"');
-                }
-                else
+                
+                // lex single-delimiter string
+                if (!is_triplet)
                 {
                     skip_n = 1;
                     at += 1;
-                    at = _MD_TokenizerScanEscaped(at, one_past_last, '"');
+                    for (;at < one_past_last;)
+                    {
+                        // close condition
+                        if (*at == d){
+                            at += 1;
+                            chop_n = 1;
+                            break;
+                        }
+                        
+                        // fail condition
+                        if (*at == '\n'){
+                            break;
+                        }
+                        
+                        // escaping rule
+                        if (at[0] == '\\'){
+                            at += 1;
+                            if (at < one_past_last && (at[0] == d || at[0] == '\\')){
+                                at += 1;
+                            }
+                        }
+                        else{
+                            at += 1;
+                        }
+                    }
                 }
-                chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
-            }break;
-            
-            case '\'':
-            {
-                if (at + 2 < one_past_last && at[1] == '\'' && at[2] == '\'')
-                {
-                    token.kind = MD_TokenKind_StringLiteral;
-                    skip_n = 3;
-                    at = _MD_TokenizerScanTripletEscaped(at+3, one_past_last, '\'');
-                }
-                else
-                {
+                
+                // set token kind
+                token.kind = MD_TokenKind_StringLiteral;
+                // TODO(allen): I don't see any place where this actually proves useful.
+                // I think it'd tidy things up to drop it. we already use this as a string
+                // in a lot of usages of metadesk.
+                if (d == '\'' && !is_triplet){
                     token.kind = MD_TokenKind_CharLiteral;
-                    skip_n = 1;
-                    at += 1;
-                    at = _MD_TokenizerScanEscaped(at, one_past_last, '\'');
                 }
-                chop_n = _MD_ComputeTextLiteralChop(skip_n, first, at);
             }break;
             
             // NOTE(allen): Identifiers, Numbers, Operators
@@ -1841,6 +1848,8 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
             }
         }
         comment_before = comment_token.string;
+        // TODO(allen): I find this odd. Wouldn't it have been easier to generate this
+        // durring or right after the lexing phase?
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
             MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
@@ -1972,6 +1981,8 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
             }
         }
         comment_after = comment_token.string;
+        // TODO(allen): I find this odd. Wouldn't it have been easier to generate this
+        // durring or right after the lexing phase?
         if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
         {
             MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);

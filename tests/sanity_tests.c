@@ -551,6 +551,38 @@ int main(void)
         }
     }
     
+    Test("String Inner & Outer")
+    {
+        MD_String8 samples[6] = {
+            MD_S8Lit("'foo-bar'"),
+            MD_S8Lit("'''foo-bar'''"),
+            MD_S8Lit("\"foo-bar\""),
+            MD_S8Lit("\"\"\"foo-bar\"\"\""),
+            MD_S8Lit("`foo-bar`"),
+            MD_S8Lit("```foo-bar```"),
+        };
+        
+        MD_Node *nodes[MD_ArrayCount(samples)];
+        for (int i = 0; i < MD_ArrayCount(samples); i += 1){
+            MD_ParseResult result = MD_ParseOneNode(MD_S8Lit(""), samples[i]);
+            nodes[i] = result.node;
+        }
+        
+        TestResult(MD_StringMatch(nodes[0]->string, MD_S8Lit("foo-bar"), 0));
+        TestResult(MD_StringMatch(nodes[1]->string, MD_S8Lit("foo-bar"), 0));
+        TestResult(MD_StringMatch(nodes[2]->string, MD_S8Lit("foo-bar"), 0));
+        TestResult(MD_StringMatch(nodes[3]->string, MD_S8Lit("foo-bar"), 0));
+        TestResult(MD_StringMatch(nodes[4]->string, MD_S8Lit("foo-bar"), 0));
+        TestResult(MD_StringMatch(nodes[5]->string, MD_S8Lit("foo-bar"), 0));
+        
+        TestResult(MD_StringMatch(nodes[0]->whole_string, samples[0], 0));
+        TestResult(MD_StringMatch(nodes[1]->whole_string, samples[1], 0));
+        TestResult(MD_StringMatch(nodes[2]->whole_string, samples[2], 0));
+        TestResult(MD_StringMatch(nodes[3]->whole_string, samples[3], 0));
+        TestResult(MD_StringMatch(nodes[4]->whole_string, samples[4], 0));
+        TestResult(MD_StringMatch(nodes[5]->whole_string, samples[5], 0));
+    }
+    
     Test("String escaping")
     {
         {
