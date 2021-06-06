@@ -1166,21 +1166,24 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
         }
     }
 }
+
 #define _MD_TokenError(ctx, token, kind, fmt, ...) \
-_MD_Error(ctx, _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_ErrorMarker, token), kind, fmt, __VA_ARGS__)
+_MD_Error(ctx, \
+_MD_MakeNode_Ctx(ctx, MD_NodeKind_ErrorMarker,\
+token.string, token.outer_string,\
+token.outer_string.str), \
+kind, fmt, __VA_ARGS__)
 
+// TODO(allen): This helper only helps because `ctx` bundles two elements together
+// that the "low level" MD_MakeNode treats as seperate. However they aren't very
+// useful as seperate concepts. If we get the "handle of file" concept down to
+// a single root node pointer, then this can be eliminated and users can get
+// this effect by composing 'ctx->file_root' with 'MD_MakeNode'.
 MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNodeFromToken_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_Token token)
+_MD_MakeNode_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind,
+                 MD_String8 string, MD_String8 outer, MD_u8 *at)
 {
-    return MD_MakeNode(kind, token.string, token.outer_string, ctx->filename,
-                       ctx->file_contents.str,
-                       token.outer_string.str);
-}
-
-MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNodeFromString_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind, MD_String8 string, MD_u8 *at)
-{
-    return MD_MakeNode(kind, string, string, ctx->filename, ctx->file_contents.str, at);
+    return MD_MakeNode(kind, string, outer, ctx->filename, ctx->file_contents.str, at);
 }
 
 MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
@@ -1234,7 +1237,8 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             MD_Token name = MD_ZERO_STRUCT;
             if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
             {
-                MD_Node *tag = _MD_MakeNodeFromToken_Ctx(ctx, MD_NodeKind_Tag, name);
+                MD_Node *tag = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Tag,
+                                                name.string, name.outer_string, name.outer_string.str);
                 MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
                 if(MD_StringMatch(token.string, MD_S8Lit("("), 0))
                 {
@@ -1834,7 +1838,9 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
        next_token.kind == MD_TokenKind_Symbol )
     {
-        result.node = _MD_MakeNodeFromString_Ctx(ctx, MD_NodeKind_Label, MD_S8Lit(""), next_token.outer_string.str);
+        result.node = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Label,
+                                       MD_S8Lit(""), MD_S8Lit(""),
+                                       next_token.outer_string.str);
         
         MD_Parse_Set(ctx, result.node,
                      MD_ParseSetFlag_Paren   |
@@ -1982,8 +1988,10 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
         MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, contents);
         
         // NOTE(allen): setup namespace structure
-        MD_Node *namespaces = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, MD_S8Lit(""), ctx.at);
-        MD_Node *default_namespace = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, MD_S8Lit(""), ctx.at);
+        MD_Node *namespaces = _MD_MakeNode_Ctx(&ctx, MD_NodeKind_List,
+                                               MD_S8Lit(""), MD_S8Lit(""), ctx.at);
+        MD_Node *default_namespace = _MD_MakeNode_Ctx(&ctx, MD_NodeKind_List,
+                                                      MD_S8Lit(""), MD_S8Lit(""), ctx.at);
         MD_PushChild(namespaces, default_namespace);
         
         MD_Map namespace_table = {0};
@@ -2034,8 +2042,8 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                         MD_MapSlot *existing_namespace_slot = MD_StringMap_Lookup(&namespace_table, token.string);
                         if(existing_namespace_slot == 0)
                         {
-                            MD_Node *ns = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, token.string,
-                                                                     token.outer_string.str);
+                            MD_Node *ns = _MD_MakeNode_Ctx(&ctx, MD_NodeKind_List,
+                                                           token.string, token.string, token.outer_string.str);
                             MD_StringMap_Insert(&namespace_table, MD_MapCollisionRule_Overwrite, token.string, ns);
                             existing_namespace_slot = MD_StringMap_Lookup(&namespace_table, token.string);
                             MD_PushChild(namespaces, ns);
