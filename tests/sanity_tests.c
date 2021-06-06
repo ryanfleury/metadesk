@@ -724,5 +724,29 @@ int main(void)
         }
     }
     
+    Test("Tagged & Unlabeled")
+    {
+        // TODO(allen): these tests checking for rules that I find fishy; maybe instead
+        // of trying to pass these tests, adjust the rules so we don't have this odd
+        // expected behavior to begin with? Not sure.
+        MD_String8 file_name = MD_S8Lit("raw_text");
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:{@tag {bar}}\n"));
+            TestResult(result.first_error == 0);
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:@tag bar\n"));
+            TestResult(result.first_error == 0);
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:bar @tag {bar}\n"));
+            TestResult(result.first_error == 0);
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:@tag {bar}\n"));
+            TestResult(result.first_error != 0);
+        }
+    }
+    
     return 0;
 }

@@ -1043,14 +1043,6 @@ main:
 };
 
 @send(Parsing)
-@func MD_Parse_TokenMatch: {
-    token: MD_Token,
-    string: MD_String8,
-    flags: MD_StringMatchFlags,
-    return: MD_b32,
-};
-
-@send(Parsing)
 @func MD_Parse_Require: {
     ctx: *MD_ParseCtx,
     string: MD_String8,

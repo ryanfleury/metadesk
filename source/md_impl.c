@@ -1605,12 +1605,6 @@ MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_MatchFlags flags)
-{
-    return MD_StringMatch(token.string, string, flags);
-}
-
-MD_FUNCTION_IMPL MD_b32
 MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string, MD_TokenKind kind)
 {
     int result = 0;
@@ -1687,42 +1681,50 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
         set_opener = '[';
     }
     
-    // something else
-    MD_b32 brace = 0;
-    MD_b32 paren = 0;
-    MD_b32 bracket = 0;
-    MD_b32 terminate_with_separator = 0;
+    // attach left-symbol flag to parent
     switch (set_opener){
-        default:
-        {
-            terminate_with_separator = (!!(flags & MD_ParseSetFlag_Implicit));
-        }break;
-        
         case '{':
         {
             parent->flags |= MD_NodeFlag_BraceLeft;
-            brace = 1;
         }break;
         case '(':
         {
             parent->flags |= MD_NodeFlag_ParenLeft;
-            paren = 1;
         }break;
         case '[':
         {
             parent->flags |= MD_NodeFlag_BracketLeft;
-            bracket = 1;
+        }break;
+    }
+    
+    // determine set close rule
+    MD_b32 close_with_brace = 0;
+    MD_b32 close_with_paren = 0;
+    MD_b32 close_with_separator = 0;
+    switch (set_opener){
+        default:
+        {
+            close_with_separator = (!!(flags & MD_ParseSetFlag_Implicit));
+        }break;
+        case '{':
+        {
+            close_with_brace = 1;
+        }break;
+        case '(':
+        case '[':
+        {
+            close_with_paren = 1;
         }break;
     }
     
     // NOTE(rjf): Parse children.
-    if((set_opener != 0) || terminate_with_separator)
+    if((set_opener != 0) || close_with_separator)
     {
         MD_u8 *at_before_children = ctx->at;
         MD_NodeFlags next_child_flags = 0;
         for(;;)
         {
-            if(brace)
+            if(close_with_brace)
             {
                 if(MD_Parse_Require(ctx, MD_S8Lit("}"), MD_TokenKind_Symbol))
                 {
@@ -1730,7 +1732,7 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
                     goto end_parse;
                 }
             }
-            else if(paren || bracket)
+            else if(close_with_paren)
             {
                 if((flags & MD_ParseSetFlag_Paren) &&
                    MD_Parse_Require(ctx, MD_S8Lit(")"), MD_TokenKind_Symbol))
@@ -1749,9 +1751,9 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
             {
                 MD_Token peek = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Whitespace | MD_TokenGroup_Comment);
                 if(peek.kind == MD_TokenKind_Symbol &&
-                   (MD_Parse_TokenMatch(peek, MD_S8Lit("}"), 0) ||
-                    MD_Parse_TokenMatch(peek, MD_S8Lit(")"), 0) ||
-                    MD_Parse_TokenMatch(peek, MD_S8Lit("]"), 0)))
+                   (MD_StringMatch(peek.string, MD_S8Lit("}"), 0) ||
+                    MD_StringMatch(peek.string, MD_S8Lit(")"), 0) ||
+                    MD_StringMatch(peek.string, MD_S8Lit("]"), 0)))
                 {
                     goto end_parse;
                 }
@@ -1773,8 +1775,37 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
             // connect node into graph
             MD_PushChild(parent, child);
             
+            // check trailing symbol
+            MD_u32 symbol_flags = 0;
+            if (!close_with_separator){
+                if(MD_Parse_Require(ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
+                {
+                    symbol_flags = MD_NodeFlag_BeforeComma;
+                }
+                else if(MD_Parse_Require(ctx, MD_S8Lit(";"), MD_TokenKind_Symbol))
+                {
+                    symbol_flags = MD_NodeFlag_BeforeSemicolon;
+                }
+            }
+            
             // fill flags from surrounding context
-            child->flags |= next_child_flags;
+            child->flags |= next_child_flags|symbol_flags;
+            
+            // setup next_child_flags
+            next_child_flags = MD_NodeFlag_AfterFromBefore(symbol_flags);
+            
+            // separator close condition
+            if(close_with_separator)
+            {
+                MD_Token next_token = MD_Parse_PeekSkipSome(ctx, 0);
+                if(next_token.kind == MD_TokenKind_Newline ||
+                   (next_token.kind == MD_TokenKind_Symbol &&
+                    (MD_StringMatch(next_token.string, MD_S8Lit(","), 0) ||
+                     MD_StringMatch(next_token.string, MD_S8Lit(";"), 0))))
+                {
+                    goto end_parse;
+                }
+            }
             
             // TODO(allen): I find it kind of concerning that ParseWholeString and
             // ParseOneNode are both doing this. I did some refactors in the
@@ -1783,38 +1814,6 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
             //  I also see that these really are slightly different, but it seems
             // like it should be possible to express the whole-string case as a
             // special case of this and avoid the duplication.
-            
-            // NOTE(rjf): Separators.
-            next_child_flags = 0;
-            {
-                MD_b32 result = 0;
-                if(terminate_with_separator)
-                {
-                    MD_Token next_token = MD_Parse_PeekSkipSome(ctx, 0);
-                    if(next_token.kind == MD_TokenKind_Newline ||
-                       (next_token.kind == MD_TokenKind_Symbol &&
-                        (MD_StringMatch(next_token.string, MD_S8Lit(","), 0) ||
-                         MD_StringMatch(next_token.string, MD_S8Lit(";"), 0))))
-                    {
-                        result = 1;
-                    }
-                }
-                else if(MD_Parse_Require(ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
-                {
-                    child->flags |= MD_NodeFlag_BeforeComma;
-                    next_child_flags |= MD_NodeFlag_AfterComma;
-                }
-                else if(MD_Parse_Require(ctx, MD_S8Lit(";"), MD_TokenKind_Symbol))
-                {
-                    child->flags |= MD_NodeFlag_BeforeSemicolon;
-                    next_child_flags |= MD_NodeFlag_AfterSemicolon;
-                }
-                
-                if(result)
-                {
-                    goto end_parse;
-                }
-            }
         }
     }
     
@@ -1888,10 +1887,10 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
     retry:
     
     // NOTE(rjf): Unnamed Sets
-    if((MD_Parse_TokenMatch(next_token, MD_S8Lit("("), 0) ||
-        MD_Parse_TokenMatch(next_token, MD_S8Lit("{"), 0) ||
-        MD_Parse_TokenMatch(next_token, MD_S8Lit("["), 0)) &&
-       next_token.kind == MD_TokenKind_Symbol )
+    if(next_token.kind == MD_TokenKind_Symbol &&
+       (MD_StringMatch(next_token.string, MD_S8Lit("("), 0) ||
+        MD_StringMatch(next_token.string, MD_S8Lit("{"), 0) ||
+        MD_StringMatch(next_token.string, MD_S8Lit("["), 0)))
     {
         result.node = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Label,
                                        MD_S8Lit(""), MD_S8Lit(""),
@@ -1946,6 +1945,18 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
                          MD_ParseSetFlag_Brace   |
                          MD_ParseSetFlag_Bracket |
                          MD_ParseSetFlag_Implicit);
+            
+            // TODO(allen): This poking in an error "from afar" thing seems
+            // like a bad sign to me. First it took a bit of digging for me to
+            // understand how this code actually detects the errors it says it
+            // does. Second it's kind of unclear that this should be illegal.
+            // I mean we can do these:
+            //  `label: @tag child`
+            //  `label: child @tag {children}`
+            //  `label: @tag child`
+            // I do get *why* this is an odd thing to allow, but it's weird either way.
+            // Third, looks like this also is throwing out an error in the totally legal case:
+            //  `label:{@tag {bar}}`
             
             // NOTE(mal): Generate error for tags in positions such as "label:@tag {children}"
             MD_Node *fc = result.node->first_child;
@@ -2139,7 +2150,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
             
             // connect node into graph
             MD_PushChild(root, child);
-            MD_InsertToNamespace(selected_namespace, child);
+            MD_PushReference(selected_namespace, child);
             
             // check trailing symbol
             MD_u32 symbol_flags = 0;
@@ -2279,21 +2290,11 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
     tag->parent = node;
 }
 
-MD_FUNCTION_IMPL void
-MD_InsertToNamespace(MD_Node *ns, MD_Node *node)
-{
-    MD_Node *ref = MD_MakeNode(MD_NodeKind_Reference, node->string,
-                               node->whole_string, node->filename,
-                               node->file_contents, node->at);
-    ref->ref_target = node;
-    MD_PushChild(ns, ref);
-}
-
 MD_FUNCTION_IMPL MD_Node*
 MD_PushReference(MD_Node *list, MD_Node *target)
 {
-    MD_String8 string = MD_S8Lit("`reference node`");
-    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, string, string, string, 0, 0);
+    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->whole_string,
+                             target->filename, target->file_contents, target->at);
     n->ref_target = target;
     MD_PushChild(list, n);
     return(n);

@@ -687,11 +687,10 @@ MD_FUNCTION void           MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token);
 MD_FUNCTION void           MD_Parse_BumpNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_LexNext(MD_ParseCtx *ctx);
 MD_FUNCTION MD_Token       MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups);
-MD_FUNCTION MD_b32         MD_Parse_TokenMatch(MD_Token token, MD_String8 string, MD_MatchFlags flags);
 MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string, MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token);
 
-MD_FUNCTION void           MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent,
+MD_FUNCTION void           MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *root,
                                         MD_ParseSetFlags flags);
 
 MD_FUNCTION MD_ParseResult MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx);
@@ -713,7 +712,6 @@ MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string,
 MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *new_sibling);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
-MD_FUNCTION void     MD_InsertToNamespace(MD_Node *ns, MD_Node *node);
 MD_FUNCTION MD_Node *MD_PushReference(MD_Node *list, MD_Node *target);
 
 //~ Introspection Helpers

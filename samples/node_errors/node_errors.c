@@ -16,7 +16,7 @@ int main(int argument_count, char **arguments)
         MD_PushSibling(&first, &last, root);
     }
     
-    // NOTE(rjf): Put errors on every single node.
+    // NOTE(rjf): Print errors on every single node.
     for(MD_EachNode(root, first))
     {
         for(MD_EachNode(node, root->first_child))
