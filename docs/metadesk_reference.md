@@ -1136,6 +1136,13 @@ main:
     tag: *MD_Node,
 };
 
+@send(Nodes)
+@func MD_PushReference: {
+    list: *MD_Node,
+    target: *MD_Node,
+    return: *MD_Node,
+};
+
 ////////////////////////////////
 //~ Introspection Helpers
 

@@ -334,6 +334,8 @@ enum
     MD_NodeFlag_CharLiteral      = (1<<13),
 };
 
+#define MD_NodeFlag_AfterFromBefore(f) ((f) << 2)
+
 typedef struct MD_Node MD_Node;
 struct MD_Node
 {
@@ -708,12 +710,11 @@ MD_FUNCTION MD_Node *MD_NilNode(void);
 MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string,
                                  MD_String8 whole_string, MD_String8 filename,
                                  MD_u8 *file_contents, MD_u8 *at);
-MD_FUNCTION MD_Node *MD_MakeNodeFromString(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_String8 string);
-MD_FUNCTION MD_Node *MD_MakeNodeReference(MD_Node *target);
 MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *new_sibling);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 MD_FUNCTION void     MD_InsertToNamespace(MD_Node *ns, MD_Node *node);
+MD_FUNCTION MD_Node *MD_PushReference(MD_Node *list, MD_Node *target);
 
 //~ Introspection Helpers
 MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string);

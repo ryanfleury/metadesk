@@ -23,6 +23,8 @@ CleanUp(void)
 
 int main(int argument_count, char **arguments)
 {
+    // TODO(allen): use list system
+    
     // NOTE(rjf): Parse all the files passed in via command line.
     MD_Node *first = MD_NilNode();
     MD_Node *last = MD_NilNode();

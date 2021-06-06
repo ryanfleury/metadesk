@@ -179,6 +179,8 @@ int main(int argument_count, char **arguments)
     //- rjf: parse command line
     MD_CommandLine cmdln = MD_CommandLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
     
+    // TODO(allen): use list system
+    
     //- rjf: parse all input files
     MD_Node *first_file = MD_NilNode();
     MD_Node *last_file = MD_NilNode();

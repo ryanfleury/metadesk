@@ -55,6 +55,8 @@ int main(int argument_count, char **arguments)
         site_info = ParseSiteInfo(site_info_file);
     }
     
+    // TODO(allen): use list system
+    
     //~ NOTE(rjf): Parse pages.
     MD_Node *first_root = MD_NilNode();
     MD_Node *last_root = MD_NilNode();

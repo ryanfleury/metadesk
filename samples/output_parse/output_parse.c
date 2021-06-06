@@ -58,6 +58,8 @@ static void PrintNode(MD_Node* node, FILE* file, int indent_count) {
 
 int main(int argument_count, char **arguments)
 {
+    // TODO(allen): use list system
+    
     // NOTE(pmh): Parse all the files passed in via command line.
     MD_Node *first = MD_NilNode();
     MD_Node *last = MD_NilNode();

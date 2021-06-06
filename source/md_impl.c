@@ -1667,37 +1667,56 @@ MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token)
 MD_FUNCTION_IMPL void
 MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
 {
-    MD_b32 brace = 0;
-    MD_b32 paren = 0;
-    MD_b32 bracket = 0;
-    MD_b32 terminate_with_separator = (!!(flags & MD_ParseSetFlag_Implicit));
-    
     MD_Token initial_token = MD_Parse_PeekSkipSome(ctx, MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
     
+    // check for set opener
+    MD_u8 set_opener = 0;
     if((flags & MD_ParseSetFlag_Brace) &&
        MD_Parse_Require(ctx, MD_S8Lit("{"), MD_TokenKind_Symbol))
     {
-        parent->flags |= MD_NodeFlag_BraceLeft;
-        brace = 1;
-        terminate_with_separator = 0;
+        set_opener = '{';
     }
     else if((flags & MD_ParseSetFlag_Paren) &&
             MD_Parse_Require(ctx, MD_S8Lit("("), MD_TokenKind_Symbol))
     {
-        parent->flags |= MD_NodeFlag_ParenLeft;
-        paren = 1;
-        terminate_with_separator = 0;
+        set_opener = '(';
     }
     else if((flags & MD_ParseSetFlag_Bracket) &&
             MD_Parse_Require(ctx, MD_S8Lit("["), MD_TokenKind_Symbol))
     {
-        parent->flags |= MD_NodeFlag_BracketLeft;
-        bracket = 1;
-        terminate_with_separator = 0;
+        set_opener = '[';
+    }
+    
+    // something else
+    MD_b32 brace = 0;
+    MD_b32 paren = 0;
+    MD_b32 bracket = 0;
+    MD_b32 terminate_with_separator = 0;
+    switch (set_opener){
+        default:
+        {
+            terminate_with_separator = (!!(flags & MD_ParseSetFlag_Implicit));
+        }break;
+        
+        case '{':
+        {
+            parent->flags |= MD_NodeFlag_BraceLeft;
+            brace = 1;
+        }break;
+        case '(':
+        {
+            parent->flags |= MD_NodeFlag_ParenLeft;
+            paren = 1;
+        }break;
+        case '[':
+        {
+            parent->flags |= MD_NodeFlag_BracketLeft;
+            bracket = 1;
+        }break;
     }
     
     // NOTE(rjf): Parse children.
-    if(brace || paren || bracket || terminate_with_separator)
+    if((set_opener != 0) || terminate_with_separator)
     {
         MD_u8 *at_before_children = ctx->at;
         MD_NodeFlags next_child_flags = 0;
@@ -1738,30 +1757,35 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
                 }
             }
             
+            // NOTE(allen): parse the next node
             MD_ParseResult parse = MD_ParseOneNodeFromCtx(ctx);
             MD_Node *child = parse.node;
-            child->flags |= next_child_flags;
-            next_child_flags = 0;
             if(MD_NodeIsNil(child))
             {
-                if(brace || paren || bracket)
+                if(set_opener != 0)
                 {
-                    char delimiter_char = 0;
-                    if(brace) delimiter_char = '{';
-                    else if(paren) delimiter_char = '(';
-                    else if(bracket) delimiter_char = '[';
                     MD_PushTokenErrorF(ctx, initial_token, MD_MessageKind_CatastrophicError,
-                                       "Unbalanced \"%c\"", delimiter_char);
+                                       "Unbalanced \"%c\"", set_opener);
                 }
                 goto end_parse;
             }
-            else
-            {
-                MD_PushSibling(&parent->first_child, &parent->last_child, child);
-                child->parent = parent;
-            }
+            
+            // connect node into graph
+            MD_PushChild(parent, child);
+            
+            // fill flags from surrounding context
+            child->flags |= next_child_flags;
+            
+            // TODO(allen): I find it kind of concerning that ParseWholeString and
+            // ParseOneNode are both doing this. I did some refactors in the
+            // ParseWholeString to break it down into flatter blocks, not realizing
+            // very similar logic happens here too.
+            //  I also see that these really are slightly different, but it seems
+            // like it should be possible to express the whole-string case as a
+            // special case of this and avoid the duplication.
             
             // NOTE(rjf): Separators.
+            next_child_flags = 0;
             {
                 MD_b32 result = 0;
                 if(terminate_with_separator)
@@ -2108,29 +2132,31 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
             // NOTE(allen): parse the next node
             MD_ParseResult parse = MD_ParseOneNodeFromCtx(&ctx);
             MD_Node *child = parse.node;
-            child->flags |= next_child_flags;
-            next_child_flags = 0;
             if(MD_NodeIsNil(child))
             {
                 break;
             }
-            else
-            {
-                MD_PushSibling(&root->first_child, &root->last_child, child);
-                child->parent = root;
-                MD_InsertToNamespace(selected_namespace, child);
-            }
             
+            // connect node into graph
+            MD_PushChild(root, child);
+            MD_InsertToNamespace(selected_namespace, child);
+            
+            // check trailing symbol
+            MD_u32 symbol_flags = 0;
             if(MD_Parse_Require(&ctx, MD_S8Lit(","), MD_TokenKind_Symbol))
             {
-                child->flags |= MD_NodeFlag_BeforeComma;
-                next_child_flags |= MD_NodeFlag_AfterComma;
+                symbol_flags = MD_NodeFlag_BeforeComma;
             }
             else if(MD_Parse_Require(&ctx, MD_S8Lit(";"), MD_TokenKind_Symbol))
             {
-                child->flags |= MD_NodeFlag_BeforeSemicolon;
-                next_child_flags |= MD_NodeFlag_AfterSemicolon;
+                symbol_flags = MD_NodeFlag_BeforeSemicolon;
             }
+            
+            // fill flags from surrounding context
+            child->flags |= next_child_flags|symbol_flags;
+            
+            // setup next_child_flags
+            next_child_flags = MD_NodeFlag_AfterFromBefore(symbol_flags);
         }
         result.namespaces = namespaces;
         result.bytes_parsed = (MD_u64)(ctx.at - contents.str);
@@ -2215,15 +2241,6 @@ MD_MakeNode(MD_NodeKind kind, MD_String8 string,
     return node;
 }
 
-MD_FUNCTION_IMPL MD_Node *
-MD_MakeNodeReference(MD_Node *target)
-{
-    MD_String8 string = MD_S8Lit("`reference node`");
-    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, string, string, string, 0, 0);
-    n->ref_target = target;
-    return n;
-}
-
 MD_FUNCTION_IMPL void
 MD_PushSibling(MD_Node **firstp, MD_Node **lastp, MD_Node *node)
 {
@@ -2270,6 +2287,16 @@ MD_InsertToNamespace(MD_Node *ns, MD_Node *node)
                                node->file_contents, node->at);
     ref->ref_target = node;
     MD_PushChild(ns, ref);
+}
+
+MD_FUNCTION_IMPL MD_Node*
+MD_PushReference(MD_Node *list, MD_Node *target)
+{
+    MD_String8 string = MD_S8Lit("`reference node`");
+    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, string, string, string, 0, 0);
+    n->ref_target = target;
+    MD_PushChild(list, n);
+    return(n);
 }
 
 //~ Introspection Helpers
