@@ -1669,7 +1669,7 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
     {
         MD_u8 *at_before_children = ctx->at;
         MD_NodeFlags next_child_flags = 0;
-        for(MD_u64 child_idx = 0;; child_idx += 1)
+        for(;;)
         {
             if(brace)
             {
@@ -1978,19 +1978,46 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
     MD_Node *root = MD_MakeNodeFromString(MD_NodeKind_File, filename, contents.str, contents.str, MD_PushStringF("`DD Parsed From \"%.*s\"`", MD_StringExpand(filename)));
     if(contents.size > 0)
     {
-        // NOTE(mal): Parse the content of the file as the inside of a set
+        // NOTE(allen): setup parse context
         MD_ParseCtx ctx = MD_Parse_InitializeCtx(filename, contents);
-        MD_NodeFlags next_child_flags = 0;
         
+        // NOTE(allen): setup namespace structure
         MD_Node *namespaces = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, MD_S8Lit(""), ctx.at);
         MD_Node *default_namespace = _MD_MakeNodeFromString_Ctx(&ctx, MD_NodeKind_List, MD_S8Lit(""), ctx.at);
         MD_PushChild(namespaces, default_namespace);
-        MD_Node *selected_namespace = default_namespace;
+        
         MD_Map namespace_table = {0};
         MD_StringMap_Insert(&namespace_table, MD_MapCollisionRule_Overwrite, default_namespace->string, default_namespace);
         
-        for(MD_u64 child_idx = 0;; child_idx += 1)
+        // NOTE(allen): setup namespace 
+        MD_NodeFlags next_child_flags = 0;
+        MD_Node *selected_namespace = default_namespace;
+        for(;;)
         {
+            // TODO(allen): I don't get it... this can only happen once between
+            // each normal node?
+            //  It feels to me like the picture of "ParseOneNode" and the full
+            // parse loop is underdeveloped all around. Namespaces can be in
+            // the full loop but not the single case. Why? What is the
+            // justification for that? If a new feature is added to the grammar
+            // how will we determine if it is or isn't in the "single" case?
+            // Are we sure there is no way to make sense of a namespace in the
+            // "single" case?
+            //  If it turns out there really isn't a good way to
+            // namespace in the "single" case, we still need to think through
+            // how features that only appear in the full loop will be
+            // expressed. Right now the answer appears to just be "the loop
+            // will grow more gnarly with each feature".
+            //  It might be useful to figure out an example of a second feature
+            // that would make sense outside of the "single" case (if this is
+            // indeed the right direction for namespaces to begin with).
+            //  Suppose, finally, that there are reasons why we specifically
+            // want to disallow this in the single case *and* we want to
+            // disallow back-to-back namespaces, that still doesn't mean we
+            // want to disallow back-to-back `#` cases, right? And we'd want an
+            // actual error detection path for that rule too, right? Sorting
+            // these out "later" makes me nervous.
+            
             // NOTE(rjf): #-things (just namespaces right now, but can be used for other such
             // 'directives' in the future maybe)
             if(MD_Parse_Require(&ctx, MD_S8Lit("#"), MD_TokenKind_Symbol))
@@ -2026,6 +2053,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                 }
             }
             
+            // NOTE(allen): parse the next node
             MD_ParseResult parse = MD_ParseOneNodeFromCtx(&ctx);
             MD_Node *child = parse.node;
             child->flags |= next_child_flags;

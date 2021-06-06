@@ -19,6 +19,14 @@
 //     share the same key (important in the case of hash collisions)
 // [x] Helper for making a reference for a node, e.g. MD_ReferenceFromNode
 // [x] Organization decision for C generator helpers: splitting from md.h? file name? folder?
+// [ ] Collapse down map types
+// [ ] Fill in more String -> Integer helpers
+// [ ] Memory Management Strategy
+//     [ ] Gather map of current memory management situation
+//     [ ] Reset all memory operation?
+//     [ ] Thread context?
+//     [ ] Scratch memory?
+// [ ] Reference Manual
 
 // NOTE(allen): "Plugin" functionality
 //
