@@ -1216,7 +1216,25 @@ main:
 //~ Error/Warning Helpers
 
 @send(Nodes)
+@func MD_Message: {
+    out: *FILE,
+    loc: MD_CodeLoc,
+    kind: MD_MessageKind,
+    str: MD_String8,
+};
+
+@send(Nodes)
+@func MD_Message: {
+    out: *FILE,
+    loc: MD_CodeLoc,
+    kind: MD_MessageKind,
+    fmt: *char,
+    "..."
+};
+
+@send(Nodes)
 @func MD_NodeMessage: {
+    out: *FILE,
     node: *MD_Node,
     kind: MD_MessageKind,
     str: MD_String8,
@@ -1224,6 +1242,7 @@ main:
 
 @send(Nodes)
 @func MD_NodeMessageF: {
+    out: *FILE,
     node: *MD_Node,
     kind: MD_MessageKind,
     fmt: *char,

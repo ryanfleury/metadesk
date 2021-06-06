@@ -19,7 +19,7 @@ int main(int argument_count, char **arguments)
     {
         for(MD_EachNode(node, root->first_child))
         {
-            MD_NodeMessageF(node, MD_MessageKind_Error, "This node has an error!");
+            MD_NodeMessageF(stderr, node, MD_MessageKind_Error, "This node has an error!");
         }
     }
     

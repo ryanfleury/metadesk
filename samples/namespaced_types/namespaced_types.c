@@ -220,7 +220,7 @@ int main(int argument_count, char **arguments)
     {
         for(MD_Error *error = spec.first_error; error; error = error->next)
         {
-            MD_NodeMessage(error->node, error->kind, error->string);
+            MD_NodeMessage(stderr, error->node, error->kind, error->string);
         }
         return -1;
     }

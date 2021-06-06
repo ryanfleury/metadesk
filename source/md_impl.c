@@ -1168,8 +1168,7 @@ _MD_Error(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
 }
 
 #define _MD_TokenError(ctx, token, kind, fmt, ...) \
-_MD_Error(ctx, \
-_MD_MakeNode_Ctx(ctx, MD_NodeKind_ErrorMarker,\
+_MD_Error(ctx, _MD_MakeNode_Ctx(ctx, MD_NodeKind_ErrorMarker,\
 token.string, token.outer_string,\
 token.outer_string.str), \
 kind, fmt, __VA_ARGS__)
@@ -2402,24 +2401,39 @@ MD_SeekNodeWithFlags(MD_Node *start, MD_NodeFlags one_past_last_flags)
 
 //~ Error/Warning Helpers
 
-MD_FUNCTION_IMPL void
-MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 str)
+MD_FUNCTION void
+MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
 {
-    const char *kind_name = kind == MD_MessageKind_Error ? "error" : "warning";
-    MD_CodeLoc loc = MD_CodeLocFromNode(node);
-    fprintf(stderr, "%.*s:%i:%i: %s: %.*s\n",
-            MD_StringExpand(loc.filename),
-            loc.line, loc.column,
-            kind_name,
-            MD_StringExpand(str));
+    const char *kind_name = ((kind == MD_MessageKind_Error) ? "error" : "warning");
+    fprintf(out, "%.*s:%i:%i: %s: %.*s\n",
+            MD_StringExpand(loc.filename), loc.line, loc.column,
+            kind_name, MD_StringExpand(str));
 }
 
 MD_FUNCTION_IMPL void
-MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, ...)
+MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...)
 {
+    // TODO(allen): use scratch
     va_list args;
     va_start(args, fmt);
-    MD_NodeMessage(node, kind ,MD_PushStringFV(fmt, args));
+    MD_Message(out, loc, kind, MD_PushStringFV(fmt, args));
+    va_end(args);
+}
+
+MD_FUNCTION_IMPL void
+MD_NodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str)
+{
+    MD_CodeLoc loc = MD_CodeLocFromNode(node);
+    MD_Message(out, loc, kind, str);
+}
+
+MD_FUNCTION_IMPL void
+MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
+{
+    // TODO(allen): use scratch
+    va_list args;
+    va_start(args, fmt);
+    MD_NodeMessage(out, node, kind, MD_PushStringFV(fmt, args));
     va_end(args);
 }
 

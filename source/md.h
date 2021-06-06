@@ -735,8 +735,10 @@ MD_FUNCTION MD_Node *  MD_SeekNodeWithFlags(MD_Node *start, MD_NodeFlags one_pas
 it##_r = it##_r->next, it = MD_Deref(it##_r)
 
 //~ Error/Warning Helpers
-MD_FUNCTION void MD_NodeMessage(MD_Node *node, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION void MD_NodeMessageF(MD_Node *node, MD_MessageKind kind, char *fmt, ...);
+MD_FUNCTION void MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION void MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...);
+MD_FUNCTION void MD_NodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION void MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...);
 
 //~ Tree Comparison/Verification
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
