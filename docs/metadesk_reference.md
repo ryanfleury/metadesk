@@ -1118,26 +1118,6 @@ main:
 };
 
 @send(Nodes)
-@func MD_MakeNodeFromToken: {
-    kind: MD_NodeKind,
-    filename: MD_String8,
-    file: *MD_u8,
-    at: *MD_u8,
-    token: MD_Token,
-    return: *MD_Node,
-};
-
-@send(Nodes)
-@func MD_MakeNodeFromString: {
-    kind: MD_NodeKind,
-    filename: MD_String8,
-    file: *MD_u8,
-    at: *MD_u8,
-    string: MD_String8
-        return: *MD_Node,
-};
-
-@send(Nodes)
 @func MD_PushSibling: {
     first: **MD_Node,
     last: **MD_Node,

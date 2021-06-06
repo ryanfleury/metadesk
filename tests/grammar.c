@@ -66,7 +66,7 @@ static MD_Node * NewChildLabel(MD_Node *parent, MD_String8 label)
 {
     MD_Node *result = 0;
     
-    result = MD_MakeNodeFromString(MD_NodeKind_Label, MD_S8Lit(""), 0, 0, label);
+    result = MD_MakeNode(MD_NodeKind_Label, label, label, MD_S8Lit(""), 0, 0);
     if(parent)
     {
         MD_PushChild(parent, result);

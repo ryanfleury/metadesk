@@ -1887,8 +1887,8 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
             MD_Parse_RequireKind(ctx, MD_TokenKind_CharLiteral,    &token) ||
             MD_Parse_RequireKind(ctx, MD_TokenKind_Symbol,         &token))
     {
-        result.node = MD_MakeNodeFromToken(MD_NodeKind_Label, ctx->filename, ctx->file_contents.str,
-                                           token.outer_string.str, token);
+        result.node = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Label,
+                                       token.string, token.outer_string, token.outer_string.str);
         result.node->flags |= _MD_NodeFlagsFromTokenKind(token.kind);
         
         if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
@@ -2018,7 +2018,11 @@ MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
 {
     MD_ParseResult result = MD_ZERO_STRUCT;
-    MD_Node *root = MD_MakeNodeFromString(MD_NodeKind_File, filename, contents.str, contents.str, MD_PushStringF("`DD Parsed From \"%.*s\"`", MD_StringExpand(filename)));
+    // TODO(allen): we want to make the string for this actually just
+    // be the filename in the root/file idea.
+    MD_String8 root_string = MD_PushStringF("`DD Parsed From \"%.*s\"`", MD_StringExpand(filename));
+    MD_Node *root = MD_MakeNode(MD_NodeKind_File, root_string, root_string,
+                                filename, contents.str, contents.str);
     if(contents.size > 0)
     {
         // NOTE(allen): setup parse context
@@ -2212,21 +2216,10 @@ MD_MakeNode(MD_NodeKind kind, MD_String8 string,
 }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_MakeNodeFromToken(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_Token token)
-{
-    return MD_MakeNode(kind, token.string, token.outer_string, filename, file, at);
-}
-
-MD_FUNCTION_IMPL MD_Node *
-MD_MakeNodeFromString(MD_NodeKind kind, MD_String8 filename, MD_u8 *file, MD_u8 *at, MD_String8 string)
-{
-    return MD_MakeNode(kind, string, string, filename, file, at);
-}
-
-MD_FUNCTION_IMPL MD_Node *
 MD_MakeNodeReference(MD_Node *target)
 {
-    MD_Node *n = MD_MakeNodeFromString(MD_NodeKind_Reference, MD_S8Lit("`reference node`"), 0, 0, MD_S8Lit("`reference node`"));
+    MD_String8 string = MD_S8Lit("`reference node`");
+    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, string, string, string, 0, 0);
     n->ref_target = target;
     return n;
 }
