@@ -724,6 +724,22 @@ int main(void)
         }
     }
     
+    Test("Scoped in Unscoped")
+    {
+        // TODO(allen): This test is to reveal a strange phenomenon in the current
+        // grammar; it should be eliminated if we decide to disallow this
+        MD_String8 file_name = MD_S8Lit("raw_text");
+        {
+            MD_String8 text = MD_S8Lit("foo: bar {\n"
+                                       "fiz, baz\n"
+                                       "} end\n");
+            MD_ParseResult result = MD_ParseWholeString(file_name, text);
+            MD_Node *foo_node = MD_ChildFromString(result.node, MD_S8Lit("foo"));
+            MD_Node *end_node = MD_ChildFromString(foo_node, MD_S8Lit("end"));
+            TestResult(!MD_NodeIsNil(end_node));
+        }
+    }
+    
     Test("Tagged & Unlabeled")
     {
         // TODO(allen): these tests checking for rules that I find fishy; maybe instead
