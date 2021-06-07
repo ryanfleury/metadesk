@@ -92,7 +92,7 @@ int main(int argument_count, char **arguments)
                 {
                     for(MD_EachNode(index_string, node->first_child))
                     {
-                        MD_StringMap_Insert(&index_table, MD_MapCollisionRule_Chain, index_string->string, root);
+                        MD_MapInsert(&index_table, MD_MapKeyStr(index_string->string), root);
                     }
                     goto end_index_build;
                 }
@@ -515,14 +515,15 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
             MD_Node *index_string = 0;
             for(MD_u64 idx = 0; !MD_NodeIsNil(index_string = MD_ChildFromIndex(node, idx)); idx += 1)
             {
-                for(MD_MapSlot *slot = MD_StringMap_Lookup(index_table, index_string->string);
+                for(MD_MapSlot *slot = MD_MapLookup(index_table, MD_MapKeyStr(index_string->string));
                     slot; slot = slot->next)
                 {
-                    if(slot->value)
+                    if(slot->val)
                     {
-                        PageInfo info = ParsePageInfo((MD_Node *)slot->value);
+                        MD_Node *node = slot->val;
+                        PageInfo info = ParsePageInfo(node);
                         
-                        MD_String8 filename = ((MD_Node *)slot->value)->filename;
+                        MD_String8 filename = node->filename;
                         MD_String8 filename_no_ext = MD_ChopExtension(MD_SkipFolder(filename));
                         MD_String8 link = MD_PushStringF("%.*s.html", MD_StringExpand(filename_no_ext));
                         MD_String8 name = info.title->string;

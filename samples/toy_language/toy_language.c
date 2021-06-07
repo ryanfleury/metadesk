@@ -49,7 +49,7 @@ InsertValueToNamespace(NamespaceNode *ns, MD_String8 string, Value v)
 {
     Value *v_store = malloc(sizeof(*v_store));
     *v_store = v;
-    MD_StringMap_Insert(&ns->symbol_map, MD_MapCollisionRule_Overwrite, string, v_store);
+    MD_MapInsert(&ns->symbol_map, MD_MapKeyStr(string), v_store);
 }
 
 static Value
@@ -58,10 +58,10 @@ ValueFromString(NamespaceNode *ns, MD_String8 string)
     Value v = {0};
     for(NamespaceNode *n = ns; n; n = n->parent)
     {
-        MD_MapSlot *slot = MD_StringMap_Lookup(&n->symbol_map, string);
-        if(slot && slot->value)
+        MD_MapSlot *slot = MD_MapLookup(&n->symbol_map, MD_MapKeyStr(string));
+        if(slot && slot->val)
         {
-            v = *(Value *)slot->value;
+            v = *(Value *)slot->val;
             break;
         }
     }

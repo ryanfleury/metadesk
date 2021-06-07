@@ -6,10 +6,10 @@
 
 static MD_Map MapFromChildren(MD_Node *node)
 {
-    MD_Map result = {0};
+    MD_Map result = MD_MapMake();
     for(MD_EachNodeRef(child, node->first_child))
     {
-        MD_StringMap_Insert(&result, MD_MapCollisionRule_Chain, child->string, child);
+        MD_MapInsert(&result, MD_MapKeyStr(child->string), child);
     }
     return result;
 }
@@ -23,7 +23,7 @@ OutputType_C_LHS_Namespace(FILE *file, MD_Map *user_defined_types, MD_String8 pr
         {
             MD_Node *node = type->node;
             
-            if(MD_StringMap_Lookup(user_defined_types, type->node->string))
+            if(MD_MapLookup(user_defined_types, MD_MapKeyStr(node->string)))
             {
                 fprintf(file, "%.*s", MD_StringExpand(prefix));
             }
@@ -156,10 +156,10 @@ static void AppendConversionCode(FILE *f, MD_Map *user_defined_types, MD_Node *n
         
         for(MD_EachNode(member, old_element->first_child))
         {
-            MD_MapSlot *slot = MD_StringMap_Lookup(&new_element_map, member->string);
+            MD_MapSlot *slot = MD_MapLookup(&new_element_map, MD_MapKeyStr(member->string));
             if(slot)
             {
-                AppendConversionCode(f, user_defined_types, member, slot->value, extended_member_path);
+                AppendConversionCode(f, user_defined_types, member, slot->val, extended_member_path);
             }
             else
             {
@@ -177,7 +177,7 @@ static void AppendConversionCode(FILE *f, MD_Map *user_defined_types, MD_Node *n
                 MD_String8 extended_member_path = MD_PushStringF("%.*s.%.*s", MD_StringExpand(member_path), 
                                                                  MD_StringExpand(old_element->string));
                 
-                if(MD_StringMap_Lookup(user_defined_types, type_name))
+                if(MD_MapLookup(user_defined_types, MD_MapKeyStr(type_name)))
                 {
                     fprintf(f, "    result%.*s = %.*sFromV1(v%.*s);\n", 
                             MD_StringExpand(extended_member_path), MD_StringExpand(type_name), 
@@ -236,7 +236,7 @@ int main(int argument_count, char **arguments)
     
     // NOTE(mal): Old types get "v1_" as a prefix
     fprintf(f, "// V1\n");
-    MD_Node *v1 = MD_StringMap_Lookup(&ns_map, MD_S8Lit("v1"))->value;
+    MD_Node *v1 = MD_MapLookup(&ns_map, MD_MapKeyStr(MD_S8Lit("v1")))->val;
     MD_Map v1_map = MapFromChildren(v1);
     for(MD_EachNodeRef(node, v1->first_child))
     {
@@ -247,7 +247,7 @@ int main(int argument_count, char **arguments)
     fprintf(f, "// V2\n");
     MD_Map empty_map = {0};
     
-    MD_Node *v2 = MD_StringMap_Lookup(&ns_map, MD_S8Lit("v2"))->value;
+    MD_Node *v2 = MD_MapLookup(&ns_map, MD_MapKeyStr(MD_S8Lit("v2")))->val;
     for(MD_EachNodeRef(node, v2->first_child))
     {
         OutputPrefixedType(f, &empty_map, MD_S8Lit(""), node, 0);
@@ -258,8 +258,8 @@ int main(int argument_count, char **arguments)
     MD_Map v2_map = MapFromChildren(v2);
     for(MD_EachNodeRef(node, v1->first_child))
     {
-        MD_MapSlot *slot =  MD_StringMap_Lookup(&v2_map, node->string);
-        MD_Node *v2_type = slot->value;
+        MD_MapSlot *slot =  MD_MapLookup(&v2_map, MD_MapKeyStr(node->string));
+        MD_Node *v2_type = slot->val;
         MD_Map children_map = MapFromChildren(v2_type);
         
         fprintf(f, "static %.*s %.*sFromV1(v1_%.*s v)\n{\n",
@@ -274,10 +274,10 @@ int main(int argument_count, char **arguments)
             {
                 fprintf(f, "        case v1_%.*s_%.*s: ", 
                         MD_StringExpand(node->string), MD_StringExpand(enumerand->string));
-                MD_MapSlot *slot = MD_StringMap_Lookup(&children_map, enumerand->string);
+                MD_MapSlot *slot = MD_MapLookup(&children_map, MD_MapKeyStr(enumerand->string));
                 if(slot)
                 {
-                    MD_Node *v2_enumerand = slot->value;
+                    MD_Node *v2_enumerand = slot->val;
                     fprintf(f, "result = %.*s_%.*s; break;\n", 
                             MD_StringExpand(node->string), MD_StringExpand(v2_enumerand->string));
                 }
@@ -305,7 +305,7 @@ int main(int argument_count, char **arguments)
             {
                 fprintf(f, "    if(v & v1_%.*s_%.*s) ", 
                         MD_StringExpand(singular_flag_type_name), MD_StringExpand(flag->string));
-                MD_MapSlot *slot = MD_StringMap_Lookup(&children_map, flag->string);
+                MD_MapSlot *slot = MD_MapLookup(&children_map, MD_MapKeyStr(flag->string));
                 if(slot)
                 {
                     fprintf(f, "result |= %.*s_%.*s;\n", 
@@ -332,10 +332,10 @@ int main(int argument_count, char **arguments)
             }
             
             MD_Map v1_children_map = MapFromChildren(node);
-            MD_MapSlot *v1_member_slot = MD_StringMap_Lookup(&v1_children_map, authoritative_member->string);
+            MD_MapSlot *v1_member_slot = MD_MapLookup(&v1_children_map, MD_MapKeyStr(authoritative_member->string));
             if(v1_member_slot)
             {
-                AppendConversionCode(f, &v2_map, authoritative_member, v1_member_slot->value, MD_S8Lit(""));
+                AppendConversionCode(f, &v2_map, authoritative_member, v1_member_slot->val, MD_S8Lit(""));
             }
             else
             {
@@ -348,10 +348,10 @@ int main(int argument_count, char **arguments)
             MD_Map v1_children_map = MapFromChildren(node);
             for(MD_EachNode(member, v2_type->first_child))
             {
-                MD_MapSlot *v1_member_slot = MD_StringMap_Lookup(&v1_children_map, member->string);
+                MD_MapSlot *v1_member_slot = MD_MapLookup(&v1_children_map, MD_MapKeyStr(member->string));
                 if(v1_member_slot)
                 {
-                    AppendConversionCode(f, &v2_map, member, v1_member_slot->value, MD_S8Lit(""));
+                    AppendConversionCode(f, &v2_map, member, v1_member_slot->val, MD_S8Lit(""));
                 }
                 else
                 {

@@ -82,8 +82,8 @@ static MD_Node * NewChild(MD_Node *parent)
 
 #define OPTIONAL_TAG "optional"
 
-#define GET_DEPTH(depth_map, node) ((MD_u64)MD_PtrMap_Lookup(depth_map, node)->value)
-#define SET_DEPTH(depth_map, node, depth) MD_PtrMap_Insert(depth_map, MD_MapCollisionRule_Overwrite, node, (void *)(depth))
+#define GET_DEPTH(depth_map, node) ((MD_u64)MD_MapLookup(depth_map, MD_MapKeyPtr(node))->val)
+#define SET_DEPTH(depth_map, node, depth) MD_MapOverwrite(depth_map, MD_MapKeyPtr(node), (void *)(depth))
 static void PrintRule(MD_Map *depth_map, MD_Node *rule)
 {
     MD_b32 is_literal_char = rule->flags & MD_NodeFlag_CharLiteral;
@@ -252,7 +252,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                 }
                 else        // NOTE(mal): Non-terminal production
                 {
-                    MD_Node * production = MD_StringMap_Lookup(globals.production_table, rule_element->string)->value;
+                    MD_Node * production = MD_MapLookup(globals.production_table, MD_MapKeyStr(rule_element->string))->val;
                     MD_Assert(production);
                     ExpandProduction(production, out_strings, cur_node, op_flags, depth_map, max_depth, depth+1);
                 }
@@ -293,13 +293,13 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_Map *visited)
     MD_b32 should_visit = 1;
     if(!MD_NodeIsNil(node->first_child) && node->string.size)
     {
-        if(MD_StringMap_Lookup(visited, node->string))
+        if(MD_MapLookup(visited, MD_MapKeyStr(node->string)))
         {
             should_visit = 0;
         }
         else
         {
-            MD_b32 inserted = MD_StringMap_Insert(visited, MD_MapCollisionRule_Overwrite, node->string, node);
+            void *inserted = MD_MapOverwrite(visited, MD_MapKeyStr(node->string), node);
             MD_Assert(inserted);
         }
     }
@@ -313,10 +313,10 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_Map *visited)
             }
             else
             {
-                MD_MapSlot *slot = MD_StringMap_Lookup(globals.production_table, node->string);
+                MD_MapSlot *slot = MD_MapLookup(globals.production_table, MD_MapKeyStr(node->string));
                 if(slot)
                 {
-                    MD_Node *production = slot->value;
+                    MD_Node *production = slot->val;
                     result = FindNonTerminalProduction(production, visited);
                 }
                 else
@@ -431,7 +431,7 @@ static void ComputeElementDepth(MD_Map *depth_map, MD_Node *re)
         }
         else
         {
-            MD_Node * production = MD_StringMap_Lookup(globals.production_table, re->string)->value;
+            MD_Node * production = MD_MapLookup(globals.production_table, MD_MapKeyStr(re->string))->val;
             result = GET_DEPTH(depth_map, production)+1;
         }
     }
@@ -576,29 +576,29 @@ int main(int argument_count, char **arguments)
     }
     
     // NOTE(mal): Build production hash table
-    MD_Map production_table_ = {0};
+    MD_Map production_table_ = MD_MapMake();
     globals.production_table = &production_table_;
     for(MD_EachNode(production, productions->first_child))
     {
-        MD_b32 inserted = MD_StringMap_Insert(globals.production_table, MD_MapCollisionRule_Overwrite, 
-                                              production->string, production);
+        void *inserted = MD_MapOverwrite(globals.production_table, 
+                                         MD_MapKeyStr(production->string), production);
         MD_Assert(inserted);
     }
     
     // NOTE(mal): Check for root production
     MD_Node* file_production = 0;
     {
-        MD_MapSlot *file_production_slot = MD_StringMap_Lookup(globals.production_table, MD_S8Lit("file"));
+        MD_MapSlot *file_production_slot = MD_MapLookup(globals.production_table, MD_MapKeyStr(MD_S8Lit("file")));
         if(!file_production_slot)
         {
             fprintf(stderr, "Error: Grammar file does not specify \"file\" production\n");
             goto error;
         }
-        file_production = file_production_slot->value;
+        file_production = file_production_slot->val;
     }
     
     // NOTE(mal): Check that all branches lead to terminal nodes
-    MD_Map visited_productions = {0};
+    MD_Map visited_productions = MD_MapMake();
     
     for(MD_EachNode(production, productions->first_child))
     {
@@ -613,7 +613,7 @@ int main(int argument_count, char **arguments)
     // NOTE(mal): Check that all productions are reachable
     for(MD_EachNode(production, productions->first_child))
     {
-        MD_MapSlot *slot = MD_StringMap_Lookup(&visited_productions, production->string);
+        MD_MapSlot *slot = MD_MapLookup(&visited_productions, MD_MapKeyStr(production->string));
         if(!slot)
         {
             fprintf(stderr, "Warning: Unreachable production \"%.*s\"\n", MD_StringExpand(production->string));
@@ -623,7 +623,7 @@ int main(int argument_count, char **arguments)
     // NOTE(mal): Compute depth of productions, rules, rule elements
     
     // NOTE(mal): Init all MD_Node depths to 0
-    MD_Map depth_map_ = {0};
+    MD_Map depth_map_ = MD_MapMake();
     MD_Map *depth_map = &depth_map_;
     for(MD_EachNode(production, productions->first_child))
     {
@@ -660,7 +660,7 @@ int main(int argument_count, char **arguments)
                         MD_Assert(MD_NodeIsNil(rule_element->first_child));
                         if(!(rule_element->flags & MD_NodeFlag_CharLiteral))
                         {
-                            MD_Node * production = MD_StringMap_Lookup(globals.production_table, rule_element->string)->value;
+                            MD_Node * production = MD_MapLookup(globals.production_table, MD_MapKeyStr(rule_element->string))->val;
                             depth = GET_DEPTH(depth_map, production);
                         }
                         depth += 1;
@@ -713,7 +713,7 @@ int main(int argument_count, char **arguments)
     
     RandomSeries random_series = rand_seed(0, 0);  // NOTE(mal): Reproduceable
     globals.random_series = &random_series;
-    MD_Node* file_production_node = MD_StringMap_Lookup(globals.production_table, MD_S8Lit("file"))->value;
+    MD_Node* file_production_node = MD_MapLookup(globals.production_table, MD_MapKeyStr(MD_S8Lit("file")))->val;
     
     // NOTE(mal): Generate test_count unique tests, sorted by complexity
     MD_u32 test_count = 1000;

@@ -311,22 +311,20 @@ main:
 //~ String-To-Node table
 
 @send(Map)
-@doc("Controls the behavior of routines that write into maps when the written key was already in the map.")
-@see(MD_Map)
-@see(MD_StringMap_Insert)
-@see(MD_PtrMap_Insert)
-@enum MD_MapCollisionRule: {
-    @doc("When the key written was already in the map, a new key value pair is attached to the same chain always. Leaving multiple values associated to the same key.")
-        Chain,
-    @doc("When the key written was already in the map, the existing value is replaced with the newly inserted value.")
-        Overwrite,
-}
+@doc("An abstraction over the types of keys used in a MD_Map and the work of hashing those keys, can be constructed from an MD_String8 or an void*.")
+@struct MD_MapKey: {
+    @doc("The hash of the key. The hash function used is determined from the key type.")
+    hash: MD_u64,
+    @doc("For a non-empty MD_String8, the size of the string data. For a void*, zero.")
+    size: MD_u64,
+    @doc("For a non-empty MD_String8, points to the string data of the key. For a void*, the direct pointer value.")
+    ptr: *void,
+};
 
 @send(Map)
 @doc("A slot containing one (key,value) pair in a MD_Map.")
-@see(MD_Map)
 @struct MD_MapSlot: {
-    @doc("The next slot in the same bucket of the MD_Map")
+    @doc("The next slot in the same bucket of the MD_Map.")
         next: *MD_MapSlot,
     @doc("For slots with a string key, the hash of the key.")
         hash: MD_u64,
@@ -829,12 +827,6 @@ main:
 };
 
 @send(Strings)
-@func MD_HashString: {
-    string: MD_String8,
-    return: MD_u64,
-};
-
-@send(Strings)
 @func MD_CalculateCStringLength: {
     cstr: *char,
     return: MD_u64,
@@ -919,7 +911,77 @@ main:
 };
 
 ////////////////////////////////
+//~ Map Table Data Structure
+
+@send(Map)
+@func MD_HashString: {
+    string: MD_String8,
+    return: MD_u64,
+};
+
+@send(Map)
+@func MD_HashPointer: {
+    p: *void,
+};
+
+@send(Map)
+MD_MapMakeBucketCount: {
+ bucket_count: MD_u64,
+ return: MD_Map,
+};
+
+@send(Map)
+MD_MapMake: {
+ return: MD_Map,
+};
+
+@send(Map)
+MD_MapKeyStr: {
+ string: MD_String8,
+ return: MD_MapKey,
+};
+
+@send(Map)
+MD_MapKeyPtr: {
+ ptr: *void,
+ return: MD_MapKey,
+};
+
+@send(Map)
+MD_MapLookup: {
+ map: *MD_Map,
+ key: MD_MapKey,
+ return: *MD_MapSlot,
+};
+
+@send(Map)
+MD_MapScan: {
+ first_slot: *MD_MapSlot,
+ key: MD_MapKey,
+ return: *MD_MapSlot,
+};
+
+@send(Map)
+MD_MapInsert: {
+ map: *MD_Map,
+ key: MD_MapKey,
+ val: *void,
+ return: *MD_MapSlot,
+};
+
+@send(Map)
+MD_MapOverwrite: {
+ map: *MD_Map,
+ key: MD_MapKey,
+ val: *void,
+ return: *MD_MapSlot,
+};
+
+
+////////////////////////////////
 //~ String-To-Pointer Table
+
+// TODO(allen): update reference for map
 
 @send(Map)
 @func MD_StringMap_Lookup: {

@@ -382,20 +382,20 @@ struct MD_CodeLoc
 
 //~ String-To-Ptr and Ptr-To-Ptr tables
 
-typedef enum MD_MapCollisionRule
+typedef struct MD_MapKey MD_MapKey;
+struct MD_MapKey
 {
-    MD_MapCollisionRule_Chain,
-    MD_MapCollisionRule_Overwrite,
-}
-MD_MapCollisionRule;
+    MD_u64 hash;
+    MD_u64 size;
+    void *ptr;
+};
 
 typedef struct MD_MapSlot MD_MapSlot;
 struct MD_MapSlot
 {
     MD_MapSlot *next;
-    MD_u64 hash;
-    void *key;
-    void *value;
+    MD_MapKey key;
+    void *val;
 };
 
 typedef struct MD_Map MD_Map;
@@ -627,7 +627,6 @@ MD_FUNCTION MD_String8List MD_SplitString(MD_String8 string, int split_count, MD
 MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list, MD_String8 separator);
 MD_FUNCTION MD_i64         MD_I64FromString(MD_String8 string, MD_u32 radix);
 MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
-MD_FUNCTION MD_u64         MD_HashString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_CalculateCStringLength(char *cstr);
 
 MD_FUNCTION MD_String8     MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8 separator);
@@ -646,30 +645,18 @@ MD_FUNCTION MD_String16    MD_S16FromS8(MD_String8 str);
 MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 
-//~ Allen's Map Proposoal
-#if 0
-MD_FUNCTION void        MD_MapInit(MD_Map *map);
-MD_FUNCTION MD_MapSlot* MD_MapLookupString(MD_Map *map, MD_String8 key);
-MD_FUNCTION MD_MapSlot* MD_MapLookupPtr(MD_Map *map, void *key);
-MD_FUNCTION MD_b32      MD_MapInsertString(MD_Map *map, MD_String8 key, void *val);
-MD_FUNCTION MD_b32      MD_MapInsertPtr(MD_Map *map, void *key, void *val);
-MD_FUNCTION MD_MapSlot* MD_MapNextString(MD_MapSlot *slot, MD_String8 key);
-MD_FUNCTION MD_MapSlot* MD_MapNextPtr(MD_MapSlot *slot, void *key);
-#endif
-
-
 //~ Map Table Data Structure
-
+MD_FUNCTION MD_u64 MD_HashString(MD_String8 string);
 MD_FUNCTION MD_u64 MD_HashPointer(void *p);
 
-//- String-To-Pointer Table
-MD_FUNCTION MD_MapSlot *      MD_StringMap_Lookup(MD_Map *table, MD_String8 string);
-MD_FUNCTION MD_b32            MD_StringMap_Insert(MD_Map *table, MD_MapCollisionRule collision_rule, MD_String8 string, void *value);
-MD_FUNCTION MD_MapSlot *      MD_StringMap_Next(MD_MapSlot *slot, MD_String8 key);
-
-//- Pointer-To-Pointer Table
-MD_FUNCTION MD_MapSlot       *MD_PtrMap_Lookup(MD_Map *map, void *key);
-MD_FUNCTION MD_b32            MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, void *value);
+MD_FUNCTION MD_Map      MD_MapMakeBucketCount(MD_u64 bucket_count);
+MD_FUNCTION MD_Map      MD_MapMake(void);
+MD_FUNCTION MD_MapKey   MD_MapKeyStr(MD_String8 string);
+MD_FUNCTION MD_MapKey   MD_MapKeyPtr(void *ptr);
+MD_FUNCTION MD_MapSlot* MD_MapLookup(MD_Map *map, MD_MapKey key);
+MD_FUNCTION MD_MapSlot* MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key);
+MD_FUNCTION MD_MapSlot* MD_MapInsert(MD_Map *map, MD_MapKey key, void *val);
+MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val);
 
 //~ Parsing
 

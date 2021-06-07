@@ -490,17 +490,6 @@ MD_F64FromString(MD_String8 string)
 }
 
 MD_FUNCTION_IMPL MD_u64
-MD_HashString(MD_String8 string)
-{
-    MD_u64 result = 5381;
-    for(MD_u64 i = 0; i < string.size; i += 1)
-    {
-        result = ((result << 5) + result) + string.str[i];
-    }
-    return result;
-}
-
-MD_FUNCTION_IMPL MD_u64
 MD_CalculateCStringLength(char *cstr)
 {
     MD_u64 i = 0;
@@ -926,14 +915,15 @@ MD_S32FromS8(MD_String8 in)
 
 //~ Map Table Data Structure
 
-MD_PRIVATE_FUNCTION_IMPL void
-_MD_Map_Initialize(MD_Map *map)
+MD_FUNCTION_IMPL MD_u64
+MD_HashString(MD_String8 string)
 {
-    if(map->table_size == 0)
+    MD_u64 result = 5381;
+    for(MD_u64 i = 0; i < string.size; i += 1)
     {
-        map->table_size = 4096;
-        map->table = MD_PushArray(MD_MapSlot *, map->table_size);
+        result = ((result << 5) + result) + string.str[i];
     }
+    return result;
 }
 
 // NOTE(mal): Generic 64-bit hash function (https://nullprogram.com/blog/2018/07/31/)
@@ -948,169 +938,115 @@ MD_HashPointer(void *p)
     return h;
 }
 
-//- String-To-Pointer Table
-
-MD_FUNCTION_IMPL MD_MapSlot *
-MD_StringMap_Lookup(MD_Map *map, MD_String8 string)
-{
-    _MD_Map_Initialize(map);
-    MD_MapSlot *slot = 0;
-    MD_u64 hash = MD_HashString(string);
-    MD_u64 index = hash % map->table_size;
-    for(MD_MapSlot *candidate = map->table[index]; candidate; candidate = candidate->next)
-    {
-        if(candidate->hash == hash && MD_StringMatch(*((MD_String8 *)candidate->key), string, 0))
-        {
-            slot = candidate;
-            break;
-        }
-    }
-    return slot;
+MD_FUNCTION_IMPL MD_Map
+MD_MapMakeBucketCount(MD_u64 bucket_count){
+    // TODO(allen): permanent arena? scratch arena? -- would really
+    // make most sense with a parameter
+    MD_Map result = {0};
+    result.table_size = bucket_count;
+    // TODO(allen): push array zero
+    result.table = MD_PushArray(MD_MapSlot*, bucket_count);
+    memset(result.table, 0, sizeof(*result.table)*bucket_count);
+    return(result);
 }
 
-MD_FUNCTION_IMPL MD_b32
-MD_StringMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, MD_String8 string, void *value)
-{
-    _MD_Map_Initialize(map);
-    
-    MD_MapSlot *slot = 0;
-    MD_u64 hash = MD_HashString(string);
-    MD_u64 index = hash % map->table_size;
-    
-    for(MD_MapSlot *candidate = map->table[index]; candidate; candidate = candidate->next)
-    {
-        if(candidate->hash == hash && MD_StringMatch(*((MD_String8 *)candidate->key), string, 0))
-        {
-            slot = candidate;
-            break;
+MD_FUNCTION_IMPL MD_Map
+MD_MapMake(void){
+    MD_Map result = MD_MapMakeBucketCount(4093);
+    return(result);
+}
+
+MD_FUNCTION MD_MapKey
+MD_MapKeyStr(MD_String8 string){
+    MD_MapKey result = {0};
+    if (string.size != 0){
+        result.hash = MD_HashString(string);
+        result.size = string.size;
+        if (string.size > 0){
+            result.ptr = string.str;
         }
     }
-    
-    if(slot == 0 || (slot != 0 && collision_rule == MD_MapCollisionRule_Chain))
-    {
-        slot = MD_PushArray(MD_MapSlot, 1);
-        if(slot)
-        {
-            slot->next = 0;
-            if(map->table[index])
-            {
-                for(MD_MapSlot *old_slot = map->table[index]; old_slot; old_slot = old_slot->next)
-                {
-                    if(old_slot->next == 0)
-                    {
-                        old_slot->next = slot;
+    return(result);
+}
+
+MD_FUNCTION MD_MapKey
+MD_MapKeyPtr(void *ptr){
+    MD_MapKey result = {0};
+    if (ptr != 0){
+        result.hash = MD_HashPointer(ptr);
+        result.size = 0;
+        result.ptr = ptr;
+    }
+    return(result);
+}
+
+MD_FUNCTION_IMPL MD_MapSlot*
+MD_MapLookup(MD_Map *map, MD_MapKey key){
+    MD_MapSlot *result = 0;
+    if (map->table_size > 0){
+        MD_u64 index = key.hash%map->table_size;
+        result = MD_MapScan(map->table[index], key);
+    }
+    return(result);
+}
+
+MD_FUNCTION_IMPL MD_MapSlot*
+MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key){
+    MD_MapSlot *result = 0;
+    if (first_slot != 0){
+        MD_b32 ptr_kind = (key.size == 0);
+        MD_String8 key_string = MD_S8((MD_u8*)key.ptr, key.size);
+        for (MD_MapSlot *slot = first_slot;
+             slot != 0;
+             slot = slot->next){
+            if (slot->key.hash == key.hash){
+                if (ptr_kind){
+                    if (slot->key.size == 0 && slot->key.ptr == key.ptr){
+                        result = slot;
+                        break;
+                    }
+                }
+                else{
+                    MD_String8 slot_string = MD_S8((MD_u8*)slot->key.ptr, slot->key.size);
+                    if (MD_StringMatch(slot_string, key_string, 0)){
+                        result = slot;
                         break;
                     }
                 }
             }
-            else
-            {
-                map->table[index] = slot;
-            }
         }
     }
-    
-    if(slot)
-    {
-        slot->value = value;
-        slot->hash = hash;
-        MD_String8 *string_copy =  MD_PushArray(MD_String8, 1);
-        *string_copy = MD_PushStringCopy(string);
-        slot->key = string_copy;
-    }
-    
-    return !!slot;
+    return(result);
 }
 
-MD_FUNCTION_IMPL MD_MapSlot *
-MD_StringMap_Next(MD_MapSlot *slot, MD_String8 key)
-{
-    MD_MapSlot *next = 0;
-    if(slot)
-    {
-        for(MD_MapSlot *candidate = slot->next; candidate; candidate = candidate->next)
-        {
-            if(MD_StringMatch(*(MD_String8 *)candidate->key, key, 0))
-            {
-                next = candidate;
-                break;
-            }
-        }
+MD_FUNCTION_IMPL MD_MapSlot*
+MD_MapInsert(MD_Map *map, MD_MapKey key, void *val){
+    MD_MapSlot *result = 0;
+    if (map->table_size > 0){
+        MD_u64 index = key.hash%map->table_size;
+        // TODO(allen): again, memory? permanent arena? scratch arena?
+        // should definitely match the table's memory "object"
+        MD_MapSlot *slot = MD_PushArray(MD_MapSlot, 1);
+        // TODO(allen): queue push
+        slot->next = map->table[index];
+        map->table[index] = slot;
+        slot->key = key;
+        slot->val = val;
+        result = slot;
     }
-    return next;
+    return(result);
 }
 
-//- Pointer-To-Pointer Table
-
-MD_FUNCTION_IMPL MD_MapSlot *
-MD_PtrMap_Lookup(MD_Map *map, void *key)
-{
-    _MD_Map_Initialize(map);
-    
-    MD_MapSlot *slot = 0;
-    MD_u64 hash = MD_HashPointer(key);
-    MD_u64 index = hash % map->table_size;
-    for(MD_MapSlot *candidate = map->table[index]; candidate; candidate = candidate->next)
-    {
-        if(candidate->hash == hash)
-        {
-            slot = candidate;
-            break;
-        }
+MD_FUNCTION_IMPL MD_MapSlot*
+MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val){
+    MD_MapSlot *result = MD_MapLookup(map, key);
+    if (result != 0){
+        result->val = val;
     }
-    
-    return slot;
-}
-
-MD_FUNCTION_IMPL MD_b32
-MD_PtrMap_Insert(MD_Map *map, MD_MapCollisionRule collision_rule, void *key, void *value)
-{
-    _MD_Map_Initialize(map);
-    
-    MD_MapSlot *slot = 0;
-    MD_u64 hash = MD_HashPointer(key);
-    MD_u64 index = hash % map->table_size;
-    
-    for(MD_MapSlot *candidate = map->table[index]; candidate; candidate = candidate->next)
-    {
-        if(candidate->hash == hash)
-        {
-            slot = candidate;
-            break;
-        }
+    else{
+        result = MD_MapInsert(map, key, val);
     }
-    
-    if(slot == 0 || (slot != 0 && collision_rule == MD_MapCollisionRule_Chain))
-    {
-        slot = MD_PushArray(MD_MapSlot, 1);
-        if(slot)
-        {
-            slot->next = 0;
-            if(map->table[index])
-            {
-                for(MD_MapSlot *old_slot = map->table[index]; old_slot; old_slot = old_slot->next)
-                {
-                    if(old_slot->next == 0)
-                    {
-                        old_slot->next = slot;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                map->table[index] = slot;
-            }
-        }
-    }
-    
-    if(slot)
-    {
-        slot->value = value;
-        slot->hash = hash;
-    }
-    
-    return !!slot;
+    return(result);
 }
 
 //~ Parsing
@@ -2066,16 +2002,17 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
         // NOTE(allen): setup namespace structure
         MD_Node *namespaces = _MD_MakeNode_Ctx(&ctx, MD_NodeKind_List,
                                                MD_S8Lit(""), MD_S8Lit(""), ctx.at);
-        MD_Node *default_namespace = _MD_MakeNode_Ctx(&ctx, MD_NodeKind_List,
-                                                      MD_S8Lit(""), MD_S8Lit(""), ctx.at);
-        MD_PushChild(namespaces, default_namespace);
+        MD_Map namespace_table = MD_MapMake();
         
-        MD_Map namespace_table = {0};
-        MD_StringMap_Insert(&namespace_table, MD_MapCollisionRule_Overwrite, default_namespace->string, default_namespace);
+        // NOTE(allen): setup default namespace
+        MD_Node *default_ns = _MD_MakeNode_Ctx(&ctx, MD_NodeKind_List,
+                                               MD_S8Lit(""), MD_S8Lit(""), ctx.at);
+        MD_PushChild(namespaces, default_ns);
+        MD_MapInsert(&namespace_table, MD_MapKeyStr(default_ns->string), default_ns);
         
-        // NOTE(allen): setup namespace 
+        // NOTE(allen): parse loop
         MD_NodeFlags next_child_flags = 0;
-        MD_Node *selected_namespace = default_namespace;
+        MD_Node *selected_namespace = default_ns;
         for(;;)
         {
             // TODO(allen): I don't get it... this can only happen once between
@@ -2115,20 +2052,19 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
                     MD_Token token = MD_ZERO_STRUCT;
                     if(MD_Parse_RequireKind(&ctx, MD_TokenKind_Identifier, &token))
                     {
-                        MD_MapSlot *existing_namespace_slot = MD_StringMap_Lookup(&namespace_table, token.string);
-                        if(existing_namespace_slot == 0)
-                        {
+                        MD_MapKey ns_key = MD_MapKeyStr(token.string);
+                        MD_MapSlot *ns_slot = MD_MapLookup(&namespace_table, ns_key);
+                        if (ns_slot == 0){
                             MD_Node *ns = _MD_MakeNode_Ctx(&ctx, MD_NodeKind_List,
                                                            token.string, token.string, token.outer_string.str);
-                            MD_StringMap_Insert(&namespace_table, MD_MapCollisionRule_Overwrite, token.string, ns);
-                            existing_namespace_slot = MD_StringMap_Lookup(&namespace_table, token.string);
                             MD_PushChild(namespaces, ns);
+                            ns_slot = MD_MapInsert(&namespace_table, ns_key, ns);
                         }
-                        selected_namespace = (MD_Node *)existing_namespace_slot->value;
+                        selected_namespace = (MD_Node *)ns_slot->val;
                     }
                     else
                     {
-                        selected_namespace = default_namespace;
+                        selected_namespace = default_ns;
                     }
                 }
                 // NOTE(rjf): Not a valid hash thing
