@@ -313,7 +313,7 @@ MD_PushStringFV(char *fmt, va_list args)
     va_copy(args2, args);
     MD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
     result.str = MD_PushArray(MD_u8, needed_bytes);
-    result.size = needed_bytes-1;
+    result.size = needed_bytes - 1;
     vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
 }
@@ -332,21 +332,12 @@ MD_PushStringF(char *fmt, ...)
 MD_FUNCTION_IMPL void
 MD_PushStringToList(MD_String8List *list, MD_String8 string)
 {
+    MD_String8Node *node = MD_PushArray(MD_String8Node, 1);
+    node->string = string;
+    
+    MD_QueuePush(list->first, list->last, node);
     list->node_count += 1;
     list->total_size += string.size;
-    
-    MD_String8Node *node = MD_PushArray(MD_String8Node, 1);
-    node->next = 0;
-    node->string = string;
-    if(list->last == 0)
-    {
-        list->first = list->last = node;
-    }
-    else
-    {
-        list->last->next = node;
-        list->last = list->last->next;
-    }
 }
 
 MD_FUNCTION_IMPL void
@@ -1027,16 +1018,8 @@ MD_MapInsert(MD_Map *map, MD_MapKey key, void *val){
         // TODO(allen): again, memory? permanent arena? scratch arena?
         // should definitely match the table's memory "object"
         MD_MapSlot *slot = MD_PushArray(MD_MapSlot, 1);
-        // TODO(allen): queue push
         MD_MapBucket *bucket = &map->buckets[index];
-        if (bucket->first == 0){
-            bucket->first = slot;
-        }
-        else{
-            bucket->last->next = slot;
-        }
-        bucket->last = slot;
-        slot->next = 0;
+        MD_QueuePush(bucket->first, bucket->last, slot);
         slot->key = key;
         slot->val = val;
         result = slot;
@@ -1131,7 +1114,7 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
                 {
                     MD_Parse_Set(ctx, tag, MD_ParseSetFlag_Paren);
                 }
-                MD_PushSibling(&first, &last, tag);
+                MD_NodeDblPushBack(first, last, tag);
             }
             else
             {
@@ -2120,42 +2103,34 @@ MD_MakeNode(MD_NodeKind kind, MD_String8 string,
     return node;
 }
 
+// TODO(allen): eliminate
 MD_FUNCTION_IMPL void
 MD_PushSibling(MD_Node **firstp, MD_Node **lastp, MD_Node *node)
 {
     if(!MD_NodeIsNil(node))
     {
-        MD_Node *first = *firstp;
-        MD_Node *last = *lastp;
-        if(MD_NodeIsNil(last))
-        {
-            first = last = node;
-            node->next = node->prev = MD_NilNode();
-        }
-        else
-        {
-            last->next = node;
-            node->next = MD_NilNode();
-            node->prev = last;
-            last = last->next;
-        }
-        *firstp = first;
-        *lastp = last;
+        MD_NodeDblPushBack(*firstp, *lastp, node);
     }
 }
 
 MD_FUNCTION_IMPL void
 MD_PushChild(MD_Node *parent, MD_Node *new_child)
 {
-    MD_PushSibling(&parent->first_child, &parent->last_child, new_child);
-    new_child->parent = parent;
+    if (!MD_NodeIsNil(new_child))
+    {
+        MD_NodeDblPushBack(parent->first_child, parent->last_child, new_child);
+        new_child->parent = parent;
+    }
 }
 
 MD_FUNCTION_IMPL void
 MD_PushTag(MD_Node *node, MD_Node *tag)
 {
-    MD_PushSibling(&node->first_tag, &node->last_tag, tag);
-    tag->parent = node;
+    if (!MD_NodeIsNil(tag))
+    {
+        MD_NodeDblPushBack(node->first_tag, node->last_tag, tag);
+        tag->parent = node;
+    }
 }
 
 MD_FUNCTION_IMPL MD_Node*

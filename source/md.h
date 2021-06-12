@@ -228,6 +228,7 @@ typedef int64_t  MD_b64;
 typedef float    MD_f32;
 typedef double   MD_f64;
 
+
 //~ Basic UTF-8 string types.
 
 typedef struct MD_String8 MD_String8;
@@ -575,6 +576,49 @@ struct MD_FileIter
 #define MD_StaticAssert(c,label) MD_u8 MD_static_assert_##label[(c)?(1):(-1)]
 #define MD_ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
 
+//~ Linked List Macros.
+
+// terminator modes
+#define MD_CheckNull(p) ((p)==0)
+#define MD_SetNull(p) ((p)=0)
+#define MD_CheckNil(p) (MD_NodeIsNil(p))
+#define MD_SetNil(p) ((p)=MD_NilNode())
+
+// implementations
+#define MD_QueuePush_NZ(f,l,n,next,zchk,zset) (zchk(f)?\
+(f)=(l)=(n):\
+((l)->next=(n),(l)=(n),zset((n)->next)))
+#define MD_QueuePop_NZ(f,l,next,zset) ((f)==(l)?\
+(zset(f),zset(l)):\
+(f)=(f)->next)
+#define MD_StackPush_N(f,n,next) ((n)->next=(f),(f)=(n))
+#define MD_StackPop_NZ(f,next,zchk) (zchk(f)?0:(f)=(f)->next)
+
+#define MD_DblPushBack_NPZ(f,l,n,next,prev,zchk,zset) \
+(zchk(f)?\
+((f)=(l)=(n),zset((n)->next),zset((n)->prev)):\
+((n)->prev=(l),(l)->next=(n),(l)=(n),zset((n)->next)))
+#define MD_DblRemove_NPZ(f,l,n,next,prev,zset) (((f)==(n)?\
+((f)=(f)->next,zset((f)->prev)):\
+(l)==(n)?\
+((l)=(l)->prev,zset((l)->next)):\
+((n)->next->prev=(n)->prev,\
+(n)->prev->next=(n)->next)))
+
+// compositions
+#define MD_QueuePush(f,l,n) MD_QueuePush_NZ(f,l,n,next,MD_CheckNull,MD_SetNull)
+#define MD_QueuePop(f,l)    MD_QueuePop_NZ(f,l,next,MD_SetNull)
+#define MD_StackPush(f,n)   MD_StackPush_N(f,n,next)
+#define MD_StackPop(f)      MD_StackPop_NZ(f,next,MD_CheckNull)
+#define MD_DblPushBack(f,l,n)  MD_DblPushBack_NPZ(f,l,n,next,prev,MD_CheckNull,MD_SetNull)
+#define MD_DblPushFront(f,l,n) MD_DblPushBack_NPZ(l,f,n,prev,next,MD_CheckNull,MD_SetNull)
+#define MD_DblRemove(f,l,n)    MD_DblRemove_NPZ(f,l,n,next,prev,MD_SetNull)
+
+#define MD_NodeDblPushBack(f,l,n)  MD_DblPushBack_NPZ(f,l,n,next,prev,MD_CheckNil,MD_SetNil)
+#define MD_NodeDblPushFront(f,l,n) MD_DblPushBack_NPZ(l,f,n,prev,next,MD_CheckNil,MD_SetNil)
+#define MD_NodeDblRemove(f,l,n)    MD_DblRemove_NPZ(f,l,n,next,prev,MD_SetNil)
+
+
 //~ Memory Operations
 MD_FUNCTION void MD_MemoryZero(void *memory, MD_u64 size);
 MD_FUNCTION void MD_MemoryCopy(void *dst, void *src, MD_u64 size);
@@ -702,10 +746,12 @@ MD_FUNCTION MD_Node *MD_NilNode(void);
 MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string,
                                  MD_String8 whole_string, MD_String8 filename,
                                  MD_u8 *file_contents, MD_u8 *at);
-MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *new_sibling);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 MD_FUNCTION MD_Node *MD_PushReference(MD_Node *list, MD_Node *target);
+
+// TODO(allen): eliminate
+MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *new_sibling);
 
 //~ Introspection Helpers
 MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string);

@@ -1166,6 +1166,7 @@ MD_MapOverwrite: {
     return: *MD_Node,
 };
 
+// TODO(allen): eliminate
 @send(Nodes)
 @func MD_PushSibling: {
     first: **MD_Node,
