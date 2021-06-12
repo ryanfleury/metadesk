@@ -13,7 +13,6 @@ cl %compile_flags% ..\samples\static_site_generator\static_site_generator.c
 cl %compile_flags% ..\samples\output_parse\output_parse.c
 cl %compile_flags% ..\samples\c_code_generation.c
 cl %compile_flags% ..\samples\node_errors\node_errors.c
-cl %compile_flags% ..\samples\namespaced_types\namespaced_types.c
 echo.
 echo ~~~ Build All Tests ~~~
 cl %compile_flags% ..\tests\sanity_tests.c
@@ -64,14 +63,5 @@ echo.
 echo ~~~ Running Error Generation Sample ~~~
 pushd build
 node_errors.exe %~dp0\samples\node_errors\node_errors.md
-popd
-
-echo.
-echo ~~~ Running Namespace Type Versioning Sample ~~~
-pushd build
-if not exist ..\samples\namespaced_types\generated mkdir ..\samples\namespaced_types\generated
-namespaced_types.exe ..\samples\namespaced_types\spec.md ..\samples\namespaced_types\generated\converter.c
-cl %compile_flags% ..\samples\namespaced_types\conversion_test.c
-conversion_test.exe
 popd
 

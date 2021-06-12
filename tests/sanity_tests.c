@@ -656,57 +656,6 @@ int main(void)
         
     }
     
-    Test("Namespace")
-    {
-        char raw_text[] = 
-            "Node;\n"
-            "#namespace foo\n"
-            "Node;\n"
-            "#namespace bar\n"
-            "Node;\n"
-            "#namespace foo\n"
-            "Object;\n"
-            "#namespace fiz\n"
-            "#namespace bar\n"
-            "Object;\n"
-            ;
-        MD_String8 text = MD_S8Lit(raw_text);
-        MD_String8 file_name = MD_S8Lit("namespace_raw_text");
-        
-        MD_ParseResult result = MD_ParseWholeString(file_name, text);
-        MD_Node *namespaces = result.namespaces;
-        MD_Node *ns_default = MD_ChildFromString(namespaces, MD_S8Lit(""));
-        MD_Node *ns_foo = MD_ChildFromString(namespaces, MD_S8Lit("foo"));
-        MD_Node *ns_bar = MD_ChildFromString(namespaces, MD_S8Lit("bar"));
-        MD_Node *ns_fiz = MD_ChildFromString(namespaces, MD_S8Lit("fiz"));
-        TestResult(!MD_NodeIsNil(ns_foo));
-        TestResult(!MD_NodeIsNil(ns_bar));
-        TestResult(!MD_NodeIsNil(ns_fiz));
-        
-        {
-            MD_Node *c0 = MD_ChildFromIndex(ns_default, 0);
-            TestResult(MD_StringMatch(c0->string, MD_S8Lit("Node"), 0));
-        }
-        
-        {
-            MD_Node *c0 = MD_ChildFromIndex(ns_foo, 0);
-            MD_Node *c1 = MD_ChildFromIndex(ns_foo, 1);
-            TestResult(MD_StringMatch(c0->string, MD_S8Lit("Node"), 0));
-            TestResult(MD_StringMatch(c1->string, MD_S8Lit("Object"), 0));
-        }
-        
-        {
-            MD_Node *c0 = MD_ChildFromIndex(ns_bar, 0);
-            MD_Node *c1 = MD_ChildFromIndex(ns_bar, 1);
-            TestResult(MD_StringMatch(c0->string, MD_S8Lit("Node"), 0));
-            TestResult(MD_StringMatch(c1->string, MD_S8Lit("Object"), 0));
-        }
-        
-        {
-            TestResult(MD_NodeIsNil(ns_fiz->first_child));
-        }
-    }
-    
     Test("Scoped in Unscoped")
     {
         // TODO(allen): This test is to reveal a strange phenomenon in the current

@@ -526,7 +526,6 @@ struct MD_ParseResult
     MD_Node *node;
     MD_Error *first_error;
     MD_u64 bytes_parsed;
-    MD_Node *namespaces;
 };
 
 //~ Command line parsing helper types.

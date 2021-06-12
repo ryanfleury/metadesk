@@ -194,9 +194,6 @@ main:
     @doc("A Reference node is an indirection to another node. The node field @code 'ref_target' contains a pointer to the referenced node. These nodes are typically used for creating externally chained linked lists that gather nodes from a parse tree.")
         Reference,
     
-    @doc("A Namespace node represents a namespace created by the @code '#namespace' reserved keyword.")
-        Namespace,
-    
     @doc("A Label node represents the main structure of the metadesk abstract syntax tree. Some labels have children which will also be labels. Labels can be given their text by identifiers, numerics, string and character literals, and operator symbols.")
         @see(MD_TokenKind)
         Label,
@@ -435,8 +432,6 @@ main:
     at: *MD_u8,
     filename: MD_String8,
     file_contents: MD_String8,
-    namespace_table: MD_Map,
-    selected_namespace: *MD_Node,
     catastrophic_error: MD_b32,
 };
 
