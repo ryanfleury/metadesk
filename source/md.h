@@ -398,11 +398,18 @@ struct MD_MapSlot
     void *val;
 };
 
+typedef struct MD_MapBucket MD_MapBucket;
+struct MD_MapBucket
+{
+    MD_MapSlot *first;
+    MD_MapSlot *last;
+};
+
 typedef struct MD_Map MD_Map;
 struct MD_Map
 {
-    MD_u64 table_size;
-    MD_MapSlot **table;
+    MD_MapBucket *buckets;
+    MD_u64 bucket_count;
 };
 
 //~ Token kinds.

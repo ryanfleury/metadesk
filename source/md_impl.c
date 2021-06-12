@@ -943,10 +943,10 @@ MD_MapMakeBucketCount(MD_u64 bucket_count){
     // TODO(allen): permanent arena? scratch arena? -- would really
     // make most sense with a parameter
     MD_Map result = {0};
-    result.table_size = bucket_count;
+    result.bucket_count = bucket_count;
     // TODO(allen): push array zero
-    result.table = MD_PushArray(MD_MapSlot*, bucket_count);
-    memset(result.table, 0, sizeof(*result.table)*bucket_count);
+    result.buckets = MD_PushArray(MD_MapBucket, bucket_count);
+    memset(result.buckets, 0, sizeof(*result.buckets)*bucket_count);
     return(result);
 }
 
@@ -983,9 +983,9 @@ MD_MapKeyPtr(void *ptr){
 MD_FUNCTION_IMPL MD_MapSlot*
 MD_MapLookup(MD_Map *map, MD_MapKey key){
     MD_MapSlot *result = 0;
-    if (map->table_size > 0){
-        MD_u64 index = key.hash%map->table_size;
-        result = MD_MapScan(map->table[index], key);
+    if (map->bucket_count > 0){
+        MD_u64 index = key.hash%map->bucket_count;
+        result = MD_MapScan(map->buckets[index].first, key);
     }
     return(result);
 }
@@ -1022,14 +1022,21 @@ MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key){
 MD_FUNCTION_IMPL MD_MapSlot*
 MD_MapInsert(MD_Map *map, MD_MapKey key, void *val){
     MD_MapSlot *result = 0;
-    if (map->table_size > 0){
-        MD_u64 index = key.hash%map->table_size;
+    if (map->bucket_count > 0){
+        MD_u64 index = key.hash%map->bucket_count;
         // TODO(allen): again, memory? permanent arena? scratch arena?
         // should definitely match the table's memory "object"
         MD_MapSlot *slot = MD_PushArray(MD_MapSlot, 1);
         // TODO(allen): queue push
-        slot->next = map->table[index];
-        map->table[index] = slot;
+        MD_MapBucket *bucket = &map->buckets[index];
+        if (bucket->first == 0){
+            bucket->first = slot;
+        }
+        else{
+            bucket->last->next = slot;
+        }
+        bucket->last = slot;
+        slot->next = 0;
         slot->key = key;
         slot->val = val;
         result = slot;
