@@ -13,13 +13,6 @@
 // [ ] Helpers for parsing NodeFlags, figuring out which nodes in a set are
 //     separated by a semicolon, something like MD_SeekNodeWithFlags(node) -> node ?
 // [ ] Escaping characters from strings
-// [x] Get rid of MD_JoinStringListWithSeparator, just have a separator argument on
-//     MD_JoinStringList.
-// [x] MD_StringMap_Next, for iterating matching slots in an MD_Map, that all
-//     share the same key (important in the case of hash collisions)
-// [x] Helper for making a reference for a node, e.g. MD_ReferenceFromNode
-// [x] Organization decision for C generator helpers: splitting from md.h? file name? folder?
-// [ ] Collapse down map types
 // [ ] Fill in more String -> Integer helpers
 // [ ] Memory Management Strategy
 //     [ ] Gather map of current memory management situation
