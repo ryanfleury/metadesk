@@ -313,8 +313,14 @@ typedef enum MD_NodeKind
 MD_NodeKind;
 
 typedef MD_u32 MD_NodeFlags;
+#define MD_NodeFlag_AfterFromBefore(f) ((f) << 1)
 enum
 {
+    // NOTE(rjf): Because of MD_NodeFlag_AfterFromBefore, it is *required* that
+    // every single pair of "Before*" or "After*" flags be in the correct order
+    // which is that the Before* flag comes first, and the After* flag comes
+    // immediately after (After* being the more significant bit).
+    
     MD_NodeFlag_ParenLeft        = (1<<0),
     MD_NodeFlag_ParenRight       = (1<<1),
     MD_NodeFlag_BracketLeft      = (1<<2),
@@ -332,8 +338,6 @@ enum
     MD_NodeFlag_Identifier       = (1<<11),
     MD_NodeFlag_StringLiteral    = (1<<12),
 };
-
-#define MD_NodeFlag_AfterFromBefore(f) ((f) << 1)
 
 typedef struct MD_Node MD_Node;
 struct MD_Node
