@@ -31,6 +31,13 @@ TestResult(MD_b32 result)
     test_ctx.number_of_tests += 1;
     test_ctx.number_passed += !!result;
     printf(result ? "." : "X");
+    
+#if 0
+    if(result == 0)
+    {
+        __debugbreak();
+    }
+#endif
 }
 
 static void

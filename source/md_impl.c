@@ -1234,9 +1234,11 @@ MD_PushNodeErrorF(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fm
 
 MD_FUNCTION void
 MD_PushTokenError(MD_ParseCtx *ctx, MD_Token token, MD_MessageKind kind, MD_String8 str){
+    MD_Node *stub_file = MD_MakeNode(MD_NodeKind_ErrorMarker, ctx->file_contents, ctx->file_contents, ctx->file_contents.str);
     MD_Node *stub = _MD_MakeNode_Ctx(ctx, MD_NodeKind_ErrorMarker,
                                      token.string, token.outer_string, token.outer_string.str);
     MD_PushNodeError(ctx, stub, kind, str);
+    MD_PushChild(stub_file, stub);
 }
 
 MD_FUNCTION void
