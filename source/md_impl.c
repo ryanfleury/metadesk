@@ -4,13 +4,8 @@
 #define MD_PRIVATE_FUNCTION_IMPL MD_FUNCTION_IMPL
 #define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
-//~
+//~ Nil Node Definition
 
-// NOTE(allen): Review @rjf; Building in C++
-// While very latest version of C++ have designated initializers
-// I would like to be able to build on more simple versions, so I
-// ditched the designated initializers in favor of the extra work
-// of maintaining order based initializers.
 static MD_Node _md_nil_node =
 {
     &_md_nil_node,         // next
@@ -32,6 +27,7 @@ static MD_Node _md_nil_node =
 };
 
 //~ Memory Operations
+
 MD_FUNCTION_IMPL void
 MD_MemoryZero(void *memory, MD_u64 size)
 {
@@ -654,10 +650,17 @@ MD_StringListFromNodeFlags(MD_NodeFlags flags)
         "BraceRight",
         
         "BeforeSemicolon",
-        "BeforeComma",
-        
         "AfterSemicolon",
+        
+        "BeforeComma",
         "AfterComma",
+        
+        "StringSingleQuote",
+        "StringDoubleQuote",
+        "StringTick",
+        "StringTripletSingleQuote",
+        "StringTripletDoubleQuote",
+        "StringTripletTick",
         
         "Numeric",
         "Identifier",
@@ -1058,9 +1061,18 @@ MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
 {
     MD_NodeFlags result = 0;
     switch (kind){
-        case MD_TokenKind_Identifier:     result = MD_NodeFlag_Identifier;    break;
-        case MD_TokenKind_NumericLiteral: result = MD_NodeFlag_Numeric;       break;
-        case MD_TokenKind_StringLiteral:  result = MD_NodeFlag_StringLiteral; break;
+        case MD_TokenKind_Identifier:                      result = MD_NodeFlag_Identifier;    break;
+        case MD_TokenKind_NumericLiteral:                  result = MD_NodeFlag_Numeric;       break;
+        case MD_TokenKind_StringLiteralSingleQuote:        result |= MD_NodeFlag_StringSingleQuote;        goto string_lit;
+        case MD_TokenKind_StringLiteralDoubleQuote:        result |= MD_NodeFlag_StringDoubleQuote;        goto string_lit;
+        case MD_TokenKind_StringLiteralTick:               result |= MD_NodeFlag_StringTick;               goto string_lit;
+        case MD_TokenKind_StringLiteralSingleQuoteTriplet: result |= MD_NodeFlag_StringTripletSingleQuote; goto string_lit;
+        case MD_TokenKind_StringLiteralDoubleQuoteTriplet: result |= MD_NodeFlag_StringTripletDoubleQuote; goto string_lit;
+        case MD_TokenKind_StringLiteralTickTriplet:        result |= MD_NodeFlag_StringTripletTick;        goto string_lit;
+        string_lit:;
+        {
+            result |= MD_NodeFlag_StringLiteral;
+        }break;
     }
     return(result);
 }
@@ -1357,11 +1369,6 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
             // NOTE(allen): Strings
             case '"':
             case '\'':
-            
-            // NOTE(rjf): "Bundle-of-tokens" strings (`stuff` or ```stuff```)
-            // In practice no different than a regular string, but provides an
-            // alternate syntax which will allow tools like 4coder to treat the
-            // contents as regular tokens.
             case '`':
             {
                 // TODO(allen): proposal:
@@ -1447,7 +1454,27 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 }
                 
                 // set token kind
-                token.kind = MD_TokenKind_StringLiteral;
+                if(is_triplet)
+                {
+                    switch(d)
+                    {
+                        case '\'': token.kind = MD_TokenKind_StringLiteralSingleQuoteTriplet; break;
+                        case '"':  token.kind = MD_TokenKind_StringLiteralDoubleQuoteTriplet; break;
+                        case '`':  token.kind = MD_TokenKind_StringLiteralTickTriplet; break;
+                        default: break;
+                    }
+                }
+                else
+                {
+                    switch(d)
+                    {
+                        case '\'': token.kind = MD_TokenKind_StringLiteralSingleQuote; break;
+                        case '"':  token.kind = MD_TokenKind_StringLiteralDoubleQuote; break;
+                        case '`':  token.kind = MD_TokenKind_StringLiteralTick; break;
+                        default: break;
+                    }
+                }
+                
             }break;
             
             // NOTE(allen): Identifiers, Numbers, Operators
@@ -1821,33 +1848,57 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
     }
     
     // NOTE(rjf): Labels
-    else if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier,     &token) ||
-            MD_Parse_RequireKind(ctx, MD_TokenKind_NumericLiteral, &token) ||
-            MD_Parse_RequireKind(ctx, MD_TokenKind_StringLiteral,  &token) ||
-            MD_Parse_RequireKind(ctx, MD_TokenKind_Symbol,         &token))
+    else if(next_token.kind == MD_TokenKind_Identifier                        ||
+            next_token.kind == MD_TokenKind_NumericLiteral                    ||
+            next_token.kind == MD_TokenKind_StringLiteralTick                 ||
+            next_token.kind == MD_TokenKind_StringLiteralSingleQuote          ||
+            next_token.kind == MD_TokenKind_StringLiteralDoubleQuote          ||
+            next_token.kind == MD_TokenKind_StringLiteralTickTriplet          ||
+            next_token.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
+            next_token.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet   ||
+            next_token.kind == MD_TokenKind_Symbol                           )
     {
-        result.node = MD_MakeNode(MD_NodeKind_Label, token.string, token.outer_string, token.outer_string.str);
-        result.node->flags |= MD_NodeFlagsFromTokenKind(token.kind);
+        MD_Parse_Bump(ctx, next_token);
+        result.node = MD_MakeNode(MD_NodeKind_Label, next_token.string, next_token.outer_string, next_token.outer_string.str);
+        result.node->flags |= MD_NodeFlagsFromTokenKind(next_token.kind);
         
-        if(token.kind == MD_TokenKind_StringLiteral)
+        // TODO(rjf): Before we were just able to check one kind. I think preserving
+        // which kind of string literal was used is very important, for the same reason
+        // that preserving which symbols were used to delimit a set is important.
+        // But, having to manage this "group of kinds" is a little bit annoying.
+        // Maybe we should define the set of legal kinds for certain syntactic
+        // contexts somewhere unified, so that the parser is never duplicating this?
+        //
+        // It's also possible that it never matters and we only ever use this group
+        // in one place, but I just got that "we're duplicating stuff" allergy that
+        // I usually get.
+        //
+        // If that turned out to be a good idea, maybe we could do something like
+        // MD_TokenKindIsLegalLabelHead, MD_TokenKindNeedsBalancing?? I don't know.
+        if(next_token.kind == MD_TokenKind_StringLiteralTick                 ||
+           next_token.kind == MD_TokenKind_StringLiteralSingleQuote          ||
+           next_token.kind == MD_TokenKind_StringLiteralDoubleQuote          ||
+           next_token.kind == MD_TokenKind_StringLiteralTickTriplet          ||
+           next_token.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
+           next_token.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet)
         {
-            if(!_MD_StringLiteralIsBalanced(token))
+            if(!_MD_StringLiteralIsBalanced(next_token))
             {
-                MD_String8 capped = MD_StringPrefix(token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
+                MD_String8 capped = MD_StringPrefix(next_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
                 MD_PushNodeErrorF(ctx, result.node, MD_MessageKind_CatastrophicError,
                                   "Unterminated text literal \"%.*s\"", MD_StringExpand(capped));
             }
         }
-        else if(token.kind == MD_TokenKind_Symbol && token.string.size == 1 && MD_CharIsReservedSymbol(token.string.str[0]))
+        else if(next_token.kind == MD_TokenKind_Symbol && next_token.string.size == 1 && MD_CharIsReservedSymbol(next_token.string.str[0]))
         {
-            MD_u8 c = token.string.str[0];
+            MD_u8 c = next_token.string.str[0];
             if(c == '}' || c == ']' || c == ')')
             {
-                MD_PushTokenErrorF(ctx, token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", c);
+                MD_PushTokenErrorF(ctx, next_token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", c);
             }
             else
             {
-                MD_PushTokenErrorF(ctx, token, MD_MessageKind_Error, "Unexpected reserved symbol \"%c\"",
+                MD_PushTokenErrorF(ctx, next_token, MD_MessageKind_Error, "Unexpected reserved symbol \"%c\"",
                                    c);
             }
         }

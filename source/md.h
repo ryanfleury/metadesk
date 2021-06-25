@@ -298,6 +298,8 @@ MD_WordStyle;
 
 typedef enum MD_NodeKind
 {
+    // NOTE(rjf): Must be kept in sync with MD_StringFromNodeKind.
+    
     MD_NodeKind_Nil,
     MD_NodeKind_File,
     MD_NodeKind_List,
@@ -312,31 +314,40 @@ typedef enum MD_NodeKind
 }
 MD_NodeKind;
 
-typedef MD_u32 MD_NodeFlags;
+typedef MD_u64 MD_NodeFlags;
 #define MD_NodeFlag_AfterFromBefore(f) ((f) << 1)
 enum
 {
+    // NOTE(rjf): Must be kept in sync with MD_StringListFromNodeFlags.
+    
     // NOTE(rjf): Because of MD_NodeFlag_AfterFromBefore, it is *required* that
     // every single pair of "Before*" or "After*" flags be in the correct order
     // which is that the Before* flag comes first, and the After* flag comes
     // immediately after (After* being the more significant bit).
     
-    MD_NodeFlag_ParenLeft        = (1<<0),
-    MD_NodeFlag_ParenRight       = (1<<1),
-    MD_NodeFlag_BracketLeft      = (1<<2),
-    MD_NodeFlag_BracketRight     = (1<<3),
-    MD_NodeFlag_BraceLeft        = (1<<4),
-    MD_NodeFlag_BraceRight       = (1<<5),
+    MD_NodeFlag_ParenLeft               = (1<<0),
+    MD_NodeFlag_ParenRight              = (1<<1),
+    MD_NodeFlag_BracketLeft             = (1<<2),
+    MD_NodeFlag_BracketRight            = (1<<3),
+    MD_NodeFlag_BraceLeft               = (1<<4),
+    MD_NodeFlag_BraceRight              = (1<<5),
     
-    MD_NodeFlag_BeforeSemicolon  = (1<<6),
-    MD_NodeFlag_AfterSemicolon   = (1<<7),
+    MD_NodeFlag_BeforeSemicolon         = (1<<6),
+    MD_NodeFlag_AfterSemicolon          = (1<<7),
     
-    MD_NodeFlag_BeforeComma      = (1<<8),
-    MD_NodeFlag_AfterComma       = (1<<9),
+    MD_NodeFlag_BeforeComma             = (1<<8),
+    MD_NodeFlag_AfterComma              = (1<<9),
     
-    MD_NodeFlag_Numeric          = (1<<10),
-    MD_NodeFlag_Identifier       = (1<<11),
-    MD_NodeFlag_StringLiteral    = (1<<12),
+    MD_NodeFlag_StringSingleQuote       = (1<<10),
+    MD_NodeFlag_StringDoubleQuote       = (1<<13),
+    MD_NodeFlag_StringTick              = (1<<15),
+    MD_NodeFlag_StringTripletSingleQuote= (1<<16),
+    MD_NodeFlag_StringTripletDoubleQuote= (1<<18),
+    MD_NodeFlag_StringTripletTick       = (1<<20),
+    
+    MD_NodeFlag_Numeric                 = (1<<22),
+    MD_NodeFlag_Identifier              = (1<<23),
+    MD_NodeFlag_StringLiteral           = (1<<24),
 };
 
 typedef struct MD_Node MD_Node;
@@ -420,30 +431,15 @@ typedef enum MD_TokenKind
     MD_TokenKind_Nil,
     
     MD_TokenKind_RegularMin,
-    
-    // A group of characters that begins with an underscore or alphabetic character,
-    // and consists of numbers, alphabetic characters, or underscores after that.
     MD_TokenKind_Identifier,
-    
-    // A group of characters beginning with a numeric character or a '-', and then
-    // consisting of only numbers, alphabetic characters, or '.'s after that.
     MD_TokenKind_NumericLiteral,
-    
-    // A group of arbitrary characters, grouped together by a " character, OR by a
-    // """ symbol at the beginning and end of the group. String literals beginning with
-    // " are to only be specified on a single line, but """ strings can exist across
-    // many lines.
-    MD_TokenKind_StringLiteral,
-    
-    // A group of symbolic characters, where symbolic characters means any of the following:
-    // ~!@#$%^&*()-+=[{]}:;<>,./?|\
-   //
-    // Groups of multiple characters are only allowed in specific circumstances. Most of these
-    // are only 1 character long, but some groups are allowed:
-    //
-    // "<<", ">>", "<=", ">=", "+=", "-=", "*=", "/=", "::", ":=", "==", "&=", "|=", "->"
+    MD_TokenKind_StringLiteralSingleQuote,
+    MD_TokenKind_StringLiteralSingleQuoteTriplet,
+    MD_TokenKind_StringLiteralDoubleQuote,
+    MD_TokenKind_StringLiteralDoubleQuoteTriplet,
+    MD_TokenKind_StringLiteralTick,
+    MD_TokenKind_StringLiteralTickTriplet,
     MD_TokenKind_Symbol,
-    
     MD_TokenKind_RegularMax,
     
     MD_TokenKind_Comment,
@@ -453,8 +449,8 @@ typedef enum MD_TokenKind
     MD_TokenKind_Newline,
     MD_TokenKind_WhitespaceMax,
     
-    MD_TokenKind_BadCharacter,
     // Character outside currently supported encodings
+    MD_TokenKind_BadCharacter,
     
     MD_TokenKind_COUNT,
 }
