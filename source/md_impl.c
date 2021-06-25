@@ -1056,10 +1056,8 @@ MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val){
 
 //~ Parsing
 
-MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
-
-MD_PRIVATE_FUNCTION_IMPL MD_NodeFlags
-_MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
+MD_FUNCTION_IMPL MD_NodeFlags
+MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
 {
     MD_NodeFlags result = 0;
     switch (kind){
@@ -1070,6 +1068,8 @@ _MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
     }
     return(result);
 }
+
+MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
 
 MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_StringLiteralIsBalanced(MD_Token token)
@@ -1838,7 +1838,7 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
             MD_Parse_RequireKind(ctx, MD_TokenKind_Symbol,         &token))
     {
         result.node = MD_MakeNode(MD_NodeKind_Label, token.string, token.outer_string, token.outer_string.str);
-        result.node->flags |= _MD_NodeFlagsFromTokenKind(token.kind);
+        result.node->flags |= MD_NodeFlagsFromTokenKind(token.kind);
         
         if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
         {
