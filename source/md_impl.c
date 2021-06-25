@@ -942,9 +942,7 @@ MD_MapMakeBucketCount(MD_u64 bucket_count){
     // make most sense with a parameter
     MD_Map result = {0};
     result.bucket_count = bucket_count;
-    // TODO(allen): push array zero
-    result.buckets = MD_PushArray(MD_MapBucket, bucket_count);
-    memset(result.buckets, 0, sizeof(*result.buckets)*bucket_count);
+    result.buckets = MD_PushArrayZero(MD_MapBucket, bucket_count);
     return(result);
 }
 

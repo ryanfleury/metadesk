@@ -579,6 +579,11 @@ MD_FUNCTION void MD_MemoryCopy(void *dst, void *src, MD_u64 size);
 
 MD_FUNCTION void* MD_AllocZero(MD_u64 size);
 #define MD_PushArray(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
+// NOTE(rjf): Right now, both calls just automatically zero their memory,
+// but I'm explicitly splitting this out to ensure that we don't accidentally
+// assume that we have zeroed memory incorrectly in the future (when our
+// allocation approach changes).
+#define MD_PushArrayZero(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
 
 //~ Characters
 MD_FUNCTION MD_b32 MD_CharIsAlpha(MD_u8 c);
@@ -664,7 +669,7 @@ MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val);
 
 //~ Parsing
 
-MD_FUNCTION_IMPL MD_NodeFlags MD_NodeFlagsFromTokenKind(MD_TokenKind kind);
+MD_FUNCTION MD_NodeFlags   MD_NodeFlagsFromTokenKind(MD_TokenKind kind);
 
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
