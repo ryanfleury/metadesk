@@ -308,7 +308,7 @@ typedef enum MD_NodeKind
     MD_NodeKind_Label,
     MD_NodeKind_Tag,
     MD_NodeKind_ErrorMarker,
-    MD_NodeKind_MAX,
+    MD_NodeKind_COUNT,
 }
 MD_NodeKind;
 
@@ -459,7 +459,7 @@ typedef enum MD_TokenKind
     MD_TokenKind_BadCharacter,
     // Character outside currently supported encodings
     
-    MD_TokenKind_MAX,
+    MD_TokenKind_COUNT,
 }
 MD_TokenKind;
 

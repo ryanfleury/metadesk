@@ -629,7 +629,7 @@ MD_FUNCTION_IMPL MD_String8
 MD_StringFromNodeKind(MD_NodeKind kind)
 {
     // NOTE(rjf): Must be kept in sync with MD_NodeKind enum.
-    static char *cstrs[MD_NodeKind_MAX] =
+    static char *cstrs[MD_NodeKind_COUNT] =
     {
         "Nil",
         "File",
