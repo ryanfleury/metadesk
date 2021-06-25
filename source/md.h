@@ -323,9 +323,9 @@ enum
     MD_NodeFlag_BraceRight       = (1<<5),
     
     MD_NodeFlag_BeforeSemicolon  = (1<<6),
-    MD_NodeFlag_BeforeComma      = (1<<7),
+    MD_NodeFlag_AfterSemicolon   = (1<<7),
     
-    MD_NodeFlag_AfterSemicolon   = (1<<8),
+    MD_NodeFlag_BeforeComma      = (1<<8),
     MD_NodeFlag_AfterComma       = (1<<9),
     
     MD_NodeFlag_Numeric          = (1<<10),
@@ -333,7 +333,7 @@ enum
     MD_NodeFlag_StringLiteral    = (1<<12),
 };
 
-#define MD_NodeFlag_AfterFromBefore(f) ((f) << 2)
+#define MD_NodeFlag_AfterFromBefore(f) ((f) << 1)
 
 typedef struct MD_Node MD_Node;
 struct MD_Node
