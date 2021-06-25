@@ -235,7 +235,6 @@ _MD_NodeParse_ConsumeLiteral(_MD_NodeParseCtx *ctx, MD_Node **out)
 {
     MD_b32 result = 0;
     if(ctx->at->flags & MD_NodeFlag_StringLiteral ||
-       ctx->at->flags & MD_NodeFlag_CharLiteral   ||
        ctx->at->flags & MD_NodeFlag_Numeric)
     {
         result = 1;

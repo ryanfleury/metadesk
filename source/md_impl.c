@@ -662,7 +662,6 @@ MD_StringListFromNodeFlags(MD_NodeFlags flags)
         "Numeric",
         "Identifier",
         "StringLiteral",
-        "CharLiteral",
     };
     
     MD_String8List list = MD_ZERO_STRUCT;
@@ -1062,7 +1061,6 @@ MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
         case MD_TokenKind_Identifier:     result = MD_NodeFlag_Identifier;    break;
         case MD_TokenKind_NumericLiteral: result = MD_NodeFlag_Numeric;       break;
         case MD_TokenKind_StringLiteral:  result = MD_NodeFlag_StringLiteral; break;
-        case MD_TokenKind_CharLiteral:    result = MD_NodeFlag_CharLiteral;   break;
     }
     return(result);
 }
@@ -1450,12 +1448,6 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 
                 // set token kind
                 token.kind = MD_TokenKind_StringLiteral;
-                // TODO(allen): I don't see any place where this actually proves useful.
-                // I think it'd tidy things up to drop it. we already use this as a string
-                // in a lot of usages of metadesk.
-                if (d == '\'' && !is_triplet){
-                    token.kind = MD_TokenKind_CharLiteral;
-                }
             }break;
             
             // NOTE(allen): Identifiers, Numbers, Operators
@@ -1832,13 +1824,12 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
     else if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier,     &token) ||
             MD_Parse_RequireKind(ctx, MD_TokenKind_NumericLiteral, &token) ||
             MD_Parse_RequireKind(ctx, MD_TokenKind_StringLiteral,  &token) ||
-            MD_Parse_RequireKind(ctx, MD_TokenKind_CharLiteral,    &token) ||
             MD_Parse_RequireKind(ctx, MD_TokenKind_Symbol,         &token))
     {
         result.node = MD_MakeNode(MD_NodeKind_Label, token.string, token.outer_string, token.outer_string.str);
         result.node->flags |= MD_NodeFlagsFromTokenKind(token.kind);
         
-        if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
+        if(token.kind == MD_TokenKind_StringLiteral)
         {
             if(!_MD_StringLiteralIsBalanced(token))
             {

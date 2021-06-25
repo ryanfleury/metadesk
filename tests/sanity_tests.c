@@ -287,7 +287,7 @@ int main(void)
         TestResult(MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("\"foo\"")).node->flags &
                    MD_NodeFlag_StringLiteral);
         TestResult(MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("'foo'")).node->flags &
-                   MD_NodeFlag_CharLiteral);
+                   MD_NodeFlag_StringLiteral);
     }
     
     Test("Expression Evaluation")
@@ -395,11 +395,11 @@ int main(void)
     {
         TestResult(MD_StringMatch(MD_StringFromNodeKind(MD_NodeKind_Label), MD_S8Lit("Label"), 0));
         TestResult(MD_StringMatch(MD_StringFromNodeKind(MD_NodeKind_Label), MD_S8Lit("Label"), 0));
-        MD_String8List list = MD_StringListFromNodeFlags(MD_NodeFlag_CharLiteral | MD_NodeFlag_ParenLeft | MD_NodeFlag_BeforeSemicolon);
+        MD_String8List list = MD_StringListFromNodeFlags(MD_NodeFlag_StringLiteral | MD_NodeFlag_ParenLeft | MD_NodeFlag_BeforeSemicolon);
         MD_b32 match = 1;
         for(MD_String8Node *node = list.first; node; node = node->next)
         {
-            if(!MD_StringMatch(node->string, MD_S8Lit("CharLiteral"), 0)     &&
+            if(!MD_StringMatch(node->string, MD_S8Lit("StringLiteral"), 0)     &&
                !MD_StringMatch(node->string, MD_S8Lit("ParenLeft"), 0)       &&
                !MD_StringMatch(node->string, MD_S8Lit("BeforeSemicolon"), 0))
             {

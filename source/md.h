@@ -331,7 +331,6 @@ enum
     MD_NodeFlag_Numeric          = (1<<10),
     MD_NodeFlag_Identifier       = (1<<11),
     MD_NodeFlag_StringLiteral    = (1<<12),
-    MD_NodeFlag_CharLiteral      = (1<<13),
 };
 
 #define MD_NodeFlag_AfterFromBefore(f) ((f) << 2)
@@ -431,10 +430,6 @@ typedef enum MD_TokenKind
     // " are to only be specified on a single line, but """ strings can exist across
     // many lines.
     MD_TokenKind_StringLiteral,
-    
-    // A group of arbitrary characters, grouped together by a ' character at the beginning,
-    // and a ' character at the end.
-    MD_TokenKind_CharLiteral,
     
     // A group of symbolic characters, where symbolic characters means any of the following:
     // ~!@#$%^&*()-+=[{]}:;<>,./?|\
