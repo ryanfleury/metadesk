@@ -58,7 +58,7 @@ EndTest(void)
 static MD_Node *
 MakeTestNode(MD_NodeKind kind, MD_String8 string)
 {
-    return MD_MakeNode(kind, string, string, MD_S8Lit("`TEST_NODE`"), 0, 0);
+    return MD_MakeNode(kind, string, string, 0);
 }
 
 static MD_C_Expr *

@@ -27,26 +27,24 @@ static MD_Node _md_nil_node =
     0xdeadffffffffffull,   // string_hash
     MD_ZERO_STRUCT,        // comment_before
     MD_ZERO_STRUCT,        // comment_after
-    {(MD_u8*)"`NIL DD NODE`", 13}, // filename
-    0,                     // file_contents
     0,                     // at
     &_md_nil_node,         // ref_target
 };
 
 //~ Memory Operations
-MD_PRIVATE_FUNCTION_IMPL void
+MD_FUNCTION_IMPL void
 MD_MemoryZero(void *memory, MD_u64 size)
 {
     memset(memory, 0, size);
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
+MD_FUNCTION_IMPL void
 MD_MemoryCopy(void *dest, void *src, MD_u64 size)
 {
     memcpy(dest, src, size);
 }
 
-MD_PRIVATE_FUNCTION_IMPL void *
+MD_FUNCTION_IMPL void *
 MD_AllocZero(MD_u64 size)
 {
 #if !defined(MD_IMPL_Alloc)
@@ -1067,7 +1065,7 @@ MD_PRIVATE_FUNCTION_IMPL MD_Node *
 _MD_MakeNode_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind,
                  MD_String8 string, MD_String8 outer, MD_u8 *at)
 {
-    return MD_MakeNode(kind, string, outer, ctx->filename, ctx->file_contents.str, at);
+    return MD_MakeNode(kind, string, outer, at);
 }
 
 MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
@@ -1996,11 +1994,8 @@ MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
 {
     MD_ParseResult result = MD_ZERO_STRUCT;
-    // TODO(allen): we want to make the string for this actually just
-    // be the filename in the root/file idea.
-    MD_String8 root_string = MD_PushStringF("`DD Parsed From \"%.*s\"`", MD_StringExpand(filename));
-    MD_Node *root = MD_MakeNode(MD_NodeKind_File, root_string, root_string,
-                                filename, contents.str, contents.str);
+    MD_String8 root_string = filename;
+    MD_Node *root = MD_MakeNode(MD_NodeKind_File, root_string, root_string, contents.str);
     if(contents.size > 0)
     {
         // NOTE(allen): setup parse context
@@ -2062,23 +2057,26 @@ MD_ParseWholeFile(MD_String8 filename)
 
 //~ Location Conversions
 
-MD_PRIVATE_FUNCTION_IMPL MD_CodeLoc
-MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u8 *at)
+MD_FUNCTION_IMPL MD_CodeLoc
+MD_CodeLocFromFileBaseOff(MD_String8 filename, MD_u8 *base, MD_u8 *at)
 {
     MD_CodeLoc loc;
     loc.filename = filename;
     loc.line = 1;
     loc.column = 1;
-    for(MD_u64 i = 0; base+i < at && base[i]; i += 1)
+    if(base != 0)
     {
-        if(base[i] == '\n')
+        for(MD_u64 i = 0; base+i < at && base[i]; i += 1)
         {
-            loc.line += 1;
-            loc.column = 1;
-        }
-        else
-        {
-            loc.column += 1;
+            if(base[i] == '\n')
+            {
+                loc.line += 1;
+                loc.column = 1;
+            }
+            else
+            {
+                loc.column += 1;
+            }
         }
     }
     return loc;
@@ -2087,7 +2085,8 @@ MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u8 *at)
 MD_FUNCTION_IMPL MD_CodeLoc
 MD_CodeLocFromNode(MD_Node *node)
 {
-    MD_CodeLoc loc = MD_CodeLocFromFileOffset(node->filename, node->file_contents, node->at);
+    MD_Node *root = MD_RootFromNode(node);
+    MD_CodeLoc loc = MD_CodeLocFromFileBaseOff(root->string, root->at, node->at);
     return loc;
 }
 
@@ -2104,8 +2103,7 @@ MD_NilNode(void) { return &_md_nil_node; }
 
 MD_FUNCTION_IMPL MD_Node *
 MD_MakeNode(MD_NodeKind kind, MD_String8 string,
-            MD_String8 whole_string, MD_String8 filename,
-            MD_u8 *file_contents, MD_u8 *at)
+            MD_String8 whole_string, MD_u8 *at)
 {
     MD_Node *node = MD_PushArray(MD_Node, 1);
     node->kind = kind;
@@ -2114,8 +2112,6 @@ MD_MakeNode(MD_NodeKind kind, MD_String8 string,
     node->next = node->prev = node->parent =
         node->first_child = node->last_child =
         node->first_tag = node->last_tag = node->ref_target = MD_NilNode();
-    node->filename = filename;
-    node->file_contents = file_contents;
     node->at = at;
     return node;
 }
@@ -2161,8 +2157,7 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
 MD_FUNCTION_IMPL MD_Node*
 MD_PushReference(MD_Node *list, MD_Node *target)
 {
-    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->whole_string,
-                             target->filename, target->file_contents, target->at);
+    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->whole_string, target->at);
     n->ref_target = target;
     MD_PushChild(list, n);
     return(n);
@@ -2213,6 +2208,17 @@ MD_IndexFromNode(MD_Node *node)
         for(MD_Node *last = node->prev; !MD_NodeIsNil(last); last = last->prev, idx += 1);
     }
     return idx;
+}
+
+MD_FUNCTION MD_Node *
+MD_RootFromNode(MD_Node *node)
+{
+    MD_Node *parent = node;
+    for(MD_Node *p = parent; !MD_NodeIsNil(p); p = p->parent)
+    {
+        parent = p;
+    }
+    return parent;
 }
 
 MD_FUNCTION_IMPL MD_Node *

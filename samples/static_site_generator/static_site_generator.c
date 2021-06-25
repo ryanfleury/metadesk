@@ -127,7 +127,7 @@ int main(int argument_count, char **arguments)
     {
         PageInfo page_info = ParsePageInfo(root);
         
-        MD_String8 name_without_extension = MD_SkipFolder(MD_ChopExtension(root->filename));
+        MD_String8 name_without_extension = MD_SkipFolder(MD_ChopExtension(root->string));
         FILE *file = fopen(MD_PushStringF("%.*s.html", MD_StringExpand(name_without_extension)).str, "wb");
         if(file)
         {
@@ -413,7 +413,8 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
             {
                 if(strnode->string.str[i] == '@')
                 {
-                    MD_ParseResult parse =  MD_ParseOneNode(node->filename, MD_StringSubstring(strnode->string, i, strnode->string.size));
+                    MD_Node *root = MD_RootFromNode(node);
+                    MD_ParseResult parse =  MD_ParseOneNode(root->string, MD_StringSubstring(strnode->string, i, strnode->string.size));
                     if(!MD_NodeIsNil(parse.node))
                     {
                         if(MD_NodeHasTag(node, MD_S8Lit("i")))
@@ -521,9 +522,10 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
                     if(slot->val)
                     {
                         MD_Node *node = slot->val;
+                        MD_Node *root = MD_RootFromNode(node);
                         PageInfo info = ParsePageInfo(node);
                         
-                        MD_String8 filename = node->filename;
+                        MD_String8 filename = root->string;
                         MD_String8 filename_no_ext = MD_ChopExtension(MD_SkipFolder(filename));
                         MD_String8 link = MD_PushStringF("%.*s.html", MD_StringExpand(filename_no_ext));
                         MD_String8 name = info.title->string;
