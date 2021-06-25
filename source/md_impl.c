@@ -932,6 +932,7 @@ MD_FUNCTION_IMPL MD_u64
 MD_HashPointer(void *p)
 {
     MD_u64 h = (MD_u64)p;
+    // TODO(rjf): Do we want our own equivalent of UINT64_C?
     h = (h ^ (h >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
     h = (h ^ (h >> 27)) * UINT64_C(0x94d049bb133111eb);
     h = h ^ (h >> 31);
@@ -1080,7 +1081,7 @@ MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
 MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
 
 MD_PRIVATE_FUNCTION_IMPL MD_b32
-_MD_StringLiteralIsBalanced(MD_Token token)
+_MD_TokenBoundariesAreBalanced(MD_Token token)
 {
     MD_u64 front_len = token.string.str - token.outer_string.str;
     MD_u64 back_len  = (token.outer_string.str + token.outer_string.size) - (token.string.str + token.string.size);
@@ -1116,14 +1117,26 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             MD_Parse_Bump(ctx, next_token);
             
             MD_Token name = MD_ZERO_STRUCT;
+            
+            // TODO(rjf): Do we actually care to prohibit people from using
+            // something other than identifiers as their tag names? If so,
+            // why? If we can't come up with a good answer for it, then I
+            // think it makes sense to just allow anything that would've
+            // been a legal label string here too.
+            
             if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
             {
                 MD_Node *tag =  MD_MakeNode(MD_NodeKind_Tag, name.string, name.outer_string, name.outer_string.str);
+                
+                // TODO(rjf): Don't we care if this is a MD_TokenKind_Symbol?
+                // for the sake of consistency with regular sets, I think it
+                // makes sense to disallow @foo"("), for example...
                 MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
                 if(MD_StringMatch(token.string, MD_S8Lit("("), 0))
                 {
                     MD_Parse_Set(ctx, tag, MD_ParseSetFlag_Paren);
                 }
+                
                 MD_PushSibling(&first, &last, tag);
             }
             else
@@ -1149,7 +1162,7 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
 MD_FUNCTION_IMPL MD_b32
 MD_TokenKindIsWhitespace(MD_TokenKind kind)
 {
-    return kind > MD_TokenKind_WhitespaceMin && kind < MD_TokenKind_WhitespaceMax;
+    return MD_TokenKind_WhitespaceMin < kind && kind < MD_TokenKind_WhitespaceMax;
 }
 
 MD_FUNCTION_IMPL MD_b32
@@ -1161,7 +1174,7 @@ MD_TokenKindIsComment(MD_TokenKind kind)
 MD_FUNCTION_IMPL MD_b32
 MD_TokenKindIsRegular(MD_TokenKind kind)
 {
-    return(kind > MD_TokenKind_RegularMin && kind < MD_TokenKind_RegularMax);
+    return(MD_TokenKind_RegularMin < kind && kind < MD_TokenKind_RegularMax);
 }
 
 MD_FUNCTION void
@@ -1882,7 +1895,7 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
            next_token.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
            next_token.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet)
         {
-            if(!_MD_StringLiteralIsBalanced(next_token))
+            if(!_MD_TokenBoundariesAreBalanced(next_token))
             {
                 MD_String8 capped = MD_StringPrefix(next_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
                 MD_PushNodeErrorF(ctx, result.node, MD_MessageKind_CatastrophicError,
