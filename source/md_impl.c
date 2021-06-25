@@ -1056,18 +1056,6 @@ MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val){
 
 //~ Parsing
 
-// TODO(allen): This helper only helps because `ctx` bundles two elements together
-// that the "low level" MD_MakeNode treats as seperate. However they aren't very
-// useful as seperate concepts. If we get the "handle of file" concept down to
-// a single root node pointer, then this can be eliminated and users can get
-// this effect by composing 'ctx->file_root' with 'MD_MakeNode'.
-MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNode_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind,
-                 MD_String8 string, MD_String8 outer, MD_u8 *at)
-{
-    return MD_MakeNode(kind, string, outer, at);
-}
-
 MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
 
 MD_PRIVATE_FUNCTION_IMPL MD_NodeFlags
@@ -1122,8 +1110,7 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             MD_Token name = MD_ZERO_STRUCT;
             if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
             {
-                MD_Node *tag = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Tag,
-                                                name.string, name.outer_string, name.outer_string.str);
+                MD_Node *tag =  MD_MakeNode(MD_NodeKind_Tag, name.string, name.outer_string, name.outer_string.str);
                 MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
                 if(MD_StringMatch(token.string, MD_S8Lit("("), 0))
                 {
@@ -1235,8 +1222,7 @@ MD_PushNodeErrorF(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fm
 MD_FUNCTION void
 MD_PushTokenError(MD_ParseCtx *ctx, MD_Token token, MD_MessageKind kind, MD_String8 str){
     MD_Node *stub_file = MD_MakeNode(MD_NodeKind_ErrorMarker, ctx->file_contents, ctx->file_contents, ctx->file_contents.str);
-    MD_Node *stub = _MD_MakeNode_Ctx(ctx, MD_NodeKind_ErrorMarker,
-                                     token.string, token.outer_string, token.outer_string.str);
+    MD_Node *stub = MD_MakeNode(MD_NodeKind_ErrorMarker, token.string, token.outer_string, token.outer_string.str);
     MD_PushNodeError(ctx, stub, kind, str);
     MD_PushChild(stub_file, stub);
 }
@@ -1835,9 +1821,7 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         MD_StringMatch(next_token.string, MD_S8Lit("{"), 0) ||
         MD_StringMatch(next_token.string, MD_S8Lit("["), 0)))
     {
-        result.node = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Label,
-                                       MD_S8Lit(""), MD_S8Lit(""),
-                                       next_token.outer_string.str);
+        result.node = MD_MakeNode(MD_NodeKind_Label, MD_S8Lit(""), MD_S8Lit(""), next_token.outer_string.str);
         
         MD_Parse_Set(ctx, result.node,
                      MD_ParseSetFlag_Paren   |
@@ -1853,8 +1837,7 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
             MD_Parse_RequireKind(ctx, MD_TokenKind_CharLiteral,    &token) ||
             MD_Parse_RequireKind(ctx, MD_TokenKind_Symbol,         &token))
     {
-        result.node = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Label,
-                                       token.string, token.outer_string, token.outer_string.str);
+        result.node = MD_MakeNode(MD_NodeKind_Label, token.string, token.outer_string, token.outer_string.str);
         result.node->flags |= _MD_NodeFlagsFromTokenKind(token.kind);
         
         if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
