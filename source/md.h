@@ -13,13 +13,6 @@
 // [ ] Helpers for parsing NodeFlags, figuring out which nodes in a set are
 //     separated by a semicolon, something like MD_SeekNodeWithFlags(node) -> node ?
 // [ ] Escaping characters from strings
-// [x] Get rid of MD_JoinStringListWithSeparator, just have a separator argument on
-//     MD_JoinStringList.
-// [x] MD_StringMap_Next, for iterating matching slots in an MD_Map, that all
-//     share the same key (important in the case of hash collisions)
-// [x] Helper for making a reference for a node, e.g. MD_ReferenceFromNode
-// [x] Organization decision for C generator helpers: splitting from md.h? file name? folder?
-// [ ] Collapse down map types
 // [ ] Fill in more String -> Integer helpers
 // [ ] Memory Management Strategy
 //     [ ] Gather map of current memory management situation
@@ -299,6 +292,8 @@ MD_WordStyle;
 
 typedef enum MD_NodeKind
 {
+    // NOTE(rjf): Must be kept in sync with MD_StringFromNodeKind.
+    
     MD_NodeKind_Nil,
     MD_NodeKind_File,
     MD_NodeKind_List,
@@ -309,33 +304,45 @@ typedef enum MD_NodeKind
     MD_NodeKind_Label,
     MD_NodeKind_Tag,
     MD_NodeKind_ErrorMarker,
-    MD_NodeKind_MAX,
+    MD_NodeKind_COUNT,
 }
 MD_NodeKind;
 
-typedef MD_u32 MD_NodeFlags;
+typedef MD_u64 MD_NodeFlags;
+#define MD_NodeFlag_AfterFromBefore(f) ((f) << 1)
 enum
 {
-    MD_NodeFlag_ParenLeft        = (1<<0),
-    MD_NodeFlag_ParenRight       = (1<<1),
-    MD_NodeFlag_BracketLeft      = (1<<2),
-    MD_NodeFlag_BracketRight     = (1<<3),
-    MD_NodeFlag_BraceLeft        = (1<<4),
-    MD_NodeFlag_BraceRight       = (1<<5),
+    // NOTE(rjf): Must be kept in sync with MD_StringListFromNodeFlags.
     
-    MD_NodeFlag_BeforeSemicolon  = (1<<6),
-    MD_NodeFlag_BeforeComma      = (1<<7),
+    // NOTE(rjf): Because of MD_NodeFlag_AfterFromBefore, it is *required* that
+    // every single pair of "Before*" or "After*" flags be in the correct order
+    // which is that the Before* flag comes first, and the After* flag comes
+    // immediately after (After* being the more significant bit).
     
-    MD_NodeFlag_AfterSemicolon   = (1<<8),
-    MD_NodeFlag_AfterComma       = (1<<9),
+    MD_NodeFlag_ParenLeft               = (1<<0),
+    MD_NodeFlag_ParenRight              = (1<<1),
+    MD_NodeFlag_BracketLeft             = (1<<2),
+    MD_NodeFlag_BracketRight            = (1<<3),
+    MD_NodeFlag_BraceLeft               = (1<<4),
+    MD_NodeFlag_BraceRight              = (1<<5),
     
-    MD_NodeFlag_Numeric          = (1<<10),
-    MD_NodeFlag_Identifier       = (1<<11),
-    MD_NodeFlag_StringLiteral    = (1<<12),
-    MD_NodeFlag_CharLiteral      = (1<<13),
+    MD_NodeFlag_BeforeSemicolon         = (1<<6),
+    MD_NodeFlag_AfterSemicolon          = (1<<7),
+    
+    MD_NodeFlag_BeforeComma             = (1<<8),
+    MD_NodeFlag_AfterComma              = (1<<9),
+    
+    MD_NodeFlag_StringSingleQuote       = (1<<10),
+    MD_NodeFlag_StringDoubleQuote       = (1<<13),
+    MD_NodeFlag_StringTick              = (1<<15),
+    MD_NodeFlag_StringTripletSingleQuote= (1<<16),
+    MD_NodeFlag_StringTripletDoubleQuote= (1<<18),
+    MD_NodeFlag_StringTripletTick       = (1<<20),
+    
+    MD_NodeFlag_Numeric                 = (1<<22),
+    MD_NodeFlag_Identifier              = (1<<23),
+    MD_NodeFlag_StringLiteral           = (1<<24),
 };
-
-#define MD_NodeFlag_AfterFromBefore(f) ((f) << 2)
 
 typedef struct MD_Node MD_Node;
 struct MD_Node
@@ -363,8 +370,6 @@ struct MD_Node
     MD_String8 comment_after;
     
     // Source code location information.
-    MD_String8 filename;
-    MD_u8 *file_contents;
     MD_u8 *at;
     
     // Reference.
@@ -420,34 +425,15 @@ typedef enum MD_TokenKind
     MD_TokenKind_Nil,
     
     MD_TokenKind_RegularMin,
-    
-    // A group of characters that begins with an underscore or alphabetic character,
-    // and consists of numbers, alphabetic characters, or underscores after that.
     MD_TokenKind_Identifier,
-    
-    // A group of characters beginning with a numeric character or a '-', and then
-    // consisting of only numbers, alphabetic characters, or '.'s after that.
     MD_TokenKind_NumericLiteral,
-    
-    // A group of arbitrary characters, grouped together by a " character, OR by a
-    // """ symbol at the beginning and end of the group. String literals beginning with
-    // " are to only be specified on a single line, but """ strings can exist across
-    // many lines.
-    MD_TokenKind_StringLiteral,
-    
-    // A group of arbitrary characters, grouped together by a ' character at the beginning,
-    // and a ' character at the end.
-    MD_TokenKind_CharLiteral,
-    
-    // A group of symbolic characters, where symbolic characters means any of the following:
-    // ~!@#$%^&*()-+=[{]}:;<>,./?|\
-   //
-    // Groups of multiple characters are only allowed in specific circumstances. Most of these
-    // are only 1 character long, but some groups are allowed:
-    //
-    // "<<", ">>", "<=", ">=", "+=", "-=", "*=", "/=", "::", ":=", "==", "&=", "|=", "->"
+    MD_TokenKind_StringLiteralSingleQuote,
+    MD_TokenKind_StringLiteralSingleQuoteTriplet,
+    MD_TokenKind_StringLiteralDoubleQuote,
+    MD_TokenKind_StringLiteralDoubleQuoteTriplet,
+    MD_TokenKind_StringLiteralTick,
+    MD_TokenKind_StringLiteralTickTriplet,
     MD_TokenKind_Symbol,
-    
     MD_TokenKind_RegularMax,
     
     MD_TokenKind_Comment,
@@ -457,10 +443,10 @@ typedef enum MD_TokenKind
     MD_TokenKind_Newline,
     MD_TokenKind_WhitespaceMax,
     
-    MD_TokenKind_BadCharacter,
     // Character outside currently supported encodings
+    MD_TokenKind_BadCharacter,
     
-    MD_TokenKind_MAX,
+    MD_TokenKind_COUNT,
 }
 MD_TokenKind;
 
@@ -625,6 +611,11 @@ MD_FUNCTION void MD_MemoryCopy(void *dst, void *src, MD_u64 size);
 
 MD_FUNCTION void* MD_AllocZero(MD_u64 size);
 #define MD_PushArray(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
+// NOTE(rjf): Right now, both calls just automatically zero their memory,
+// but I'm explicitly splitting this out to ensure that we don't accidentally
+// assume that we have zeroed memory incorrectly in the future (when our
+// allocation approach changes).
+#define MD_PushArrayZero(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
 
 //~ Characters
 MD_FUNCTION MD_b32 MD_CharIsAlpha(MD_u8 c);
@@ -710,6 +701,8 @@ MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val);
 
 //~ Parsing
 
+MD_FUNCTION MD_NodeFlags   MD_NodeFlagsFromTokenKind(MD_TokenKind kind);
+
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
@@ -737,15 +730,14 @@ MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 c
 MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_String8 filename);
 
 //~ Location Conversion
-MD_FUNCTION MD_CodeLoc MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u8 *off);
+MD_FUNCTION MD_CodeLoc MD_CodeLocFromFileBaseOff(MD_String8 filename, MD_u8 *base, MD_u8 *off);
 MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 
 //~ Tree/List Building
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
 MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string,
-                                 MD_String8 whole_string, MD_String8 filename,
-                                 MD_u8 *file_contents, MD_u8 *at);
+                                 MD_String8 whole_string, MD_u8 *at);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 MD_FUNCTION MD_Node *MD_PushReference(MD_Node *list, MD_Node *target);
@@ -757,6 +749,7 @@ MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *ne
 MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string);
 MD_FUNCTION MD_Node *  MD_NodeFromIndex(MD_Node *first, MD_Node *last, int n);
 MD_FUNCTION int        MD_IndexFromNode(MD_Node *node);
+MD_FUNCTION MD_Node *  MD_RootFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_NextNodeSibling(MD_Node *last, MD_String8 string);
 MD_FUNCTION MD_Node *  MD_ChildFromString(MD_Node *node, MD_String8 child_string);
 MD_FUNCTION MD_Node *  MD_TagFromString(MD_Node *node, MD_String8 tag_string);

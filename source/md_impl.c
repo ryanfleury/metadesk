@@ -4,13 +4,8 @@
 #define MD_PRIVATE_FUNCTION_IMPL MD_FUNCTION_IMPL
 #define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
-//~
+//~ Nil Node Definition
 
-// NOTE(allen): Review @rjf; Building in C++
-// While very latest version of C++ have designated initializers
-// I would like to be able to build on more simple versions, so I
-// ditched the designated initializers in favor of the extra work
-// of maintaining order based initializers.
 static MD_Node _md_nil_node =
 {
     &_md_nil_node,         // next
@@ -27,26 +22,25 @@ static MD_Node _md_nil_node =
     0xdeadffffffffffull,   // string_hash
     MD_ZERO_STRUCT,        // comment_before
     MD_ZERO_STRUCT,        // comment_after
-    {(MD_u8*)"`NIL DD NODE`", 13}, // filename
-    0,                     // file_contents
     0,                     // at
     &_md_nil_node,         // ref_target
 };
 
 //~ Memory Operations
-MD_PRIVATE_FUNCTION_IMPL void
+
+MD_FUNCTION_IMPL void
 MD_MemoryZero(void *memory, MD_u64 size)
 {
     memset(memory, 0, size);
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
+MD_FUNCTION_IMPL void
 MD_MemoryCopy(void *dest, void *src, MD_u64 size)
 {
     memcpy(dest, src, size);
 }
 
-MD_PRIVATE_FUNCTION_IMPL void *
+MD_FUNCTION_IMPL void *
 MD_AllocZero(MD_u64 size)
 {
 #if !defined(MD_IMPL_Alloc)
@@ -620,7 +614,7 @@ MD_FUNCTION_IMPL MD_String8
 MD_StringFromNodeKind(MD_NodeKind kind)
 {
     // NOTE(rjf): Must be kept in sync with MD_NodeKind enum.
-    static char *cstrs[MD_NodeKind_MAX] =
+    static char *cstrs[MD_NodeKind_COUNT] =
     {
         "Nil",
         "File",
@@ -647,15 +641,21 @@ MD_StringListFromNodeFlags(MD_NodeFlags flags)
         "BraceRight",
         
         "BeforeSemicolon",
-        "BeforeComma",
-        
         "AfterSemicolon",
+        
+        "BeforeComma",
         "AfterComma",
+        
+        "StringSingleQuote",
+        "StringDoubleQuote",
+        "StringTick",
+        "StringTripletSingleQuote",
+        "StringTripletDoubleQuote",
+        "StringTripletTick",
         
         "Numeric",
         "Identifier",
         "StringLiteral",
-        "CharLiteral",
     };
     
     MD_String8List list = MD_ZERO_STRUCT;
@@ -923,6 +923,7 @@ MD_FUNCTION_IMPL MD_u64
 MD_HashPointer(void *p)
 {
     MD_u64 h = (MD_u64)p;
+    // TODO(rjf): Do we want our own equivalent of UINT64_C?
     h = (h ^ (h >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
     h = (h ^ (h >> 27)) * UINT64_C(0x94d049bb133111eb);
     h = h ^ (h >> 31);
@@ -935,9 +936,7 @@ MD_MapMakeBucketCount(MD_u64 bucket_count){
     // make most sense with a parameter
     MD_Map result = {0};
     result.bucket_count = bucket_count;
-    // TODO(allen): push array zero
-    result.buckets = MD_PushArray(MD_MapBucket, bucket_count);
-    memset(result.buckets, 0, sizeof(*result.buckets)*bucket_count);
+    result.buckets = MD_PushArrayZero(MD_MapBucket, bucket_count);
     return(result);
 }
 
@@ -1041,35 +1040,31 @@ MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val){
 
 //~ Parsing
 
-// TODO(allen): This helper only helps because `ctx` bundles two elements together
-// that the "low level" MD_MakeNode treats as seperate. However they aren't very
-// useful as seperate concepts. If we get the "handle of file" concept down to
-// a single root node pointer, then this can be eliminated and users can get
-// this effect by composing 'ctx->file_root' with 'MD_MakeNode'.
-MD_PRIVATE_FUNCTION_IMPL MD_Node *
-_MD_MakeNode_Ctx(MD_ParseCtx *ctx, MD_NodeKind kind,
-                 MD_String8 string, MD_String8 outer, MD_u8 *at)
-{
-    return MD_MakeNode(kind, string, outer, ctx->filename, ctx->file_contents.str, at);
-}
-
-MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
-
-MD_PRIVATE_FUNCTION_IMPL MD_NodeFlags
-_MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
+MD_FUNCTION_IMPL MD_NodeFlags
+MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
 {
     MD_NodeFlags result = 0;
     switch (kind){
-        case MD_TokenKind_Identifier:     result = MD_NodeFlag_Identifier;    break;
-        case MD_TokenKind_NumericLiteral: result = MD_NodeFlag_Numeric;       break;
-        case MD_TokenKind_StringLiteral:  result = MD_NodeFlag_StringLiteral; break;
-        case MD_TokenKind_CharLiteral:    result = MD_NodeFlag_CharLiteral;   break;
+        case MD_TokenKind_Identifier:                      result = MD_NodeFlag_Identifier;    break;
+        case MD_TokenKind_NumericLiteral:                  result = MD_NodeFlag_Numeric;       break;
+        case MD_TokenKind_StringLiteralSingleQuote:        result |= MD_NodeFlag_StringSingleQuote;        goto string_lit;
+        case MD_TokenKind_StringLiteralDoubleQuote:        result |= MD_NodeFlag_StringDoubleQuote;        goto string_lit;
+        case MD_TokenKind_StringLiteralTick:               result |= MD_NodeFlag_StringTick;               goto string_lit;
+        case MD_TokenKind_StringLiteralSingleQuoteTriplet: result |= MD_NodeFlag_StringTripletSingleQuote; goto string_lit;
+        case MD_TokenKind_StringLiteralDoubleQuoteTriplet: result |= MD_NodeFlag_StringTripletDoubleQuote; goto string_lit;
+        case MD_TokenKind_StringLiteralTickTriplet:        result |= MD_NodeFlag_StringTripletTick;        goto string_lit;
+        string_lit:;
+        {
+            result |= MD_NodeFlag_StringLiteral;
+        }break;
     }
     return(result);
 }
 
+MD_PRIVATE_FUNCTION_IMPL void _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out);
+
 MD_PRIVATE_FUNCTION_IMPL MD_b32
-_MD_StringLiteralIsBalanced(MD_Token token)
+_MD_TokenBoundariesAreBalanced(MD_Token token)
 {
     MD_u64 front_len = token.string.str - token.outer_string.str;
     MD_u64 back_len  = (token.outer_string.str + token.outer_string.size) - (token.string.str + token.string.size);
@@ -1105,10 +1100,20 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
             MD_Parse_Bump(ctx, next_token);
             
             MD_Token name = MD_ZERO_STRUCT;
+            
+            // TODO(rjf): Do we actually care to prohibit people from using
+            // something other than identifiers as their tag names? If so,
+            // why? If we can't come up with a good answer for it, then I
+            // think it makes sense to just allow anything that would've
+            // been a legal label string here too.
+            
             if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier, &name))
             {
-                MD_Node *tag = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Tag,
-                                                name.string, name.outer_string, name.outer_string.str);
+                MD_Node *tag =  MD_MakeNode(MD_NodeKind_Tag, name.string, name.outer_string, name.outer_string.str);
+                
+                // TODO(rjf): Don't we care if this is a MD_TokenKind_Symbol?
+                // for the sake of consistency with regular sets, I think it
+                // makes sense to disallow @foo"("), for example...
                 MD_Token token = MD_Parse_PeekSkipSome(ctx, 0);
                 if(MD_StringMatch(token.string, MD_S8Lit("("), 0))
                 {
@@ -1139,7 +1144,7 @@ _MD_ParseTagList(MD_ParseCtx *ctx, MD_Node **first_out, MD_Node **last_out)
 MD_FUNCTION_IMPL MD_b32
 MD_TokenKindIsWhitespace(MD_TokenKind kind)
 {
-    return kind > MD_TokenKind_WhitespaceMin && kind < MD_TokenKind_WhitespaceMax;
+    return MD_TokenKind_WhitespaceMin < kind && kind < MD_TokenKind_WhitespaceMax;
 }
 
 MD_FUNCTION_IMPL MD_b32
@@ -1151,7 +1156,7 @@ MD_TokenKindIsComment(MD_TokenKind kind)
 MD_FUNCTION_IMPL MD_b32
 MD_TokenKindIsRegular(MD_TokenKind kind)
 {
-    return(kind > MD_TokenKind_RegularMin && kind < MD_TokenKind_RegularMax);
+    return(MD_TokenKind_RegularMin < kind && kind < MD_TokenKind_RegularMax);
 }
 
 MD_FUNCTION void
@@ -1219,9 +1224,10 @@ MD_PushNodeErrorF(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fm
 
 MD_FUNCTION void
 MD_PushTokenError(MD_ParseCtx *ctx, MD_Token token, MD_MessageKind kind, MD_String8 str){
-    MD_Node *stub = _MD_MakeNode_Ctx(ctx, MD_NodeKind_ErrorMarker,
-                                     token.string, token.outer_string, token.outer_string.str);
+    MD_Node *stub_file = MD_MakeNode(MD_NodeKind_ErrorMarker, ctx->file_contents, ctx->file_contents, ctx->file_contents.str);
+    MD_Node *stub = MD_MakeNode(MD_NodeKind_ErrorMarker, token.string, token.outer_string, token.outer_string.str);
     MD_PushNodeError(ctx, stub, kind, str);
+    MD_PushChild(stub_file, stub);
 }
 
 MD_FUNCTION void
@@ -1358,11 +1364,6 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
             // NOTE(allen): Strings
             case '"':
             case '\'':
-            
-            // NOTE(rjf): "Bundle-of-tokens" strings (`stuff` or ```stuff```)
-            // In practice no different than a regular string, but provides an
-            // alternate syntax which will allow tools like 4coder to treat the
-            // contents as regular tokens.
             case '`':
             {
                 // TODO(allen): proposal:
@@ -1448,13 +1449,27 @@ MD_Parse_LexNext(MD_ParseCtx *ctx)
                 }
                 
                 // set token kind
-                token.kind = MD_TokenKind_StringLiteral;
-                // TODO(allen): I don't see any place where this actually proves useful.
-                // I think it'd tidy things up to drop it. we already use this as a string
-                // in a lot of usages of metadesk.
-                if (d == '\'' && !is_triplet){
-                    token.kind = MD_TokenKind_CharLiteral;
+                if(is_triplet)
+                {
+                    switch(d)
+                    {
+                        case '\'': token.kind = MD_TokenKind_StringLiteralSingleQuoteTriplet; break;
+                        case '"':  token.kind = MD_TokenKind_StringLiteralDoubleQuoteTriplet; break;
+                        case '`':  token.kind = MD_TokenKind_StringLiteralTickTriplet; break;
+                        default: break;
+                    }
                 }
+                else
+                {
+                    switch(d)
+                    {
+                        case '\'': token.kind = MD_TokenKind_StringLiteralSingleQuote; break;
+                        case '"':  token.kind = MD_TokenKind_StringLiteralDoubleQuote; break;
+                        case '`':  token.kind = MD_TokenKind_StringLiteralTick; break;
+                        default: break;
+                    }
+                }
+                
             }break;
             
             // NOTE(allen): Identifiers, Numbers, Operators
@@ -1818,9 +1833,7 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
         MD_StringMatch(next_token.string, MD_S8Lit("{"), 0) ||
         MD_StringMatch(next_token.string, MD_S8Lit("["), 0)))
     {
-        result.node = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Label,
-                                       MD_S8Lit(""), MD_S8Lit(""),
-                                       next_token.outer_string.str);
+        result.node = MD_MakeNode(MD_NodeKind_Label, MD_S8Lit(""), MD_S8Lit(""), next_token.outer_string.str);
         
         MD_Parse_Set(ctx, result.node,
                      MD_ParseSetFlag_Paren   |
@@ -1830,35 +1843,57 @@ MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx)
     }
     
     // NOTE(rjf): Labels
-    else if(MD_Parse_RequireKind(ctx, MD_TokenKind_Identifier,     &token) ||
-            MD_Parse_RequireKind(ctx, MD_TokenKind_NumericLiteral, &token) ||
-            MD_Parse_RequireKind(ctx, MD_TokenKind_StringLiteral,  &token) ||
-            MD_Parse_RequireKind(ctx, MD_TokenKind_CharLiteral,    &token) ||
-            MD_Parse_RequireKind(ctx, MD_TokenKind_Symbol,         &token))
+    else if(next_token.kind == MD_TokenKind_Identifier                        ||
+            next_token.kind == MD_TokenKind_NumericLiteral                    ||
+            next_token.kind == MD_TokenKind_StringLiteralTick                 ||
+            next_token.kind == MD_TokenKind_StringLiteralSingleQuote          ||
+            next_token.kind == MD_TokenKind_StringLiteralDoubleQuote          ||
+            next_token.kind == MD_TokenKind_StringLiteralTickTriplet          ||
+            next_token.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
+            next_token.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet   ||
+            next_token.kind == MD_TokenKind_Symbol                           )
     {
-        result.node = _MD_MakeNode_Ctx(ctx, MD_NodeKind_Label,
-                                       token.string, token.outer_string, token.outer_string.str);
-        result.node->flags |= _MD_NodeFlagsFromTokenKind(token.kind);
+        MD_Parse_Bump(ctx, next_token);
+        result.node = MD_MakeNode(MD_NodeKind_Label, next_token.string, next_token.outer_string, next_token.outer_string.str);
+        result.node->flags |= MD_NodeFlagsFromTokenKind(next_token.kind);
         
-        if(token.kind == MD_TokenKind_CharLiteral || token.kind == MD_TokenKind_StringLiteral)
+        // TODO(rjf): Before we were just able to check one kind. I think preserving
+        // which kind of string literal was used is very important, for the same reason
+        // that preserving which symbols were used to delimit a set is important.
+        // But, having to manage this "group of kinds" is a little bit annoying.
+        // Maybe we should define the set of legal kinds for certain syntactic
+        // contexts somewhere unified, so that the parser is never duplicating this?
+        //
+        // It's also possible that it never matters and we only ever use this group
+        // in one place, but I just got that "we're duplicating stuff" allergy that
+        // I usually get.
+        //
+        // If that turned out to be a good idea, maybe we could do something like
+        // MD_TokenKindIsLegalLabelHead, MD_TokenKindNeedsBalancing?? I don't know.
+        if(next_token.kind == MD_TokenKind_StringLiteralTick                 ||
+           next_token.kind == MD_TokenKind_StringLiteralSingleQuote          ||
+           next_token.kind == MD_TokenKind_StringLiteralDoubleQuote          ||
+           next_token.kind == MD_TokenKind_StringLiteralTickTriplet          ||
+           next_token.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
+           next_token.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet)
         {
-            if(!_MD_StringLiteralIsBalanced(token))
+            if(!_MD_TokenBoundariesAreBalanced(next_token))
             {
-                MD_String8 capped = MD_StringPrefix(token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
+                MD_String8 capped = MD_StringPrefix(next_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
                 MD_PushNodeErrorF(ctx, result.node, MD_MessageKind_CatastrophicError,
                                   "Unterminated text literal \"%.*s\"", MD_StringExpand(capped));
             }
         }
-        else if(token.kind == MD_TokenKind_Symbol && token.string.size == 1 && MD_CharIsReservedSymbol(token.string.str[0]))
+        else if(next_token.kind == MD_TokenKind_Symbol && next_token.string.size == 1 && MD_CharIsReservedSymbol(next_token.string.str[0]))
         {
-            MD_u8 c = token.string.str[0];
+            MD_u8 c = next_token.string.str[0];
             if(c == '}' || c == ']' || c == ')')
             {
-                MD_PushTokenErrorF(ctx, token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", c);
+                MD_PushTokenErrorF(ctx, next_token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", c);
             }
             else
             {
-                MD_PushTokenErrorF(ctx, token, MD_MessageKind_Error, "Unexpected reserved symbol \"%c\"",
+                MD_PushTokenErrorF(ctx, next_token, MD_MessageKind_Error, "Unexpected reserved symbol \"%c\"",
                                    c);
             }
         }
@@ -1979,11 +2014,8 @@ MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
 {
     MD_ParseResult result = MD_ZERO_STRUCT;
-    // TODO(allen): we want to make the string for this actually just
-    // be the filename in the root/file idea.
-    MD_String8 root_string = MD_PushStringF("`DD Parsed From \"%.*s\"`", MD_StringExpand(filename));
-    MD_Node *root = MD_MakeNode(MD_NodeKind_File, root_string, root_string,
-                                filename, contents.str, contents.str);
+    MD_String8 root_string = filename;
+    MD_Node *root = MD_MakeNode(MD_NodeKind_File, root_string, root_string, contents.str);
     if(contents.size > 0)
     {
         // NOTE(allen): setup parse context
@@ -2045,23 +2077,26 @@ MD_ParseWholeFile(MD_String8 filename)
 
 //~ Location Conversions
 
-MD_PRIVATE_FUNCTION_IMPL MD_CodeLoc
-MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u8 *at)
+MD_FUNCTION_IMPL MD_CodeLoc
+MD_CodeLocFromFileBaseOff(MD_String8 filename, MD_u8 *base, MD_u8 *at)
 {
     MD_CodeLoc loc;
     loc.filename = filename;
     loc.line = 1;
     loc.column = 1;
-    for(MD_u64 i = 0; base+i < at && base[i]; i += 1)
+    if(base != 0)
     {
-        if(base[i] == '\n')
+        for(MD_u64 i = 0; base+i < at && base[i]; i += 1)
         {
-            loc.line += 1;
-            loc.column = 1;
-        }
-        else
-        {
-            loc.column += 1;
+            if(base[i] == '\n')
+            {
+                loc.line += 1;
+                loc.column = 1;
+            }
+            else
+            {
+                loc.column += 1;
+            }
         }
     }
     return loc;
@@ -2070,7 +2105,8 @@ MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u8 *at)
 MD_FUNCTION_IMPL MD_CodeLoc
 MD_CodeLocFromNode(MD_Node *node)
 {
-    MD_CodeLoc loc = MD_CodeLocFromFileOffset(node->filename, node->file_contents, node->at);
+    MD_Node *root = MD_RootFromNode(node);
+    MD_CodeLoc loc = MD_CodeLocFromFileBaseOff(root->string, root->at, node->at);
     return loc;
 }
 
@@ -2087,8 +2123,7 @@ MD_NilNode(void) { return &_md_nil_node; }
 
 MD_FUNCTION_IMPL MD_Node *
 MD_MakeNode(MD_NodeKind kind, MD_String8 string,
-            MD_String8 whole_string, MD_String8 filename,
-            MD_u8 *file_contents, MD_u8 *at)
+            MD_String8 whole_string, MD_u8 *at)
 {
     MD_Node *node = MD_PushArray(MD_Node, 1);
     node->kind = kind;
@@ -2097,8 +2132,6 @@ MD_MakeNode(MD_NodeKind kind, MD_String8 string,
     node->next = node->prev = node->parent =
         node->first_child = node->last_child =
         node->first_tag = node->last_tag = node->ref_target = MD_NilNode();
-    node->filename = filename;
-    node->file_contents = file_contents;
     node->at = at;
     return node;
 }
@@ -2136,8 +2169,7 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
 MD_FUNCTION_IMPL MD_Node*
 MD_PushReference(MD_Node *list, MD_Node *target)
 {
-    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->whole_string,
-                             target->filename, target->file_contents, target->at);
+    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->whole_string, target->at);
     n->ref_target = target;
     MD_PushChild(list, n);
     return(n);
@@ -2188,6 +2220,17 @@ MD_IndexFromNode(MD_Node *node)
         for(MD_Node *last = node->prev; !MD_NodeIsNil(last); last = last->prev, idx += 1);
     }
     return idx;
+}
+
+MD_FUNCTION MD_Node *
+MD_RootFromNode(MD_Node *node)
+{
+    MD_Node *parent = node;
+    for(MD_Node *p = parent; !MD_NodeIsNil(p); p = p->parent)
+    {
+        parent = p;
+    }
+    return parent;
 }
 
 MD_FUNCTION_IMPL MD_Node *

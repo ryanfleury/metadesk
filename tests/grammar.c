@@ -66,7 +66,7 @@ static MD_Node * NewChildLabel(MD_Node *parent, MD_String8 label)
 {
     MD_Node *result = 0;
     
-    result = MD_MakeNode(MD_NodeKind_Label, label, label, MD_S8Lit(""), 0, 0);
+    result = MD_MakeNode(MD_NodeKind_Label, label, label, 0);
     if(parent)
     {
         MD_PushChild(parent, result);
@@ -86,7 +86,7 @@ static MD_Node * NewChild(MD_Node *parent)
 #define SET_DEPTH(depth_map, node, depth) MD_MapOverwrite(depth_map, MD_MapKeyPtr(node), (void *)(depth))
 static void PrintRule(MD_Map *depth_map, MD_Node *rule)
 {
-    MD_b32 is_literal_char = rule->flags & MD_NodeFlag_CharLiteral;
+    MD_b32 is_literal_char = rule->flags & MD_NodeFlag_StringLiteral;
     
     MD_b32 optional = MD_NodeHasTag(rule, MD_S8Lit(OPTIONAL_TAG));
     
@@ -221,7 +221,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
             }
             else
             {
-                if(rule_element->flags & MD_NodeFlag_CharLiteral)   // NOTE(mal): Terminal production
+                if(rule_element->flags & MD_NodeFlag_StringLiteral)   // NOTE(mal): Terminal production
                 {
                     char c = 0;
                     if(rule_element->string.size == 2 && rule_element->string.str[0] == '\\')
@@ -308,7 +308,7 @@ static MD_Node * FindNonTerminalProduction(MD_Node *node, MD_Map *visited)
     {
         if(MD_NodeIsNil(node->first_child))
         {
-            if(node->flags & MD_NodeFlag_CharLiteral)
+            if(node->flags & MD_NodeFlag_StringLiteral)
             {
             }
             else
@@ -425,7 +425,7 @@ static void ComputeElementDepth(MD_Map *depth_map, MD_Node *re)
     }
     else
     {
-        if(re->flags & MD_NodeFlag_CharLiteral)   // NOTE(mal): Terminal production
+        if(re->flags & MD_NodeFlag_StringLiteral)   // NOTE(mal): Terminal production
         {
             result = 1;
         }
@@ -561,7 +561,7 @@ int main(int argument_count, char **arguments)
             else
             {
                 if(MD_StringMatch(rule_element->string, MD_S8Lit("|"), 0) && 
-                   !(rule_element->flags & MD_NodeFlag_CharLiteral))
+                   !(rule_element->flags & MD_NodeFlag_StringLiteral))
                 {
                     rule = NewChild(production);
                 }
@@ -658,7 +658,7 @@ int main(int argument_count, char **arguments)
                     {
                         MD_u64 depth = 0;
                         MD_Assert(MD_NodeIsNil(rule_element->first_child));
-                        if(!(rule_element->flags & MD_NodeFlag_CharLiteral))
+                        if(!(rule_element->flags & MD_NodeFlag_StringLiteral))
                         {
                             MD_Node * production = MD_MapLookup(globals.production_table, MD_MapKeyStr(rule_element->string))->val;
                             depth = GET_DEPTH(depth_map, production);
