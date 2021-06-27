@@ -378,8 +378,7 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
 {
     
     //~ NOTE(rjf): Text blobs
-    if(MD_NodeIsNil(node->first_child) &&
-       (node->flags & MD_NodeFlag_StringLiteral))
+    if(MD_NodeIsNil(node->first_child) && (node->flags & MD_NodeFlag_StringLiteral))
     {
         char *html_tag = "p";
         char *style = "paragraph";
