@@ -744,9 +744,6 @@ MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 MD_FUNCTION MD_Node *MD_MakeList(void);
 MD_FUNCTION MD_Node *MD_PushReference(MD_Node *list, MD_Node *target);
 
-// TODO(allen): eliminate
-MD_FUNCTION void     MD_PushSibling(MD_Node **first, MD_Node **last, MD_Node *new_sibling);
-
 //~ Introspection Helpers
 MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string);
 MD_FUNCTION MD_Node *  MD_NodeFromIndex(MD_Node *first, MD_Node *last, int n);

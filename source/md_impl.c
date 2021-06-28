@@ -2136,16 +2136,6 @@ MD_MakeNode(MD_NodeKind kind, MD_String8 string,
     return node;
 }
 
-// TODO(allen): eliminate
-MD_FUNCTION_IMPL void
-MD_PushSibling(MD_Node **firstp, MD_Node **lastp, MD_Node *node)
-{
-    if(!MD_NodeIsNil(node))
-    {
-        MD_NodeDblPushBack(*firstp, *lastp, node);
-    }
-}
-
 MD_FUNCTION_IMPL void
 MD_PushChild(MD_Node *parent, MD_Node *new_child)
 {
