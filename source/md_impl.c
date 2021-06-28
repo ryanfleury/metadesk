@@ -424,41 +424,79 @@ MD_JoinStringList(MD_String8List list, MD_String8 separator)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_i64
-MD_I64FromString(MD_String8 string, MD_u32 radix)
+MD_FUNCTION_IMPL MD_u64
+MD_CalculateCStringLength(char *cstr)
+{
+    MD_u64 i = 0;
+    for(; cstr[i]; i += 1);
+    return i;
+}
+
+MD_FUNCTION_IMPL MD_u64
+MD_U64FromString(MD_String8 string, MD_u32 radix)
 {
     MD_Assert(2 <= radix && radix <= 16);
-    
     static MD_u8 char_to_value[] = {
         0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
         0x08,0x09,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
         0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,
         0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
     };
-    
-    // get the sign
-    MD_i64 sign = +1;
-    MD_u64 i =  0;
-    if (string.size > 0){
-        if (string.str[i] == '-'){
-            i = 1;
-            sign = -1;
-        }
-        if (string.str[i] == '+'){
-            i = 1;
-        }
-    }
-    
-    // get the value
-    MD_i64 value = 0;
-    for (;i < string.size; i += 1){
+    MD_u64 value = 0;
+    for (MD_u64 i = 0; i < string.size; i += 1){
         value *= radix;
         MD_u8 c = string.str[i];
         value += char_to_value[(c - 0x30)&0x1F];
     }
-    value *= sign;
-    
     return(value);
+}
+
+MD_FUNCTION_IMPL MD_i64
+MD_CStyleIntFromString(MD_String8 string)
+{
+    MD_u64 p = 0;
+    
+    // consume sign
+    MD_i64 sign = +1;
+    if (p < string.size){
+        MD_u8 c = string.str[p];
+        if (c == '-'){
+            sign = -1;
+            p += 1;
+        }
+        else if (c == '+'){
+            p += 1;
+        }
+    }
+    
+    // radix from prefix
+    MD_u64 radix = 10;
+    if (p < string.size){
+        MD_u8 c0 = string.str[p];
+        if (c0 == '0'){
+            p += 1;
+            radix = 8;
+            if (p < string.size){
+                MD_u8 c1 = string.str[p];
+                if (c1 == 'x'){
+                    p += 1;
+                    radix = 16;
+                }
+                else if (c1 == 'b'){
+                    p += 1;
+                    radix = 2;
+                }
+            }
+        }
+    }
+    
+    // consume integer "digits"
+    MD_String8 digits_substr = MD_StringSkip(string, p);
+    MD_u64 n = MD_U64FromString(digits_substr, radix);
+    
+    // combine result
+    MD_i64 result = sign*n;
+    return(result);
 }
 
 MD_FUNCTION_IMPL MD_f64
@@ -472,14 +510,6 @@ MD_F64FromString(MD_String8 string)
     MD_MemoryCopy(str, string.str, str_size);
     str[str_size] = 0;
     return(atof(str));
-}
-
-MD_FUNCTION_IMPL MD_u64
-MD_CalculateCStringLength(char *cstr)
-{
-    MD_u64 i = 0;
-    for(; cstr[i]; i += 1);
-    return i;
 }
 
 MD_FUNCTION_IMPL MD_String8
@@ -2651,7 +2681,7 @@ MD_CommandLineOptionI64(MD_CommandLine cmdln, MD_String8 name)
     MD_i64 v = 0;
     MD_String8List values = MD_CommandLineOptionValues(cmdln, name);
     MD_String8 value_str = MD_JoinStringList(values, MD_S8Lit(""));
-    v = MD_I64FromString(value_str, 10);
+    v = MD_CStyleIntFromString(value_str);
     return v;
 }
 

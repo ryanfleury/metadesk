@@ -462,7 +462,9 @@ MD_C_EvaluateExpr_I64(MD_C_Expr *expr)
         _MD_BinaryOp(Multiply, *);
         _MD_BinaryOp(Divide,   /);
 #undef _MD_BinaryOp
-        case MD_C_ExprKind_Atom: { result = MD_I64FromString(expr->node->string, 10); }break;
+        case MD_C_ExprKind_Atom: {
+            result = MD_CStyleIntFromString(expr->node->string);
+        }break;
         default: break;
     }
     return result;

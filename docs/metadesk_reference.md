@@ -809,19 +809,6 @@ main:
 };
 
 @send(Strings)
-@func MD_I64FromString: {
-    string: MD_String8,
-    radix: MD_u32,
-    return: MD_i64,
-};
-
-@send(Strings)
-@func MD_F64FromString: {
-    string: MD_String8,
-    return: MD_f64,
-};
-
-@send(Strings)
 @func MD_CalculateCStringLength: {
     cstr: *char,
     return: MD_u64,
@@ -834,6 +821,29 @@ main:
     separator: MD_String8,
     return: MD_String8
 };
+
+////////////////////////////////
+//~ Numeric Strings
+
+@send(Strings)
+@func MD_U64FromString: {
+    string: MD_String8,
+    radix: MD_u32,
+    return: MD_u64,
+};
+
+@send(Strings)
+@func MD_CStyleIntFromString: {
+    string: MD_String8,
+    return: MD_i64,
+};
+
+@send(Strings)
+@func MD_F64FromString: {
+    string: MD_String8,
+    return: MD_f64,
+};
+
 
 ////////////////////////////////
 //~ Enum/Flag Strings

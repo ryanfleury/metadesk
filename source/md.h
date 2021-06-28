@@ -666,11 +666,14 @@ MD_FUNCTION void           MD_PushStringToList(MD_String8List *list, MD_String8 
 MD_FUNCTION void           MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push);
 MD_FUNCTION MD_String8List MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits);
 MD_FUNCTION MD_String8     MD_JoinStringList(MD_String8List list, MD_String8 separator);
-MD_FUNCTION MD_i64         MD_I64FromString(MD_String8 string, MD_u32 radix);
-MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_CalculateCStringLength(char *cstr);
 
 MD_FUNCTION MD_String8     MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8 separator);
+
+//~ Numeric Strings
+MD_FUNCTION MD_u64         MD_U64FromString(MD_String8 string, MD_u32 radix);
+MD_FUNCTION MD_i64         MD_CStyleIntFromString(MD_String8 string);
+MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
 
 //~ Enum/Flag Strings
 MD_FUNCTION MD_String8      MD_StringFromNodeKind(MD_NodeKind kind);
