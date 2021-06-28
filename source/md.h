@@ -26,8 +26,6 @@
 // MD_b32     MD_IMPL_FileIterIncrement(MD_FileIter*, MD_String8, MD_FileInfo*) - optional
 // void*      MD_IMPL_Alloc(MD_u64)                                             - required
 //
-// TODO(allen): Commentary about this system somewhere easy to discover when
-// you go digging.
 
 #ifndef MD_H
 #define MD_H
@@ -183,9 +181,6 @@
 # define MD_LANG_CPP 0
 #endif
 
-#define MD_FUNCTION
-#define MD_GLOBAL static
-
 #if MD_LANG_CPP
 # define MD_ZERO_STRUCT {}
 #else
@@ -199,6 +194,11 @@
 # define MD_C_LINKAGE_BEGIN extern "C"{
 # define MD_C_LINKAGE_END }
 #endif
+
+//~ Common defines
+
+#define MD_FUNCTION
+#define MD_GLOBAL static
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -222,7 +222,7 @@ typedef float    MD_f32;
 typedef double   MD_f64;
 
 
-//~ Basic UTF-8 string types.
+//~ Basic Unicode string types.
 
 typedef struct MD_String8 MD_String8;
 struct MD_String8
@@ -740,6 +740,8 @@ MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string,
                                  MD_String8 whole_string, MD_u8 *at);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
+
+MD_FUNCTION MD_Node *MD_MakeList(void);
 MD_FUNCTION MD_Node *MD_PushReference(MD_Node *list, MD_Node *target);
 
 // TODO(allen): eliminate

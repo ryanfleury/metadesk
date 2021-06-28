@@ -179,21 +179,19 @@ int main(int argument_count, char **arguments)
     //- rjf: parse command line
     MD_CommandLine cmdln = MD_CommandLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
     
-    // TODO(allen): use list system
-    
     //- rjf: parse all input files
-    MD_Node *first_file = MD_NilNode();
-    MD_Node *last_file = MD_NilNode();
+    MD_Node *file_list = MD_MakeList();
     for(MD_String8Node *n = cmdln.inputs.first; n; n = n->next)
     {
         MD_ParseResult parse = MD_ParseWholeFile(n->string);
-        MD_PushSibling(&first_file, &last_file, parse.node);
+        MD_PushReference(file_list, parse.node);
     }
     
     //- rjf: gather top-level symbol map
     NamespaceNode global_ns_node = {0};
-    for(MD_EachNode(file, first_file))
+    for(MD_EachNode(file_ref, file_list->first_child))
     {
+        MD_Node *file = MD_Deref(file_ref);
         for(MD_EachNode(top_level, file->first_child))
         {
             if(MD_NodeHasTag(top_level, MD_S8Lit("proc")))

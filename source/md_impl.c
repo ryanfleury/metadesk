@@ -2167,6 +2167,14 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
 }
 
 MD_FUNCTION_IMPL MD_Node*
+MD_MakeList(void)
+{
+    MD_String8 empty = {0};
+    MD_Node *result = MD_MakeNode(MD_NodeKind_List, empty, empty, 0);
+    return(result);
+}
+
+MD_FUNCTION_IMPL MD_Node*
 MD_PushReference(MD_Node *list, MD_Node *target)
 {
     MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->whole_string, target->at);

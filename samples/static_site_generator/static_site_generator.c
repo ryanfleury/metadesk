@@ -55,11 +55,8 @@ int main(int argument_count, char **arguments)
         site_info = ParseSiteInfo(site_info_file);
     }
     
-    // TODO(allen): use list system
-    
     //~ NOTE(rjf): Parse pages.
-    MD_Node *first_root = MD_NilNode();
-    MD_Node *last_root = MD_NilNode();
+    MD_Node *root_list = MD_MakeList();
     {
         printf("Searching for site pages at \"%.*s\"...\n", MD_StringExpand(page_dir_path));
         MD_FileInfo file_info = {0};
@@ -76,7 +73,8 @@ int main(int argument_count, char **arguments)
                 MD_String8 path = MD_PushStringF("%.*s/%.*s",
                                                  MD_StringExpand(folder),
                                                  MD_StringExpand(file_info.filename));
-                MD_PushSibling(&first_root, &last_root, MD_ParseWholeFile(path).node);
+                MD_Node *node = MD_ParseWholeFile(path).node;
+                MD_PushReference(root_list, node);
             }
         }
     }
@@ -84,8 +82,9 @@ int main(int argument_count, char **arguments)
     //~ NOTE(rjf): Generate index table.
     MD_Map index_table = {0};
     {
-        for(MD_EachNode(root, first_root))
+        for(MD_EachNode(ref, root_list->first_child))
         {
+            MD_Node *root = MD_Deref(ref);
             for(MD_EachNode(node, root->first_child))
             {
                 if(!MD_NodeIsNil(node->first_child) && MD_StringMatch(node->string, MD_S8Lit("index"), MD_MatchFlag_CaseInsensitive))
@@ -123,8 +122,9 @@ int main(int argument_count, char **arguments)
     }
     
     //~ NOTE(rjf): Generate files for all roots.
-    for(MD_EachNode(root, first_root))
+    for(MD_EachNode(ref, root_list->first_child))
     {
+        MD_Node *root = MD_Deref(ref);
         PageInfo page_info = ParsePageInfo(root);
         
         MD_String8 name_without_extension = MD_SkipFolder(MD_ChopExtension(root->string));
