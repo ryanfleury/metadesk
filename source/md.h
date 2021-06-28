@@ -676,14 +676,14 @@ MD_FUNCTION MD_i64         MD_CStyleIntFromString(MD_String8 string);
 MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
 
 //~ Enum/Flag Strings
-MD_FUNCTION MD_String8      MD_StringFromNodeKind(MD_NodeKind kind);
-MD_FUNCTION MD_String8List  MD_StringListFromNodeFlags(MD_NodeFlags flags);
+MD_FUNCTION MD_String8     MD_StringFromNodeKind(MD_NodeKind kind);
+MD_FUNCTION MD_String8List MD_StringListFromNodeFlags(MD_NodeFlags flags);
 
 //~ Unicode Conversions
 MD_FUNCTION MD_UnicodeConsume MD_CodepointFromUtf8(MD_u8 *str, MD_u64 max);
 MD_FUNCTION MD_UnicodeConsume MD_CodepointFromUtf16(MD_u16 *str, MD_u64 max);
-MD_FUNCTION MD_u32 MD_Utf8FromCodepoint(MD_u8 *out, MD_u32 codepoint);
-MD_FUNCTION MD_u32 MD_Utf16FromCodepoint(MD_u16 *out, MD_u32 codepoint);
+MD_FUNCTION MD_u32         MD_Utf8FromCodepoint(MD_u8 *out, MD_u32 codepoint);
+MD_FUNCTION MD_u32         MD_Utf16FromCodepoint(MD_u16 *out, MD_u32 codepoint);
 MD_FUNCTION MD_String8     MD_S8FromS16(MD_String16 str);
 MD_FUNCTION MD_String16    MD_S16FromS8(MD_String8 str);
 MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);

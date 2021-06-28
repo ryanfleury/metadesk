@@ -746,5 +746,87 @@ int main(void)
         }
     }
     
+    Test("Integer Lexing")
+    {
+        MD_String8 file_name = MD_S8Lit("raw_text");
+        
+        MD_String8 test_strings[] = {
+            MD_S8Lit("0765"),
+            MD_S8Lit("+0765"), // NOTE(allen): not sure about the "+" cases here
+            MD_S8Lit("-0765"),
+            MD_S8Lit("0xABC"),
+            MD_S8Lit("+0xABC"),
+            MD_S8Lit("-0xABC"),
+            MD_S8Lit("0x123"),
+            MD_S8Lit("0b010"),
+            MD_S8Lit("+0b010"),
+            MD_S8Lit("-0b010"),
+        };
+        
+        MD_String8 *string = test_strings;
+        for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
+            MD_ParseResult result = MD_ParseWholeString(file_name, *string);
+            TestResult((result.first_error == 0) &&
+                       (result.node->first_child == result.node->last_child) &&
+                       (result.node->first_child->flags & MD_NodeFlag_Numeric));
+        }
+    }
+    
+    Test("Float Lexing")
+    {
+        MD_String8 file_name = MD_S8Lit("raw_text");
+        
+        MD_String8 test_strings[] = {
+            MD_S8Lit("0"),
+            MD_S8Lit("1"),
+            MD_S8Lit("-1"),
+            MD_S8Lit("+1"), // NOTE(allen): not sure about "+1"
+            MD_S8Lit("0.5"),
+            MD_S8Lit("-0.5"),
+            MD_S8Lit("-1.5"),
+            MD_S8Lit("1e2"),
+            MD_S8Lit("-1e2"),
+            MD_S8Lit("1e+2"),
+            MD_S8Lit("1e-2"),
+            MD_S8Lit("-1e+2"),
+            MD_S8Lit("1.5e2"),
+            MD_S8Lit("-1.5e2"),
+            MD_S8Lit("1.5e+2"),
+            MD_S8Lit("1.5e-2"),
+            MD_S8Lit("-1.5e+2"),
+        };
+        
+        MD_String8 *string = test_strings;
+        for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
+            MD_ParseResult result = MD_ParseWholeString(file_name, *string);
+            TestResult((result.first_error == 0) &&
+                       (result.node->first_child == result.node->last_child) &&
+                       (result.node->first_child->flags & MD_NodeFlag_Numeric));
+        }
+    }
+    
+    Test("Float Lexing Pt 2")
+    {
+        MD_String8 file_name = MD_S8Lit("raw_text");
+        
+        MD_String8 test_strings[] = {
+            MD_S8Lit("0765.1"),
+            MD_S8Lit("0765e2"),
+            MD_S8Lit("0xABC.1"),
+            MD_S8Lit("0xABCe2"),
+            MD_S8Lit("0x123.1"),
+            MD_S8Lit("0x123e2"),
+            MD_S8Lit("0b010.1"),
+            MD_S8Lit("0b010e2"),
+        };
+        
+        MD_String8 *string = test_strings;
+        for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
+            MD_ParseResult result = MD_ParseWholeString(file_name, *string);
+            TestResult((result.first_error == 0) &&
+                       (result.node->first_child != result.node->last_child));
+        }
+    }
+    
     return 0;
 }
