@@ -663,39 +663,82 @@ int main(void)
         
     }
     
-    Test("Scoped in Unscoped")
+    Test("Unscoped Subtleties")
     {
-        // TODO(allen): This test is to reveal a strange phenomenon in the current
-        // grammar; it should be eliminated if we decide to disallow this
         MD_String8 file_name = MD_S8Lit("raw_text");
+        
+        // finished unscoped set
         {
-            MD_String8 text = MD_S8Lit("foo: bar {\n"
-                                       "fiz, baz\n"
-                                       "} end\n");
+            MD_String8 text = MD_S8Lit("a:\nb:\nc");
             MD_ParseResult result = MD_ParseWholeString(file_name, text);
-            MD_Node *foo_node = MD_ChildFromString(result.node, MD_S8Lit("foo"));
-            MD_Node *end_node = MD_ChildFromString(foo_node, MD_S8Lit("end"));
-            TestResult(!MD_NodeIsNil(end_node));
+            TestResult(result.first_error == 0);
+            TestResult(result.node->first_child == result.node->last_child);
+        }
+        
+        // unfinished unscoped set
+        {
+            MD_String8 text = MD_S8Lit("a:\nb:\n\n");
+            MD_ParseResult result = MD_ParseWholeString(file_name, text);
+            TestResult(result.first_error != 0);
+        }
+        {
+            MD_String8 text = MD_S8Lit("a:\nb:\n");
+            MD_ParseResult result = MD_ParseWholeString(file_name, text);
+            TestResult(result.first_error != 0);
+        }
+        {
+            MD_String8 text = MD_S8Lit("a:\nb:");
+            MD_ParseResult result = MD_ParseWholeString(file_name, text);
+            TestResult(result.first_error != 0);
+        }
+        
+        // labeled scoped set in unscoped set
+        {
+            MD_String8 text = MD_S8Lit("a: b: {\nx\n} c");
+            MD_ParseResult result = MD_ParseWholeString(file_name, text);
+            TestResult(result.first_error == 0);
+            TestResult(result.node->first_child == result.node->last_child);
+        }
+        {
+            MD_String8 text = MD_S8Lit("a: b: {\nx\n}\nc");
+            MD_ParseResult result = MD_ParseWholeString(file_name, text);
+            TestResult(result.first_error == 0);
+            TestResult(result.node->first_child != result.node->last_child);
+        }
+        
+        // scoped set is not unscoped
+        {
+            MD_String8 text = MD_S8Lit("a: {\nx\ny\n} c");
+            MD_ParseResult result = MD_ParseWholeString(file_name, text);
+            TestResult(result.first_error == 0);
+            TestResult(result.node->first_child != result.node->last_child);
         }
     }
     
     Test("Tagged & Unlabeled")
     {
-        // TODO(allen): these tests checking for rules that I find fishy; maybe instead
-        // of trying to pass these tests, adjust the rules so we don't have this odd
-        // expected behavior to begin with? Not sure.
         MD_String8 file_name = MD_S8Lit("raw_text");
+        
+        // tagged in scoped set always legal
         {
             MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:{@tag {bar}}\n"));
             TestResult(result.first_error == 0);
         }
+        
+        // tagged label in unscoped set legal
         {
             MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:@tag bar\n"));
             TestResult(result.first_error == 0);
         }
+        
+        // unlabeled scoped set in unscoped set illegal
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:bar {bar}\n"));
+            TestResult(result.first_error != 0);
+        }
         {
             MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:bar @tag {bar}\n"));
-            TestResult(result.first_error == 0);
+            TestResult(result.first_error != 0);
         }
         {
             MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("foo:@tag {bar}\n"));
