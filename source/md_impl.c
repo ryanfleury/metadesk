@@ -1189,7 +1189,697 @@ MD_TokenKindIsRegular(MD_TokenKind kind)
     return(MD_TokenKind_RegularMin < kind && kind < MD_TokenKind_RegularMax);
 }
 
-MD_FUNCTION void
+MD_FUNCTION MD_Token
+MD_TokenFromString(MD_String8 string)
+{
+    MD_Token token = MD_ZERO_STRUCT;
+    
+    MD_u8 *one_past_last = string.str + string.size;
+    MD_u8 *first = string.str;
+    
+    if(first < one_past_last)
+    {
+        MD_u8 *at = first;
+        MD_u32 skip_n = 0;
+        MD_u32 chop_n = 0;
+        
+#define MD_TokenizerScan(cond) for (; at < one_past_last && (cond); at += 1)
+        
+        switch (*at)
+        {
+            // NOTE(allen): Whitespace parsing
+            case '\n':
+            {
+                token.kind = MD_TokenKind_Newline;
+                at += 1;
+            }break;
+            
+            case ' ': case '\r': case '\t': case '\f': case '\v':
+            {
+                token.kind = MD_TokenKind_Whitespace;
+                at += 1;
+                MD_TokenizerScan(*at == ' ' || *at == '\r' || *at == '\t' || *at == '\f' || *at == '\v');
+            }break;
+            
+            // NOTE(allen): Comment parsing
+            case '/':
+            {
+                if (at + 1 < one_past_last)
+                {
+                    if (at[1] == '/')
+                    {
+                        
+                        // TODO(allen): This seems like an odd choice to me. What about two spaces!?
+                        // What about an extra /? I'm wondering if there are other places where we make
+                        // this kind of judgement call a lot, or is this the only one? Maybe the user
+                        // should just always skip-chop whitespace if they want to clean this kind of
+                        // thing up? They're going to have to if they ever use two spaces anyways, right?
+                        
+                        // NOTE(rjf): Trim off the first //, and a space after it if one is there.
+                        if(at+2 < one_past_last &&
+                           at[2] == ' ')
+                        {
+                            skip_n = 3;
+                        }
+                        else
+                        {
+                            skip_n = 2;
+                        }
+                        
+                        at += skip_n;
+                        token.kind = MD_TokenKind_Comment;
+                        MD_TokenizerScan(*at != '\n' && *at != '\r');
+                    }
+                    else if (at[1] == '*')
+                    {
+                        // TODO(allen): proposal:
+                        // 1. only set `kind = Comment` in the `counter == 0` case
+                        // 2. otherwise set `kind = RunOnComment` (or something)
+                        //    maybe also emit an error *from here* or signal to a system that
+                        //    runs later that there are token errors to emit.
+                        // Or: keep the `kind = Comment` but in the `counter != 0` case
+                        //     set some kind of error/unclosed/run-on flag on the token.
+                        
+                        at += 2;
+                        token.kind = MD_TokenKind_Comment;
+                        skip_n = 2;
+                        int counter = 1;
+                        for (;at < one_past_last && counter > 0; at += 1)
+                        {
+                            if (at + 1 < one_past_last)
+                            {
+                                if (at[0] == '*' && at[1] == '/')
+                                {
+                                    at += 1;
+                                    counter -= 1;
+                                }
+                                else if (at[0] == '/' && at[1] == '*')
+                                {
+                                    at += 1;
+                                    counter += 1;
+                                }
+                            }
+                        }
+                        if(counter == 0)
+                        {
+                            chop_n = 2;
+                        }
+                    }
+                }
+                if (token.kind == MD_TokenKind_Nil) goto symbol_lex;
+            }break;
+            
+            // NOTE(allen): Strings
+            case '"':
+            case '\'':
+            case '`':
+            {
+                // TODO(allen): proposal:
+                // go see the proposal in the block comment lexer, same idea here?
+                
+                // determine delimiter setup
+                MD_u8 d = *at;
+                MD_b32 is_triplet = (at + 2 < one_past_last && at[1] == d && at[2] == d);
+                
+                // lex triple-delimiter string
+                if (is_triplet)
+                {
+                    skip_n = 3;
+                    at += 3;
+                    MD_u32 consecutive_d = 0;
+                    for (;;)
+                    {
+                        // fail condition
+                        if (at >= one_past_last){
+                            break;
+                        }
+                        
+                        if(at[0] == d)
+                        {
+                            consecutive_d += 1;
+                            at += 1;
+                            // close condition
+                            if (consecutive_d == 3){
+                                chop_n = 3;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            consecutive_d = 0;
+                            
+                            // escaping rule
+                            if(at[0] == '\\')
+                            {
+                                at += 1;
+                                if(at < one_past_last && (at[0] == d || at[0] == '\\'))
+                                {
+                                    at += 1;
+                                }
+                            }
+                            else{
+                                at += 1;
+                            }
+                        }
+                    }
+                }
+                
+                // lex single-delimiter string
+                if (!is_triplet)
+                {
+                    skip_n = 1;
+                    at += 1;
+                    for (;at < one_past_last;)
+                    {
+                        // close condition
+                        if (*at == d){
+                            at += 1;
+                            chop_n = 1;
+                            break;
+                        }
+                        
+                        // fail condition
+                        if (*at == '\n'){
+                            break;
+                        }
+                        
+                        // escaping rule
+                        if (at[0] == '\\'){
+                            at += 1;
+                            if (at < one_past_last && (at[0] == d || at[0] == '\\')){
+                                at += 1;
+                            }
+                        }
+                        else{
+                            at += 1;
+                        }
+                    }
+                }
+                
+                // set token kind
+                if(is_triplet)
+                {
+                    switch(d)
+                    {
+                        case '\'': token.kind = MD_TokenKind_StringLiteralSingleQuoteTriplet; break;
+                        case '"':  token.kind = MD_TokenKind_StringLiteralDoubleQuoteTriplet; break;
+                        case '`':  token.kind = MD_TokenKind_StringLiteralTickTriplet; break;
+                        default: break;
+                    }
+                }
+                else
+                {
+                    switch(d)
+                    {
+                        case '\'': token.kind = MD_TokenKind_StringLiteralSingleQuote; break;
+                        case '"':  token.kind = MD_TokenKind_StringLiteralDoubleQuote; break;
+                        case '`':  token.kind = MD_TokenKind_StringLiteralTick; break;
+                        default: break;
+                    }
+                }
+                
+            }break;
+            
+            // NOTE(allen): Identifiers, Numbers, Operators
+            default:
+            {
+                if (MD_CharIsAlpha(*at) || *at == '_')
+                {
+                    token.kind = MD_TokenKind_Identifier;
+                    at += 1;
+                    MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '_');
+                }
+                
+                else if (MD_CharIsDigit(*at) ||
+                         (at + 1 < one_past_last && at[0] == '-' && MD_CharIsDigit(at[1])))
+                {
+                    token.kind = MD_TokenKind_NumericLiteral;
+                    at += 1;
+                    MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.');
+                }
+                
+                else if (MD_CharIsSymbol(*at))
+                {
+                    symbol_lex:
+                    token.kind = MD_TokenKind_Symbol;
+                    at += 1;
+                }
+                
+                else
+                {
+                    token.kind = MD_TokenKind_BadCharacter;
+                    at += 1;
+                }
+            }break;
+        }
+        
+        token.outer_string = MD_S8Range(first, at);
+        token.string = MD_StringSubstring(token.outer_string, skip_n, token.outer_string.size - chop_n);
+        
+#undef MD_TokenizerScan
+        
+    }
+    
+    return token;
+}
+
+MD_FUNCTION_IMPL MD_Token
+MD_TokenFromStringSkip(MD_String8 string, MD_TokenGroups skip_groups)
+{
+    MD_Token result = MD_ZERO_STRUCT;
+    
+    MD_b32 skip_comment    = (skip_groups & MD_TokenGroup_Comment);
+    MD_b32 skip_whitespace = (skip_groups & MD_TokenGroup_Whitespace);
+    MD_b32 skip_regular    = (skip_groups & MD_TokenGroup_Regular);
+    
+    MD_u64 off = 0;
+    loop:
+    {
+        result = MD_TokenFromString(MD_StringSkip(string, off));
+        if((skip_comment    && MD_TokenKindIsComment(result.kind))    ||
+           (skip_whitespace && MD_TokenKindIsWhitespace(result.kind)) ||
+           (skip_regular    && MD_TokenKindIsRegular(result.kind)))
+        {
+            off += result.outer_string.size;
+            goto loop;
+        }
+    }
+    
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_Error *
+MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str)
+{
+    MD_Error *error = MD_PushArrayZero(MD_Error, 1);
+    error->node = node;
+    error->kind = kind;
+    error->string = str;
+    return error;
+}
+
+MD_FUNCTION_IMPL MD_Error *
+MD_MakeTokenError(MD_Token token, MD_MessageKind kind, MD_String8 str)
+{
+    return 0;//return MD_MakeNodeError(MD_NilNode(), kind, str);
+}
+
+MD_FUNCTION_IMPL MD_ParseResult
+MD_ParseResultZero(void)
+{
+    MD_ParseResult result = MD_ZERO_STRUCT;
+    result.node = result.last_node = MD_NilNode();;
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_ParseResult
+MD_ParseNodeSet(MD_String8 string, MD_Node *parent, MD_ParseSetFlags flags)
+{
+    MD_ParseResult result = MD_ParseResultZero();
+    MD_u64 off = 0;
+    MD_Token initial_token = MD_TokenFromStringSkip(MD_StringSkip(string, off),
+                                                    MD_TokenGroup_Comment|
+                                                    MD_TokenGroup_Whitespace);
+    
+    //- rjf: fill data from set opener
+    MD_u8 set_opener = 0;
+    MD_NodeFlags set_opener_flags = 0;
+    MD_b32 close_with_brace = 0;
+    MD_b32 close_with_paren = 0;
+    MD_b32 close_with_separator = 0;
+    if(initial_token.kind == MD_TokenKind_Symbol)
+    {
+        if(flags & MD_ParseSetFlag_Brace && MD_StringMatch(initial_token.whole_string, MD_S8Lit("{")))
+        {
+            set_opener = '{';
+            set_opener_flags |= MD_NodeFlag_BraceLeft;
+            off += initial_token.outer_string.size;
+            close_with_brace = 1;
+        }
+        else if(flags & MD_ParseSetFlag_Paren && MD_StringMatch(initial_token.whole_string, MD_S8Lit("(")))
+        {
+            set_opener = '(';
+            set_opener_flags |= MD_NodeFlag_ParenLeft;
+            off += initial_token.outer_string.size;
+            close_with_paren = 1;
+        }
+        else if(flags & MD_ParseSetFlag_Bracket && MD_StringMatch(initial_token.whole_string, MD_S8Lit("[")))
+        {
+            set_opener = '[';
+            set_opener_flags |= MD_NodeFlag_BracketLeft;
+            off += initial_token.outer_string.size;
+            close_with_paren = 1;
+        }
+        else
+        {
+            close_with_separator = 1;
+        }
+    }
+    else
+    {
+        close_with_separator = 1;
+    }
+    
+    //- rjf: fill parent data from opener
+    parent->flags |= set_opener_flags;
+    
+    //- rjf: parse children
+    if(set_opener != 0 || close_with_separator)
+    {
+        MD_NodeFlags next_child_flags = 0;
+        for(;off < string.size;)
+        {
+            
+            //- rjf: check for closer
+            MD_Token potential_closer = MD_TokenFromStringSkip(MD_StringSkip(string, off), MD_TokenGroup_Whitespace|MD_TokenGroup_Comment);
+            if(potential_closer.kind == MD_TokenKind_Symbol)
+            {
+                if(close_with_brace && MD_StringMatch(potential_closer.outer_string, MD_S8Lit("}"), 0))
+                {
+                    off += potential_closer.outer_string.size;
+                    parent->flags |= MD_NodeFlag_BraceRight;
+                    break;
+                }
+                else if(close_with_paren && MD_StringMatch(potential_closer.outer_string, MD_S8Lit("]"), 0))
+                {
+                    off += potential_closer.outer_string.size;
+                    parent->flags |= MD_NodeFlag_BracketRight;
+                    break;
+                }
+                else if(close_with_paren && MD_StringMatch(potential_closer.outer_string, MD_S8Lit(")"), 0))
+                {
+                    off += potential_closer.outer_string.size;
+                    parent->flags |= MD_NodeFlag_ParenRight;
+                    break;
+                }
+            }
+            
+            //- rjf: parse next child
+            MD_ParseResult child_parse = MD_ParseOneNode(MD_StringSkip(string, off));
+            off += child_parse.bytes_parsed;
+            
+            //- rjf: hook child into parent
+            MD_PushChild(parent, child_parse.node);
+            
+            //- rjf: check trailing separator
+            MD_NodeFlags trailing_separator_flags = 0;
+            if(!close_with_separator)
+            {
+                MD_Token trailing_separator = MD_TokenFromStringSkip(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+                if(MD_StringMatch(trailing_separator.string, MD_S8Lit(",")) &&
+                   trailing_separator.kind == MD_TokenKind_Symbol)
+                {
+                    trailing_separator_flags |= MD_NodeFlag_BeforeComma;
+                    off += trailing_separator.outer_string.size;
+                }
+                else if(MD_StringMatch(trailing_separator.string, MD_S8Lit(";")) &&
+                        trailing_separator.kind == MD_TokenKind_Symbol)
+                {
+                    trailing_separator_flags |= MD_NodeFlag_BeforeSemicolon;
+                    off += trailing_separator.outer_string.size;
+                }
+            }
+            
+            //- rjf: fill child flags
+            child->flags |= next_child_flags | trailing_separator_flags;
+            
+            //- rjf: setup next_child_flags
+            next_child_flags = MD_NodeFlag_AfterFromBefore(symbol_flags);
+            
+            //- rjf: check for separator close
+            if(close_with_separator)
+            {
+                MD_Token next_token = MD_TokenFromStringSkip(MD_StringSkip(string, off), 0);
+                if(next_token.kind == MD_TokenKind_Newline ||
+                   (next_token.kind == MD_TokenKind_Symbol &&
+                    (MD_StringMatch(next_token.string, MD_S8Lit(","), 0) ||
+                     MD_StringMatch(next_token.string, MD_S8Lit(";"), 0))))
+                {
+                    off += next_token.outer_string.size;
+                    goto end_parse;
+                }
+            }
+        }
+    }
+    end_parse:;
+    
+    //- rjf: fill result info
+    result.node = parent->first_child;
+    result.last_node = parent->last_child;
+    result.bytes_parsed = off;
+    
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_ParseResult
+MD_ParseTagList(MD_String8 string)
+{
+    MD_ParseResult result = MD_ParseResultZero();
+    MD_u64 off = offset;
+    
+    for(;off < string.size;)
+    {
+        //- rjf: parse @ symbol, signifying start of tag
+        MD_Token next_token = MD_TokenFromStringSkip(MD_StringSkip(string, off),
+                                                     MD_TokenGroup_Comment |
+                                                     MD_TokenGroup_Whitespace);
+        if(!MD_StringMatch(next_token.string, MD_S8Lit("@"), 0) ||
+           next_token.kind != MD_TokenKind_Symbol)
+        {
+            break;
+        }
+        off += next_token.outer_string.size;
+        
+        //- rjf: parse string of tag node
+        MD_Token name = MD_TokenFromString(MD_StringSkip(string, off));
+        MD_u8 *name_at = string.str + off;
+        if(name.kind != MD_TokenKind_Identifier)
+        {
+            // TODO(rjf): Error
+#if 0
+            MD_PushTokenErrorF(ctx, token, MD_MessageKind_Error,
+                               "\"%.*s\" is not a proper tag identifier",
+                               MD_StringExpand(name.outer_string));
+            // NOTE(mal): There are reasons to consume the non-tag token, but also to leave it.
+#endif
+            break;
+        }
+        off += name.outer_string.size;
+        
+        //- rjf: parse tag arguments
+        MD_Token open_paren = MD_TokenFromStringSkip(MD_StringSkip(string, off), 0);
+        MD_ParseResult args_parse = MD_ZERO_STRUCT;
+        if(MD_StringMatch(open_paren.string, MD_S8Lit("("), 0) &&
+           open_paren.kind == MD_TokenKind_Symbol)
+        {
+            // TODO(rjf): Parse paren-delimited set
+        }
+        off += args_parse.bytes_parsed;
+        
+        //- rjf: build tag
+        MD_Node *tag = MD_MakeNode(MD_NodeKind_Tag, name.string, name.outer_string, name_at);
+        tag->first_child = args_parse.node;
+        tag->last_child = args_parse.last_node;
+        for(MD_EachNode(arg, args_parse.node))
+        {
+            arg->parent = arg;
+        }
+        
+        //- rjf: push tag to result
+        MD_NodeDblPushBack(result.node, result.last_node, tag);
+    }
+    
+    //- rjf: fill result
+    result.bytes_parsed = off;
+    
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_ParseResult
+MD_ParseOneNode(MD_String8 string, MD_u64 offset)
+{
+    MD_ParseResult result = MD_ParseResultZero();
+    MD_u64 off = offset;
+    
+    //- rjf: parse pre-comment
+    MD_String8 comment_before = MD_ZERO_STRUCT;
+    {
+        MD_Token comment_token = MD_ZERO_STRUCT;
+        for(;off < string.size;)
+        {
+            MD_Token token = MD_TokenFromStringSkip(MD_StringSkip(string, off), 0);
+            if(token.kind == MD_TokenKind_Comment)
+            {
+                off += token.outer_string.size;
+                comment_token = token;
+            }
+            else if(token.kind == MD_TokenKind_Newline)
+            {
+                off += token.outer_string.size;
+                MD_Token next_token = MD_TokenFromStringSkip(MD_StringSkip(string, off), 0);
+                if(next_token.kind == MD_TokenKind_Comment)
+                {
+                    // NOTE(mal): If more than one comment, use the last comment
+                    comment_token = next_token;
+                }
+                else if(next_token.kind == MD_TokenKind_Newline)
+                {
+                    MD_MemoryZero(&comment_token, sizeof(comment_token));
+                }
+            }
+            else if(MD_TokenKindIsWhitespace(token.kind))
+            {
+                off += token.outer_string.size;
+            }
+            else
+            {
+                break;
+            }
+            comment_before = comment_token.string;
+            
+            // TODO(allen): I find this odd. Wouldn't it have been easier to generate this
+            // durring or right after the lexing phase?
+            if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
+            {
+                MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
+                MD_PushTokenErrorF(ctx, comment_token, MD_MessageKind_CatastrophicError,
+                                   "Unterminated comment \"%.*s\"", MD_StringExpand(capped));
+            }
+        }
+    }
+    
+    //- rjf: parse tag list
+    MD_ParseResult tags_parse = MD_ParseTagList(MD_StringSkip(string, off));
+    off += tags_parse.bytes_parsed;
+    
+    //- rjf: parse node
+    MD_Node *parsed_node = MD_NilNode();
+    MD_ParseResult children_parse = MD_ParseResultZero();
+    retry:;
+    {
+        //- rjf: try to parse an unnamed set
+        MD_Token unnamed_set_opener = MD_TokenFromStringSkip(MD_StringSkip(string, off),
+                                                             MD_TokenGroup_Whitespace|MD_TokenGroup_Comment);
+        if(unnamed_set_opener.kind == MD_TokenKind_Symbol &&
+           (MD_StringMatch(unnamed_set_opener.string, MD_S8Lit("("), 0) ||
+            MD_StringMatch(unnamed_set_opener.string, MD_S8Lit("{"), 0) ||
+            MD_StringMatch(unnamed_set_opener.string, MD_S8Lit("["), 0)))
+        {
+            parsed_node = MD_MakeNode(MD_NodeKind_Label, MD_S8Lit(""), MD_S8Lit(""), unnamed_set_opener.outer_string.str);
+            children_parse = MD_ParseNodeSet(MD_StringSkip(string, off),
+                                             MD_ParseSetFlag_Paren   |
+                                             MD_ParseSetFlag_Brace   |
+                                             MD_ParseSetFlag_Bracket);
+            off += children_parse.bytes_parsed;
+            goto end_parse;
+        }
+        
+        //- rjf: try to parse regular node, with/without children
+        MD_Token label_name = MD_TokenFromStringSkip(MD_StringSkip(string, off),
+                                                     MD_TokenGroup_Whitespace|MD_TokenGroup_Comment);
+        if(label_name.kind == MD_TokenKind_Identifier                        ||
+           label_name.kind == MD_TokenKind_NumericLiteral                    ||
+           label_name.kind == MD_TokenKind_StringLiteralTick                 ||
+           label_name.kind == MD_TokenKind_StringLiteralSingleQuote          ||
+           label_name.kind == MD_TokenKind_StringLiteralDoubleQuote          ||
+           label_name.kind == MD_TokenKind_StringLiteralTickTriplet          ||
+           label_name.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
+           label_name.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet   ||
+           label_name.kind == MD_TokenKind_Symbol                           )
+        {
+            off += label_name.outer_string.size;
+            parsed_node = MD_MakeNode(MD_NodeKind_Label, label_node.string, label_node.outer_string, label_node.outer_string.str);
+            parsed_node->flags |= MD_NodeFlagsFromTokenKind(label_node.kind);
+            
+            // TODO(rjf): Before we were just able to check one kind. I think preserving
+            // which kind of string literal was used is very important, for the same reason
+            // that preserving which symbols were used to delimit a set is important.
+            // But, having to manage this "group of kinds" is a little bit annoying.
+            // Maybe we should define the set of legal kinds for certain syntactic
+            // contexts somewhere unified, so that the parser is never duplicating this?
+            //
+            // It's also possible that it never matters and we only ever use this group
+            // in one place, but I just got that "we're duplicating stuff" allergy that
+            // I usually get.
+            //
+            // If that turned out to be a good idea, maybe we could do something like
+            // MD_TokenKindIsLegalLabelHead, MD_TokenKindNeedsBalancing?? I don't know.
+            if(label_name.kind == MD_TokenKind_StringLiteralTick                 ||
+               label_name.kind == MD_TokenKind_StringLiteralSingleQuote          ||
+               label_name.kind == MD_TokenKind_StringLiteralDoubleQuote          ||
+               label_name.kind == MD_TokenKind_StringLiteralTickTriplet          ||
+               label_name.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
+               label_name.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet)
+            {
+                if(!_MD_TokenBoundariesAreBalanced(label_name))
+                {
+                    MD_String8 capped = MD_StringPrefix(label_name.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
+                    MD_PushNodeErrorF(ctx, result.node, MD_MessageKind_CatastrophicError,
+                                      "Unterminated text literal \"%.*s\"", MD_StringExpand(capped));
+                }
+            }
+            else if(label_name.kind == MD_TokenKind_Symbol && label_name.string.size == 1 && MD_CharIsReservedSymbol(label_name.string.str[0]))
+            {
+                MD_u8 c = label_name.string.str[0];
+                if(c == '}' || c == ']' || c == ')')
+                {
+                    MD_PushTokenErrorF(ctx, next_token, MD_MessageKind_CatastrophicError, "Unbalanced \"%c\"", c);
+                }
+                else
+                {
+                    MD_PushTokenErrorF(ctx, next_token, MD_MessageKind_Error, "Unexpected reserved symbol \"%c\"",
+                                       c);
+                }
+            }
+            
+            //- rjf: try to parse children for this node
+            MD_Token colon = MD_TokenFromStringSkip(MD_StringSkip(string, off), MD_TokenGroup_Whitespace|MD_TokenGroup_Comment);
+            if(MD_StringMatch(colon.string, MD_S8Lit(":"), 0) && colon.kind == MD_TokenKind_Symbol)
+            {
+                off += colon.outer_string.size;
+                children_parse = MD_ParseNodeSet(MD_StringSkip(string, off),
+                                                 MD_ParseSetFlag_Paren   |
+                                                 MD_ParseSetFlag_Brace   |
+                                                 MD_ParseSetFlag_Bracket);
+                off += children_parse.bytes_parsed;
+            }
+            goto end_parse;
+        }
+        
+        //- rjf: collect bad token
+        MD_Token bad_token = MD_TokenFromString(MD_StringSkip(string, off));
+        if(bad_token.kind == MD_TokenKind_BadCharacter)
+        {
+            MD_String8List bytes = {0};
+            for(int i_byte = 0; i_byte < token.outer_string.size; ++i_byte)
+            {
+                // TODO(allen): tighten up with good integer <-> string helpers
+                MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", token.outer_string.str[i_byte]));
+            }
+            MD_String8 byte_string = MD_JoinStringList(bytes, MD_S8Lit(" "));
+            MD_PushTokenErrorF(ctx, token, MD_MessageKind_Error,
+                               "Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string));
+            goto retry;
+        }
+    }
+    
+    end_parse:;
+    
+    //- rjf: fill result
+    result.node = parsed_node;
+    result.last_node = parsed_node;
+    result.bytes_parsed = off;
+    
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_ParseResult
+MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
+{
+    // TODO(rjf)
+}
+
+MD_FUNCTION_IMPL void
 MD_PushNodeError(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_String8 str){
     // TODO(allen): pass over this... the catastrophic error logic is a bit hard
     // for me to follow.
@@ -1691,7 +2381,6 @@ MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *parent, MD_ParseSetFlags flags)
     // NOTE(rjf): Parse children.
     if((set_opener != 0) || close_with_separator)
     {
-        MD_u8 *at_before_children = ctx->at;
         MD_NodeFlags next_child_flags = 0;
         for(;;)
         {

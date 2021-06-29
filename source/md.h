@@ -482,9 +482,9 @@ typedef struct MD_Error MD_Error;
 struct MD_Error
 {
     MD_Error *next;
-    MD_String8 string;
     MD_Node *node;
     MD_MessageKind kind;
+    MD_String8 string;
 };
 
 typedef MD_u32 MD_ParseSetFlags;
@@ -507,12 +507,22 @@ struct MD_ParseCtx
     MD_MessageKind error_level;
 };
 
+typedef struct MD_Tokenizer MD_Tokenizer;
+struct MD_Tokenizer
+{
+    MD_String8 contents;
+    MD_u64 off;
+};
+
 typedef struct MD_ParseResult MD_ParseResult;
 struct MD_ParseResult
 {
     MD_Node *node;
-    MD_Error *first_error;
+    MD_Node *last_node;
     MD_u64 bytes_parsed;
+    MD_Error *first_error;
+    MD_Error *last_error;
+    MD_MessageKind error_level;
 };
 
 //~ Command line parsing helper types.
@@ -709,6 +719,16 @@ MD_FUNCTION MD_NodeFlags   MD_NodeFlagsFromTokenKind(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
+
+MD_FUNCTION MD_Token       MD_TokenFromString(MD_String8 string);
+MD_FUNCTION MD_Token       MD_TokenFromStringSkip(MD_String8 string, MD_TokenGroups skip_groups);
+MD_FUNCTION MD_Error *     MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION MD_Error *     MD_MakeTokenError(MD_Token token, MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION MD_ParseResult MD_ParseResultZero(void);
+MD_FUNCTION MD_ParseResult MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetFlags flags);
+MD_FUNCTION MD_ParseResult MD_ParseTagList(MD_String8 string, MD_u64 offset);
+MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 string, MD_u64 offset);
+MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
 
 MD_FUNCTION void           MD_PushNodeError(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_String8 str);
 MD_FUNCTION void           MD_PushNodeErrorF(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...);
