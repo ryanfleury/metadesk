@@ -583,13 +583,11 @@ cl = lg;                                 \
                 MD_String8 str = va_arg(va, MD_String8);
                 
                 //- rjf: get string length
+                s = (char *)str.str;
+                sn = (const char *)(str.str + str.size);
                 l = str.size;
                 
                 //- rjf: clamp to precision
-                if (l > (stbsp__uint32)pr)
-                {
-                    l = pr;
-                }
                 lead[0] = 0;
                 tail[0] = 0;
                 pr = 0;
