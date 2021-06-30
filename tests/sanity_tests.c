@@ -491,7 +491,7 @@ int main(void)
             {"'", {1}},
             {"a:'''\nmulti-line text literal", {3}},
             {"/* foo", {1}},
-            {"label:@tag {1, 2, 3} /* /* unterminated comment */", {7, 22}},
+            {"label: {1, 2, 3} /* /* unterminated comment */", {18}},
             {"{a,,#b,}", {4, 5}},
             {"foo""\x80""bar", {4}},
         };
@@ -727,13 +727,15 @@ int main(void)
             MD_String8 text = MD_S8Lit("a: b: {\nx\n} c");
             MD_ParseResult result = MD_ParseWholeString(file_name, text);
             TestResult(result.errors.first == 0);
-            TestResult(result.node->first_child == result.node->last_child);
+            TestResult(MD_ChildCountFromNode(result.node) == 1);
+            TestResult(MD_ChildCountFromNode(result.node->first_child) == 2);
         }
         {
             MD_String8 text = MD_S8Lit("a: b: {\nx\n}\nc");
             MD_ParseResult result = MD_ParseWholeString(file_name, text);
             TestResult(result.errors.first == 0);
-            TestResult(result.node->first_child != result.node->last_child);
+            TestResult(MD_ChildCountFromNode(result.node) == 2);
+            TestResult(MD_ChildCountFromNode(result.node->first_child) == 1);
         }
         
         // scoped set is not unscoped
@@ -750,23 +752,19 @@ int main(void)
         MD_String8 file_name = MD_S8Lit("raw_text");
         
         {
-            MD_ParseResult result = MD_ParseWholeString(file_name,
-                                                        MD_S8Lit("@foo bar"));
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("@foo bar"));
             TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("foo")));
         }
         {
-            MD_ParseResult result = MD_ParseWholeString(file_name,
-                                                        MD_S8Lit("@+ bar"));
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("@+ bar"));
             TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("+")));
         }
         {
-            MD_ParseResult result = MD_ParseWholeString(file_name,
-                                                        MD_S8Lit("@'a b c' bar"));
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("@'a b c' bar"));
             TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("a b c")));
         }
         {
-            MD_ParseResult result = MD_ParseWholeString(file_name,
-                                                        MD_S8Lit("@100 bar"));
+            MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("@100 bar"));
             TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("100")));
         }
     }
@@ -808,15 +806,9 @@ int main(void)
         
         MD_String8 test_strings[] = {
             MD_S8Lit("0765"),
-            MD_S8Lit("+0765"), // NOTE(allen): not sure about the "+" cases here
-            MD_S8Lit("-0765"),
             MD_S8Lit("0xABC"),
-            MD_S8Lit("+0xABC"),
-            MD_S8Lit("-0xABC"),
             MD_S8Lit("0x123"),
             MD_S8Lit("0b010"),
-            MD_S8Lit("+0b010"),
-            MD_S8Lit("-0b010"),
         };
         
         MD_String8 *string = test_strings;
@@ -835,21 +827,13 @@ int main(void)
         MD_String8 test_strings[] = {
             MD_S8Lit("0"),
             MD_S8Lit("1"),
-            MD_S8Lit("-1"),
-            MD_S8Lit("+1"), // NOTE(allen): not sure about "+1"
             MD_S8Lit("0.5"),
-            MD_S8Lit("-0.5"),
-            MD_S8Lit("-1.5"),
             MD_S8Lit("1e2"),
-            MD_S8Lit("-1e2"),
             MD_S8Lit("1e+2"),
             MD_S8Lit("1e-2"),
-            MD_S8Lit("-1e+2"),
             MD_S8Lit("1.5e2"),
-            MD_S8Lit("-1.5e2"),
             MD_S8Lit("1.5e+2"),
             MD_S8Lit("1.5e-2"),
-            MD_S8Lit("-1.5e+2"),
         };
         
         MD_String8 *string = test_strings;
@@ -858,29 +842,6 @@ int main(void)
             TestResult((result.errors.first == 0) &&
                        (result.node->first_child == result.node->last_child) &&
                        (result.node->first_child->flags & MD_NodeFlag_Numeric));
-        }
-    }
-    
-    Test("Float Lexing Pt 2")
-    {
-        MD_String8 file_name = MD_S8Lit("raw_text");
-        
-        MD_String8 test_strings[] = {
-            MD_S8Lit("0765.1"),
-            MD_S8Lit("0765e2"),
-            MD_S8Lit("0xABC.1"),
-            MD_S8Lit("0xABCe2"),
-            MD_S8Lit("0x123.1"),
-            MD_S8Lit("0x123e2"),
-            MD_S8Lit("0b010.1"),
-            MD_S8Lit("0b010e2"),
-        };
-        
-        MD_String8 *string = test_strings;
-        for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
-            MD_ParseResult result = MD_ParseWholeString(file_name, *string);
-            TestResult((result.errors.first == 0) &&
-                       (result.node->first_child != result.node->last_child));
         }
     }
     

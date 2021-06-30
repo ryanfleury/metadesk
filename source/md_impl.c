@@ -1272,13 +1272,30 @@ MD_TokenFromString(MD_String8 string)
                     MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '_');
                 }
                 
-                else if (MD_CharIsDigit(*at) ||
-                         (at + 1 < one_past_last && at[0] == '-' && MD_CharIsDigit(at[1])))
+                else if (MD_CharIsDigit(*at))
                 {
                     token.node_flags |= MD_NodeFlag_Numeric;
                     token.kind = MD_TokenKind_NumericLiteral;
                     at += 1;
-                    MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.');
+                    
+                    for (; at < one_past_last;){
+                        MD_b32 good = 0;
+                        if (*at == 'e' || *at == 'E'){
+                            good = 1;
+                            at += 1;
+                            if (at < one_past_last &&
+                                (*at == '+' || *at == '-')){
+                                at += 1;
+                            }
+                        }
+                        else if (MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.'){
+                            good = 1;
+                            at += 1;
+                        }
+                        if (!good){
+                            break;
+                        }
+                    }
                 }
                 
                 else if (MD_CharIsUnreservedSymbol(*at))
@@ -1787,36 +1804,6 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             {
                 colon_check_off += colon.outer_string.size;
                 off = colon_check_off;
-                
-                //- rjf: prohibit tags here
-                // TODO(allen): This poking in an error "from afar" thing seems
-                // like a bad sign to me. First it took a bit of digging for me to
-                // understand how this code actually detects the errors it says it
-                // does. Second it's kind of unclear that this should be illegal.
-                // I mean we can do these:
-                //  `label: @tag child`
-                //  `label: child @tag {children}`
-                //  `label: @tag child`
-                // I do get *why* this is an odd thing to allow, but it's weird either way.
-                // Third, looks like this also is throwing out an error in the totally legal case:
-                //  `label:{@tag {bar}}`
-                for(MD_u64 tag_check_off = off; tag_check_off < string.size;)
-                {
-                    MD_Token token = MD_TokenFromString(MD_StringSkip(string, tag_check_off));
-                    if(token.kind == MD_TokenKind_Reserved &&
-                       token.outer_string.str[0] == '@')
-                    {
-                        MD_Error *error = MD_MakeTokenError(string, token, MD_MessageKind_Error,
-                                                            MD_S8Lit("Tags are not allowed between a `:` and node children. Place tags before the name of the node list."));
-                        MD_PushErrorToList(&result.errors, error);
-                        tag_check_off += token.outer_string.size;
-                        off = tag_check_off;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
                 
                 children_parse = MD_ParseNodeSet(string, off, parsed_node, MD_ParseSetRule_EndOnDelimiter);
                 off += children_parse.bytes_parsed;
