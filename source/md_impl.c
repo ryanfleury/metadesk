@@ -1070,16 +1070,7 @@ MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val){
 
 //~ Parsing
 
-MD_PRIVATE_FUNCTION_IMPL MD_b32
-_MD_TokenBoundariesAreBalanced(MD_Token token)
-{
-    MD_u64 front_len = token.string.str - token.outer_string.str;
-    MD_u64 back_len  = (token.outer_string.str + token.outer_string.size) - (token.string.str + token.string.size);
-    MD_b32 result = (front_len == back_len);
-    return result;
-}
-
-MD_FUNCTION MD_Token
+MD_FUNCTION_IMPL MD_Token
 MD_TokenFromString(MD_String8 string)
 {
     MD_Token token = MD_ZERO_STRUCT;

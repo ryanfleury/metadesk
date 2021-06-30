@@ -1178,6 +1178,9 @@ MD_MapOverwrite: {
 //~ Parsing
 
 @send(Parsing) @func
+@doc("Produces a single token, given some input string.")
+@see(MD_Token)
+@see(MD_TokenKind)
 MD_TokenFromString:
 {
     string: MD_String8;
@@ -1185,6 +1188,9 @@ MD_TokenFromString:
 }
 
 @send(Parsing) @func
+@doc("Returns the number of bytes that can be skipped, when skipping over certain token kinds.")
+@see(MD_Token)
+@see(MD_TokenKind)
 MD_LexAdvanceFromSkips:
 {
     string: MD_String8;
@@ -1193,25 +1199,39 @@ MD_LexAdvanceFromSkips:
 }
 
 @send(Parsing) @func
+@doc("Allocates and initializes an MD_Error associated with a particular MD_Node.")
+@see(MD_Error)
 MD_MakeNodeError:
 {
-    node: *MD_Node;
-    kind: MD_MessageKind;
-    str: MD_String8;
+    @doc("The node associated with the message.")
+        node: *MD_Node;
+    @doc("The message kind, encoding its severity.")
+        kind: MD_MessageKind;
+    @doc("The string for the message.")
+        str: MD_String8;
     return: *MD_Error
 }
 
 @send(Parsing) @func
+@doc("Allocates and initializes an MD_Error associated with a particular MD_Token.")
+@see(MD_Error)
 MD_MakeTokenError:
 {
-    parse_contents: MD_String8;
-    token: MD_Token;
-    kind: MD_MessageKind;
-    str: MD_String8;
+    @doc("The entire string that is being parsed. The parser used a substring of this string to form @code 'token'.")
+        parse_contents: MD_String8;
+    @doc("The token associated with this message.")
+        token: MD_Token;
+    @doc("The message kind, encoding its severity.")
+        kind: MD_MessageKind;
+    @doc("The string for the message.")
+        str: MD_String8;
     return: *MD_Error;
 }
 
 @send(Parsing) @func
+@doc("Pushes a constructed MD_Error into an MD_ErrorList.")
+@see(MD_Error)
+@see(MD_ErrorList)
 MD_PushErrorToList:
 {
     list: *MD_ErrorList;
@@ -1219,6 +1239,9 @@ MD_PushErrorToList:
 }
 
 @send(Parsing) @func
+@see(MD_Error)
+@see(MD_ErrorList)
+@doc("Pushes the contents of @code 'to_push' into @code 'list'. Zeroes @code 'to_push'; the memory used in forming @code 'to_push' will be used in @code 'list', and nothing will be copied.")
 MD_PushErrorListToList:
 {
     list: *MD_ErrorList;
@@ -1226,49 +1249,69 @@ MD_PushErrorListToList:
 }
 
 @send(Parsing) @func
+@doc("Constructs a default MD_ParseResult, which indicates that nothing was parsed.")
+@see(MD_ParseResult)
 MD_ParseResultZero:
 {
     return: MD_ParseResult;
 }
 
 @send(Parsing) @func
+@doc("Parses a single Metadesk node set, starting at @code 'offset' bytes into @code 'string'. Parses the associated set delimiters in accordance with @code 'rule'.")
+@see(MD_ParseSetRule)
 MD_ParseNodeSet:
 {
-    string: MD_String8;
-    offset: MD_u64;
-    parent: *MD_Node;
-    rule: MD_ParseSetRule;
+    @doc("The string containing the source text to parse.")
+        string: MD_String8;
+    @doc("The offset into @code 'string' where this function should start parsing.")
+        offset: MD_u64;
+    @doc("The parent node for which the set's children are being parsed.")
+        parent: *MD_Node;
+    @doc("The rule to use for determining the end of the set.")
+        rule: MD_ParseSetRule;
     return: MD_ParseResult;
 }
 
 @send(Parsing) @func
+@doc("Parses a tag list, starting at @code 'offset' bytes into @code 'string'.")
 MD_ParseTagList:
 {
-    string: MD_String8;
-    offset: MD_u64;
+    @doc("The string containing the source text to parse.")
+        string: MD_String8;
+    @doc("The offset into @code 'string' where this function should start parsing.")
+        offset: MD_u64;
     return: MD_ParseResult;
 }
 
 @send(Parsing) @func
+@doc("Parses a single Metadesk subtree, starting at @code 'offset' bytes into @code 'string'.")
 MD_ParseOneNode:
 {
-    string: MD_String8;
-    offset: MD_u64;
+    @doc("The string containing the source text to parse.")
+        string: MD_String8;
+    @doc("The offset into @code 'string' where this function should start parsing.")
+        offset: MD_u64;
     return: MD_ParseResult;
 }
 
 @send(Parsing) @func
+@doc("Parses an entire string encoding Metadesk. Parents all parsed nodes with a node with @code 'MD_NodeKind_File' set as its kind.")
+@see(MD_NodeKind)
 MD_ParseWholeString:
 {
-    filename: MD_String8;
-    contents: MD_String8;
+    @doc("The filename to associate with the parse.")
+        filename: MD_String8;
+    @doc("The string that contains the text to parse.")
+        contents: MD_String8;
     return: MD_ParseResult;
 }
 
 @send(Parsing) @func
+@doc("Uses the C standard library to load the file associated with @code 'filename', and parses all of it to return a single tree for the whole file.")
 MD_ParseWholeFile:
 {
-    filename: MD_String8;
+    @doc("The filename for the file to be loaded and parsed.")
+        filename: MD_String8;
     return: MD_ParseResult;
 }
 
