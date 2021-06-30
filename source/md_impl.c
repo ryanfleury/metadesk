@@ -1717,8 +1717,7 @@ MD_ParseTagList(MD_String8 string, MD_u64 offset)
         //- rjf: parse string of tag node
         MD_Token name = MD_TokenFromString(MD_StringSkip(string, off));
         MD_u64 name_off = off;
-        // TODO(rjf): Do we really only want to allow identifier token kinds here? @beta1
-        if(name.kind != MD_TokenKind_Identifier)
+        if(MD_TokenGroupsFromTokenKind(name.kind) & MD_TokenGroup_LabelString)
         {
             MD_Error *error = MD_MakeTokenError(string, name, MD_MessageKind_Error,
                                                 MD_PushStringF("\"%.*s\" is not a proper tag identifier",
@@ -1843,19 +1842,6 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             parsed_node->flags |= label_name.node_flags;
             
             //- rjf: check for string literal errors
-            // TODO(rjf): Before we were just able to check one kind. I think preserving
-            // which kind of string literal was used is very important, for the same reason
-            // that preserving which symbols were used to delimit a set is important.
-            // But, having to manage this "group of kinds" is a little bit annoying.
-            // Maybe we should define the set of legal kinds for certain syntactic
-            // contexts somewhere unified, so that the parser is never duplicating this?
-            //
-            // It's also possible that it never matters and we only ever use this group
-            // in one place, but I just got that "we're duplicating stuff" allergy that
-            // I usually get.
-            //
-            // If that turned out to be a good idea, maybe we could do something like
-            // MD_TokenKindIsLegalLabelHead, MD_TokenKindNeedsBalancing?? I don't know.
             if(label_name.kind == MD_TokenKind_StringLiteral)
             {
                 if(!_MD_TokenBoundariesAreBalanced(label_name))
