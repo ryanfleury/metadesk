@@ -180,28 +180,28 @@ main:
 //~ Node types that are used to build all ASTs.
 
 @send(Nodes)
-@doc("These constants distinguish major roles of @code `MD_Node` in the Metadesk abstract syntax tree data structure.")
+@doc("These constants distinguish major roles of MD_Node in the Metadesk abstract syntax tree data structure.")
 @enum MD_NodeKind: {
-    @doc("The Nil node is a unique node representing the lack of information, for example iterating off the end of a list, or up to the parent of a root node results in Nil.")
+    @doc("The @code 'Nil' node is a unique node representing the lack of information, for example iterating off the end of a list, or up to the parent of a root node results in Nil.")
         Nil,
     
-    @doc("A File node represents parsed metadesk source text.")
+    @doc("A @code 'File' node represents parsed Metadesk source text.")
         File,
     
-    @doc("A List node serves as the root of an externally chained list of nodes. Its children are nodes with the @code 'MD_NodeKind_Reference' kind.")
+    @doc("A @code 'List' node serves as the root of an externally chained list of nodes. Its children are nodes with the @code 'MD_NodeKind_Reference' kind.")
         List,
     
-    @doc("A Reference node is an indirection to another node. The node field @code 'ref_target' contains a pointer to the referenced node. These nodes are typically used for creating externally chained linked lists that gather nodes from a parse tree.")
+    @doc("A @code 'Reference' node is an indirection to another node. The node field @code 'ref_target' contains a pointer to the referenced node. These nodes are typically used for creating externally chained linked lists that gather nodes from a parse tree.")
         Reference,
     
-    @doc("A Label node represents the main structure of the metadesk abstract syntax tree. Some labels have children which will also be labels. Labels can be given their text by identifiers, numerics, string and character literals, and operator symbols.")
+    @doc("A @code 'Label' node represents the main structure of the metadesk abstract syntax tree. Some labels have children which will also be labels. Labels can be given their text by identifiers, numerics, string and character literals, and operator symbols.")
         @see(MD_TokenKind)
         Label,
     
-    @doc("A Tag node represents a tag attached to a label node with the @code '@identifer' syntax. The children of a tag node represent the arguments placed in the tag.")
+    @doc("A @code 'Tag' node represents a tag attached to a label node with the @code '@identifer' syntax. The children of a tag node represent the arguments placed in the tag.")
         Tag,
     
-    @doc("An ErrorMarker node is generated when reporting errors. It is used to record the location of an error that occurred in the lexing phase of a parse.")
+    @doc("An @code 'ErrorMarker' node is generated when reporting errors. It is used to record the location of an error that occurred in the lexing phase of a parse.")
         ErrorMarker,
     
     @doc("Not a real kind value given to nodes, this is always one larger than the largest enum value that can be given to a node.")
@@ -209,7 +209,7 @@ main:
 };
 
 @send(Nodes)
-@doc("These flags are set on @code `MD_Node` to indicate particular details about the strings that were parsed to create the node.")
+@doc("These flags are set on MD_Node to indicate particular details about the strings that were parsed to create the node.")
 @see(MD_Node)
 @see(MD_TokenKind)
 @prefix(MD_NodeFlag)
@@ -240,7 +240,7 @@ main:
     
     @doc("This is a string literal, with @code `'` character(s) marking the boundaries.")
         StringSingleQuote,
-    @doc("This is a string literal, with @code `"` character(s) marking the boundaries." "\"")
+    @doc(```This is a string literal, with @code '"' character(s) marking the boundaries.```)
         StringDoubleQuote,
     @doc("This is a string literal, with @code '`' character(s) marking the boundaries." "\"")
         StringTick,
@@ -311,7 +311,7 @@ main:
 };
 
 ////////////////////////////////
-//~ String-To-Node table
+//~ String-To-Ptr and Ptr-To-Ptr tables
 
 @send(Map)
 @doc("An abstraction over the types of keys used in a MD_Map and the work of hashing those keys, can be constructed from an MD_String8 or an void*.")
@@ -408,32 +408,44 @@ main:
 //~ Parsing State
 
 @send(Parsing)
+@doc("This type distinguishes the roles of messages, including errors and warnings.")
 @enum MD_MessageKind: {
-    None,
-    Warning,
-    Error,
-    CatastrophicError,
+    @doc("The message does not have a particular role.")
+        Null,
+    @doc("The message is a warning.")
+        Warning,
+    @doc("The message has information about a non-catastrophic error. Reasonable results may still have been produced, but something illegal was encountered.")
+        Error,
+    @doc("The message has information about a catastrophic error, meaning that the output of whatever the error was for cannot be trusted, and should be treated as a complete failure.")
+        CatastrophicError,
 }
 
 @send(Parsing)
+@doc("This type encodes information about messages.")
 @struct MD_Error: {
-    next: *MD_Error,
-    string: MD_String8,
-    filename: MD_String8,
-    node: *MD_Node,
-    catastrophic: MD_b32,
-    location: MD_CodeLoc,
+    @doc("A pointer to the next error, in a chain of errors. This is @code '0' when it is the last error in a chain.")
+        next: *MD_Error,
+    @doc("The node that this message refers to.")
+        node: *MD_Node,
+    @doc("This message's kind.")
+        kind: MD_MessageKind,
+    @doc("The message contents.")
+        string: MD_String8,
 };
 
 @send(Parsing)
-@struct MD_ParseCtx: {
-    first_error: *MD_Error,
-    last_error: *MD_Error,
-    at: *MD_u8,
-    filename: MD_String8,
-    file_contents: MD_String8,
-    catastrophic_error: MD_b32,
-};
+@doc("This type is for a chain of error messages, with data about the entire list.")
+@struct MD_ErrorList:
+{
+    @doc("""The "worst" message kind in this chain, where a message kind is "worse" than another if it has a higher numeric value (if it is defined later in MD_MessageKind) than another.""")
+        max_error_kind: MD_MessageKind;
+    @doc("The number of errors in this list.")
+        node_count: MD_u64;
+    @doc("The first error in the list.")
+        first: *MD_Error;
+    @doc("The last error in the list.")
+        last: *MD_Error;
+}
 
 @send(Parsing)
 @struct MD_ParseResult: {
@@ -441,6 +453,36 @@ main:
     first_error: *MD_Error;
     bytes_parse: MD_u64;
 };
+
+@send(Parsing)
+@doc("This type is used for encoding the rule for delimiting the end of a set of nodes, when parsing.")
+@see(MD_ParseNodeSet)
+@enum MD_ParseSetRule:
+{
+    @doc("The set needs to end when an appropriate delimiter, matching the opening delimiter, is encountered. If the opening delimiter is a @code '{' character, then the set will end with a @code '}' character. If the opening delimiter is a @code '(' or @code '[' character, then the set will end with either a @code ')' or @code ']' delimiter. If the set has no opening delimiter, then the set will end with either one newline (if children have been specified), or two newlines (if children have not been specified), or a separator character (@code ',' or @code ';').")
+        EndOnDelimiter,
+    @doc("The set is occurring at the top-level, and so it should not end until the entire file has been parsed.")
+        Global,
+}
+
+@send(Parsing)
+@doc("This type is used for the results of calls that do Metadesk parsing.")
+@see(MD_ParseWholeFile)
+@see(MD_ParseWholeString)
+@see(MD_ParseOneNode)
+@see(MD_ParseNodeSet)
+@see(MD_ParseTagList)
+@struct MD_ParseResult:
+{
+    @doc("The node produced by the parser.")
+        node: *MD_Node;
+    @doc("The last node, in a chain, produced by the parser, when the parsing call is capable of returning many nodes.")
+        last_node: *MD_Node;
+    @doc("The number of bytes processed by the parser. Any bytes after this number, in the string that was passed to the parser, were not considered.")
+        bytes_parsed: MD_u64;
+    @doc("The list of errors produced by the parser when parsing the provided string.")
+        errors: MD_ErrorList;
+}
 
 ////////////////////////////////
 //~ Command line parsing helper types.
