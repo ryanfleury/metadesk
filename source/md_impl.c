@@ -2295,7 +2295,7 @@ MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
 }
 
 MD_FUNCTION_IMPL void
-MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_FORMAT_STRING_ANNOTATION char *fmt, ...) MD_FORMAT_FUNCTION_ANNOTATION(4, 5)
+MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...)
 {
     // TODO(allen): use scratch
     va_list args;
@@ -2312,7 +2312,7 @@ MD_NodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str)
 }
 
 MD_FUNCTION_IMPL void
-MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, MD_FORMAT_STRING_ANNOTATION char *fmt, ...) MD_FORMAT_FUNCTION_ANNOTATION(4, 5)
+MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
 {
     // TODO(allen): use scratch
     va_list args;

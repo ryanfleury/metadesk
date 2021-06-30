@@ -858,5 +858,7 @@ int main(void)
         }
     }
     
+    MD_String8 str = MD_PushStringF("%i", "foobar");
+    
     return 0;
 }

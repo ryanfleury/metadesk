@@ -411,8 +411,7 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
             {
                 if(strnode->string.str[i] == '@')
                 {
-                    MD_Node *root = MD_RootFromNode(node);
-                    MD_ParseResult parse =  MD_ParseOneNode(root->string, MD_StringSubstring(strnode->string, i, strnode->string.size));
+                    MD_ParseResult parse =  MD_ParseOneNode(MD_StringSubstring(strnode->string, i, strnode->string.size), 0);
                     if(!MD_NodeIsNil(parse.node))
                     {
                         if(MD_NodeHasTag(node, MD_S8Lit("i")))

@@ -474,13 +474,15 @@ static MD_Node *
 FirstBadNodeAtPointer(MD_Node *node)
 {
     MD_Node *result = 0;
+    MD_Node *root = MD_RootFromNode(node);
+    MD_u8 *node_at = root->whole_string.str + node->offset;
     switch(node->kind){
         case MD_NodeKind_File:
         {
         } break;
         case MD_NodeKind_Label:
         {
-            if(node->at != node->whole_string.str)
+            if(node_at != node->whole_string.str)
             {
                 if(node->whole_string.size)
                 {
@@ -488,7 +490,7 @@ FirstBadNodeAtPointer(MD_Node *node)
                 }
                 else
                 {
-                    if(!node->at || (node->at[0] != '(' && node->at[0] != '[' && node->at[0] != '{'))
+                    if(!node_at || (node_at[0] != '(' && node_at[0] != '[' && node_at[0] != '{'))
                     {
                         result = node;
                     }
@@ -503,7 +505,7 @@ FirstBadNodeAtPointer(MD_Node *node)
         case MD_NodeKind_List:
         case MD_NodeKind_Tag:
         {
-            if(node->at != node->whole_string.str)
+            if(node_at != node->whole_string.str)
             {
                 result = node;
                 goto end;
@@ -537,7 +539,7 @@ int main(int argument_count, char **arguments)
     //            1) Tag []-style sets as optional 
     MD_Node *optional_tag = 0;
     {
-        MD_ParseResult parse_result = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("@"OPTIONAL_TAG" is_a_tag"));
+        MD_ParseResult parse_result = MD_ParseOneNode(MD_S8Lit("@"OPTIONAL_TAG" is_a_tag"), 0);
         optional_tag = parse_result.node->first_tag;
     }
     TagSquareBracketSetsAsOptional(grammar, optional_tag);
