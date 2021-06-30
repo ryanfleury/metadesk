@@ -525,7 +525,7 @@ int main(void)
         
         {
             MD_ParseResult parse = MD_ParseWholeFile(MD_S8Lit("__does_not_exist.md"));
-            TestResult(parse.node->kind == MD_NodeKind_File && parse.errors.first);
+            TestResult(parse.node->kind == MD_NodeKind_File && parse.errors.first != 0);
         }
         
     }

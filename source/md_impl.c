@@ -1750,13 +1750,17 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             }
             else if (c == ')' || c == '}' || c == ']')
             {
-                MD_Error *error = MD_MakeNodeError(parsed_node, MD_MessageKind_CatastrophicError, MD_PushStringF("Unbalanced \"%c\"", c));
+                MD_Error *error = MD_MakeTokenError(string, unnamed_set_opener,
+                                                    MD_MessageKind_CatastrophicError,
+                                                    MD_PushStringF("Unbalanced \"%c\"", c));
                 MD_PushErrorToList(&result.errors, error);
                 off += unnamed_set_opener.outer_string.size;
             }
             else
             {
-                MD_Error *error = MD_MakeNodeError(parsed_node, MD_MessageKind_Error, MD_PushStringF("Unexpected reserved symbol \"%c\"", c));
+                MD_Error *error = MD_MakeTokenError(string, unnamed_set_opener,
+                                                    MD_MessageKind_Error, 
+                                                    MD_PushStringF("Unexpected reserved symbol \"%c\"", c));
                 MD_PushErrorToList(&result.errors, error);
                 off += unnamed_set_opener.outer_string.size;
             }
