@@ -195,6 +195,23 @@
 # define MD_C_LINKAGE_END }
 #endif
 
+#if MD_COMPILER_CL_YEAR >= 2005
+# include <sal.h>
+# if MD_COMPILER_CL_YEAR > 2005
+#  define MD_FORMAT_STRING_ANNOTATION _Printf_format_string_
+# else
+#  define MD_FORMAT_STRING_ANNOTATION __format_string
+# endif
+#else
+# define MD_FORMAT_STRING_ANNOTATION
+#endif
+
+#if MD_COMPILER_CLANG || MD_COMPILER_GCC
+#define MD_FORMAT_FUNCTION_ANNOTATION(str_idx, check_idx) __attribute__((format(printf, str_idx, check_idx)))
+#else
+#define MD_FORMAT_FUNCTION_ANNOTATION(str_idx, check_idx)
+#endif
+
 //~ Common defines
 
 #define MD_FUNCTION
@@ -669,7 +686,8 @@ MD_FUNCTION MD_String8     MD_FolderFromPath(MD_String8 string);
 
 MD_FUNCTION MD_String8     MD_PushStringCopy(MD_String8 string);
 MD_FUNCTION MD_String8     MD_PushStringFV(char *fmt, va_list args);
-MD_FUNCTION MD_String8     MD_PushStringF(char *fmt, ...);
+
+MD_FUNCTION MD_String8     MD_PushStringF(MD_FORMAT_STRING_ANNOTATION char *fmt, ...) MD_FORMAT_FUNCTION_ANNOTATION(1, 2);
 
 #define MD_StringExpand(s) (int)(s).size, (s).str
 
@@ -779,9 +797,9 @@ it##_r = it##_r->next, it = MD_Deref(it##_r)
 //~ Error/Warning Helpers
 
 MD_FUNCTION void MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION void MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...);
+MD_FUNCTION void MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_FORMAT_STRING_ANNOTATION char *fmt, ...) MD_FORMAT_FUNCTION_ANNOTATION(4, 5);
 MD_FUNCTION void MD_NodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION void MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...);
+MD_FUNCTION void MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, MD_FORMAT_STRING_ANNOTATION char *fmt, ...) MD_FORMAT_FUNCTION_ANNOTATION(4, 5);
 
 //~ Tree Comparison/Verification
 

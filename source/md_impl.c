@@ -2295,6 +2295,7 @@ MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
 {
     const char *kind_name = "";
     switch (kind){
+        default: break;
         case MD_MessageKind_Warning: kind_name = "warning: "; break;
         case MD_MessageKind_Error: kind_name = "error: "; break;
         case MD_MessageKind_CatastrophicError: kind_name = "fatal error: "; break;
@@ -2305,7 +2306,7 @@ MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
 }
 
 MD_FUNCTION_IMPL void
-MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...)
+MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_FORMAT_STRING_ANNOTATION char *fmt, ...) MD_FORMAT_FUNCTION_ANNOTATION(4, 5)
 {
     // TODO(allen): use scratch
     va_list args;
@@ -2322,7 +2323,7 @@ MD_NodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str)
 }
 
 MD_FUNCTION_IMPL void
-MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
+MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, MD_FORMAT_STRING_ANNOTATION char *fmt, ...) MD_FORMAT_FUNCTION_ANNOTATION(4, 5)
 {
     // TODO(allen): use scratch
     va_list args;
