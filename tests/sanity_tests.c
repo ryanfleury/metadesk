@@ -449,7 +449,7 @@ int main(void)
             {
                 MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("// foobar\n(a b c)"), 0);
                 TestResult(parse.node->kind == MD_NodeKind_Label &&
-                           MD_StringMatch(parse.node->comment_before, MD_S8Lit("foobar"), 0));
+                           MD_StringMatch(parse.node->comment_before, MD_S8Lit(" foobar"), 0));
             }
             {
                 MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("// foobar\n\n(a b c)"), 0);
@@ -468,7 +468,7 @@ int main(void)
             {
                 MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("(a b c) // foobar"), 0);
                 TestResult(parse.node->kind == MD_NodeKind_Label &&
-                           MD_StringMatch(parse.node->comment_after, MD_S8Lit("foobar"), 0));
+                           MD_StringMatch(parse.node->comment_after, MD_S8Lit(" foobar"), 0));
             }
             {
                 MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("(a b c)\n// foobar"), 0);
