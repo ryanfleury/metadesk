@@ -207,7 +207,8 @@
 #endif
 
 #if MD_COMPILER_CLANG || MD_COMPILER_GCC
-#define MD_FORMAT_FUNCTION_ANNOTATION(str_idx, check_idx) __attribute__((format(printf, str_idx, check_idx)))
+#define MD_FORMAT_FUNCTION_ANNOTATION(str_idx, check_idx) \
+__attribute__((format(printf, str_idx, check_idx)))
 #else
 #define MD_FORMAT_FUNCTION_ANNOTATION(str_idx, check_idx)
 #endif
@@ -352,13 +353,11 @@ enum
     MD_NodeFlag_StringSingleQuote       = (1<<10),
     MD_NodeFlag_StringDoubleQuote       = (1<<11),
     MD_NodeFlag_StringTick              = (1<<12),
-    MD_NodeFlag_StringTripletSingleQuote= (1<<13),
-    MD_NodeFlag_StringTripletDoubleQuote= (1<<14),
-    MD_NodeFlag_StringTripletTick       = (1<<15),
+    MD_NodeFlag_StringTriplet           = (1<<13),
     
-    MD_NodeFlag_Numeric                 = (1<<16),
-    MD_NodeFlag_Identifier              = (1<<17),
-    MD_NodeFlag_StringLiteral           = (1<<18),
+    MD_NodeFlag_Numeric                 = (1<<14),
+    MD_NodeFlag_Identifier              = (1<<15),
+    MD_NodeFlag_StringLiteral           = (1<<16),
 };
 
 typedef struct MD_Node MD_Node;

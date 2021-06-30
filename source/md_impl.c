@@ -679,9 +679,7 @@ MD_StringListFromNodeFlags(MD_NodeFlags flags)
         "StringSingleQuote",
         "StringDoubleQuote",
         "StringTick",
-        "StringTripletSingleQuote",
-        "StringTripletDoubleQuote",
-        "StringTripletTick",
+        "StringTriplet",
         
         "Numeric",
         "Identifier",
@@ -1309,25 +1307,16 @@ MD_TokenFromString(MD_String8 string)
                 
                 //- rjf: set relevant node flags on token
                 token.node_flags |= MD_NodeFlag_StringLiteral;
+                switch(d)
+                {
+                    case '\'': token.node_flags |= MD_NodeFlag_StringSingleQuote; break;
+                    case '"':  token.node_flags |= MD_NodeFlag_StringDoubleQuote; break;
+                    case '`':  token.node_flags |= MD_NodeFlag_StringTick; break;
+                    default: break;
+                }
                 if(is_triplet)
                 {
-                    switch(d)
-                    {
-                        case '\'': token.node_flags |= MD_NodeFlag_StringTripletSingleQuote; break;
-                        case '"':  token.node_flags |= MD_NodeFlag_StringTripletDoubleQuote; break;
-                        case '`':  token.node_flags |= MD_NodeFlag_StringTripletTick; break;
-                        default: break;
-                    }
-                }
-                else
-                {
-                    switch(d)
-                    {
-                        case '\'': token.node_flags |= MD_NodeFlag_StringSingleQuote; break;
-                        case '"':  token.node_flags |= MD_NodeFlag_StringDoubleQuote; break;
-                        case '`':  token.node_flags |= MD_NodeFlag_StringTick; break;
-                        default: break;
-                    }
+                    token.node_flags |= MD_NodeFlag_StringTriplet;
                 }
                 
             }break;

@@ -309,11 +309,11 @@ int main(void)
         TestResult(MD_ParseOneNode(MD_S8Lit("`foo`"), 0).node->flags &
                    MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTick);
         TestResult(MD_ParseOneNode(MD_S8Lit("\"\"\"foo\"\"\""), 0).node->flags &
-                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTripletDoubleQuote);
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringDoubleQuote | MD_NodeFlag_StringTriplet);
         TestResult(MD_ParseOneNode(MD_S8Lit("'''foo'''"), 0).node->flags &
-                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTripletSingleQuote);
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringSingleQuote | MD_NodeFlag_StringTriplet);
         TestResult(MD_ParseOneNode(MD_S8Lit("```foo```"), 0).node->flags &
-                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTripletTick);
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTick | MD_NodeFlag_StringTriplet);
     }
     
     Test("Expression Evaluation")

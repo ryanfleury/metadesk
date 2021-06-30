@@ -1,34 +1,34 @@
 Node {
   Kind: Label,
-  Flags: 0000110000000000000000010000000000000000000000000000000000000000,
-  Flag Names: BraceLeft, BraceRight,
+  Flags: 0000110000000001000000000000000000000000000000000000000000000000,
+  Flag Names: BraceLeft, BraceRight, Identifier,
   String: a_set,
   Whole String: a_set,
   Tag: @sets
   Node {
     Kind: Label,
-    Flags: 0000110010000000000000010000000000000000000000000000000000000000,
-    Flag Names: BraceLeft, BraceRight, BeforeComma,
+    Flags: 0000110010000001000000000000000000000000000000000000000000000000,
+    Flag Names: BraceLeft, BraceRight, BeforeComma, Identifier,
     String: named_set,
     Whole String: named_set,
     Node {
       Kind: Label,
-      Flags: 0000000010000000000000100000000000000000000000000000000000000000,
-      Flag Names: BeforeComma,
+      Flags: 0000000010000010000000000000000000000000000000000000000000000000,
+      Flag Names: BeforeComma, Numeric,
       String: 1,
       Whole String: 1,
     }
     Node {
       Kind: Label,
-      Flags: 0000000011000000000000100000000000000000000000000000000000000000,
-      Flag Names: BeforeComma, AfterComma,
+      Flags: 0000000011000010000000000000000000000000000000000000000000000000,
+      Flag Names: BeforeComma, AfterComma, Numeric,
       String: 3,
       Whole String: 3,
     }
     Node {
       Kind: Label,
-      Flags: 0000000001000000000000100000000000000000000000000000000000000000,
-      Flag Names: AfterComma,
+      Flags: 0000000001000010000000000000000000000000000000000000000000000000,
+      Flag Names: AfterComma, Numeric,
       String: 7,
       Whole String: 7,
     }
@@ -39,22 +39,22 @@ Node {
     Flag Names: BraceLeft, BraceRight, BeforeComma, AfterComma,
     Node {
       Kind: Label,
-      Flags: 0000000010000000000000010000000000000000000000000000000000000000,
-      Flag Names: BeforeComma,
+      Flags: 0000000010000001000000000000000000000000000000000000000000000000,
+      Flag Names: BeforeComma, Identifier,
       String: not,
       Whole String: not,
     }
     Node {
       Kind: Label,
-      Flags: 0000000011000000000000010000000000000000000000000000000000000000,
-      Flag Names: BeforeComma, AfterComma,
+      Flags: 0000000011000001000000000000000000000000000000000000000000000000,
+      Flag Names: BeforeComma, AfterComma, Identifier,
       String: named,
       Whole String: named,
     }
     Node {
       Kind: Label,
-      Flags: 0000000001000000000000010000000000000000000000000000000000000000,
-      Flag Names: AfterComma,
+      Flags: 0000000001000001000000000000000000000000000000000000000000000000,
+      Flag Names: AfterComma, Identifier,
       String: set,
       Whole String: set,
     }
@@ -67,44 +67,44 @@ Node {
       Tag Children{
         Node {
           Kind: Label,
-          Flags: 0000000010000000000000010000000000000000000000000000000000000000,
-          Flag Names: BeforeComma,
+          Flags: 0000000010000001000000000000000000000000000000000000000000000000,
+          Flag Names: BeforeComma, Identifier,
           String: p1,
           Whole String: p1,
         }
         Node {
           Kind: Label,
-          Flags: 0000000011000000000000010000000000000000000000000000000000000000,
-          Flag Names: BeforeComma, AfterComma,
+          Flags: 0000000011000001000000000000000000000000000000000000000000000000,
+          Flag Names: BeforeComma, AfterComma, Identifier,
           String: p2,
           Whole String: p2,
         }
         Node {
           Kind: Label,
-          Flags: 0000000001000000000000010000000000000000000000000000000000000000,
-          Flag Names: AfterComma,
+          Flags: 0000000001000001000000000000000000000000000000000000000000000000,
+          Flag Names: AfterComma, Identifier,
           String: p3,
           Whole String: p3,
         }
       }
     Node {
       Kind: Label,
-      Flags: 0000000010000000000000010000000000000000000000000000000000000000,
-      Flag Names: BeforeComma,
+      Flags: 0000000010000001000000000000000000000000000000000000000000000000,
+      Flag Names: BeforeComma, Identifier,
       String: e1,
       Whole String: e1,
     }
     Node {
       Kind: Label,
-      Flags: 0000000011000000000000010000000000000000000000000000000000000000,
-      Flag Names: BeforeComma, AfterComma,
+      Flags: 0000000011000001000000000000000000000000000000000000000000000000,
+      Flag Names: BeforeComma, AfterComma, Identifier,
       String: e2,
       Whole String: e2,
     }
     Node {
       Kind: Label,
-      Flags: 0000000001000000000000010000000000000000000000000000000000000000,
-      Flag Names: AfterComma,
+      Flags: 0000000001000001000000000000000000000000000000000000000000000000,
+      Flag Names: AfterComma, Identifier,
       String: e3,
       Whole String: e3,
     }
@@ -117,22 +117,22 @@ Node {
       Tag Children{
         Node {
           Kind: Label,
-          Flags: 0000000010000000000000010000000000000000000000000000000000000000,
-          Flag Names: BeforeComma,
+          Flags: 0000000010000001000000000000000000000000000000000000000000000000,
+          Flag Names: BeforeComma, Identifier,
           String: p1,
           Whole String: p1,
         }
         Node {
           Kind: Label,
-          Flags: 0000000011000000000000010000000000000000000000000000000000000000,
-          Flag Names: BeforeComma, AfterComma,
+          Flags: 0000000011000001000000000000000000000000000000000000000000000000,
+          Flag Names: BeforeComma, AfterComma, Identifier,
           String: p2,
           Whole String: p2,
         }
         Node {
           Kind: Label,
-          Flags: 0000000001000000000000010000000000000000000000000000000000000000,
-          Flag Names: AfterComma,
+          Flags: 0000000001000001000000000000000000000000000000000000000000000000,
+          Flag Names: AfterComma, Identifier,
           String: p3,
           Whole String: p3,
         }
@@ -141,44 +141,44 @@ Node {
       Tag Children{
         Node {
           Kind: Label,
-          Flags: 0000000010000000000000010000000000000000000000000000000000000000,
-          Flag Names: BeforeComma,
+          Flags: 0000000010000001000000000000000000000000000000000000000000000000,
+          Flag Names: BeforeComma, Identifier,
           String: p,
           Whole String: p,
         }
         Node {
           Kind: Label,
-          Flags: 0000000011000000000000010000000000000000000000000000000000000000,
-          Flag Names: BeforeComma, AfterComma,
+          Flags: 0000000011000001000000000000000000000000000000000000000000000000,
+          Flag Names: BeforeComma, AfterComma, Identifier,
           String: pp,
           Whole String: pp,
         }
         Node {
           Kind: Label,
-          Flags: 0000000001000000000000010000000000000000000000000000000000000000,
-          Flag Names: AfterComma,
+          Flags: 0000000001000001000000000000000000000000000000000000000000000000,
+          Flag Names: AfterComma, Identifier,
           String: ppp,
           Whole String: ppp,
         }
       }
     Node {
       Kind: Label,
-      Flags: 0000000010000000000000010000000000000000000000000000000000000000,
-      Flag Names: BeforeComma,
+      Flags: 0000000010000001000000000000000000000000000000000000000000000000,
+      Flag Names: BeforeComma, Identifier,
       String: e1,
       Whole String: e1,
     }
     Node {
       Kind: Label,
-      Flags: 0000000011000000000000010000000000000000000000000000000000000000,
-      Flag Names: BeforeComma, AfterComma,
+      Flags: 0000000011000001000000000000000000000000000000000000000000000000,
+      Flag Names: BeforeComma, AfterComma, Identifier,
       String: e2,
       Whole String: e2,
     }
     Node {
       Kind: Label,
-      Flags: 0000000001000000000000010000000000000000000000000000000000000000,
-      Flag Names: AfterComma,
+      Flags: 0000000001000001000000000000000000000000000000000000000000000000,
+      Flag Names: AfterComma, Identifier,
       String: e3,
       Whole String: e3,
     }
@@ -187,8 +187,8 @@ Node {
 
 Node {
   Kind: Label,
-  Flags: 0000110000000000000000010000000000000000000000000000000000000000,
-  Flag Names: BraceLeft, BraceRight,
+  Flags: 0000110000000001000000000000000000000000000000000000000000000000,
+  Flag Names: BraceLeft, BraceRight, Identifier,
   String: empty,
   Whole String: empty,
   Tag: @empty_set
@@ -201,14 +201,14 @@ Node {
   Tag: @tagged_unnamed_set
   Node {
     Kind: Label,
-    Flags: 0000110000000000000000010000000000000000000000000000000000000000,
-    Flag Names: BraceLeft, BraceRight,
+    Flags: 0000110000000001000000000000000000000000000000000000000000000000,
+    Flag Names: BraceLeft, BraceRight, Identifier,
     String: a_label,
     Whole String: a_label,
     Node {
       Kind: Label,
-      Flags: 0000000000000000000000010000000000000000000000000000000000000000,
-      Flag Names: ,
+      Flags: 0000000000000001000000000000000000000000000000000000000000000000,
+      Flag Names: Identifier,
       String: unnamed_set_element,
       Whole String: unnamed_set_element,
     }
@@ -229,22 +229,22 @@ Node {
     Tag: @symbol_label
     Node {
       Kind: Label,
-      Flags: 0000000000000000000000100000000000000000000000000000000000000000,
-      Flag Names: ,
+      Flags: 0000000000000010000000000000000000000000000000000000000000000000,
+      Flag Names: Numeric,
       String: 1,
       Whole String: 1,
     }
     Node {
       Kind: Label,
-      Flags: 0000000000000000000000100000000000000000000000000000000000000000,
-      Flag Names: ,
+      Flags: 0000000000000010000000000000000000000000000000000000000000000000,
+      Flag Names: Numeric,
       String: 2,
       Whole String: 2,
     }
     Node {
       Kind: Label,
-      Flags: 0000000000000000000000100000000000000000000000000000000000000000,
-      Flag Names: ,
+      Flags: 0000000000000010000000000000000000000000000000000000000000000000,
+      Flag Names: Numeric,
       String: 3,
       Whole String: 3,
     }
@@ -258,22 +258,22 @@ Node {
     Tag: @symbol_label
     Node {
       Kind: Label,
-      Flags: 0000000000000000000000010000000000000000000000000000000000000000,
-      Flag Names: ,
+      Flags: 0000000000000001000000000000000000000000000000000000000000000000,
+      Flag Names: Identifier,
       String: x,
       Whole String: x,
     }
     Node {
       Kind: Label,
-      Flags: 0000000000000000000000010000000000000000000000000000000000000000,
-      Flag Names: ,
+      Flags: 0000000000000001000000000000000000000000000000000000000000000000,
+      Flag Names: Identifier,
       String: y,
       Whole String: y,
     }
     Node {
       Kind: Label,
-      Flags: 0000000000000000000000010000000000000000000000000000000000000000,
-      Flag Names: ,
+      Flags: 0000000000000001000000000000000000000000000000000000000000000000,
+      Flag Names: Identifier,
       String: z,
       Whole String: z,
     }
