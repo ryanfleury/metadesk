@@ -1070,27 +1070,6 @@ MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val){
 
 //~ Parsing
 
-MD_FUNCTION_IMPL MD_NodeFlags
-MD_NodeFlagsFromTokenKind(MD_TokenKind kind)
-{
-    MD_NodeFlags result = 0;
-    switch (kind){
-        case MD_TokenKind_Identifier:                      result = MD_NodeFlag_Identifier;    break;
-        case MD_TokenKind_NumericLiteral:                  result = MD_NodeFlag_Numeric;       break;
-        case MD_TokenKind_StringLiteralSingleQuote:        result |= MD_NodeFlag_StringSingleQuote;        goto string_lit;
-        case MD_TokenKind_StringLiteralDoubleQuote:        result |= MD_NodeFlag_StringDoubleQuote;        goto string_lit;
-        case MD_TokenKind_StringLiteralTick:               result |= MD_NodeFlag_StringTick;               goto string_lit;
-        case MD_TokenKind_StringLiteralSingleQuoteTriplet: result |= MD_NodeFlag_StringTripletSingleQuote; goto string_lit;
-        case MD_TokenKind_StringLiteralDoubleQuoteTriplet: result |= MD_NodeFlag_StringTripletDoubleQuote; goto string_lit;
-        case MD_TokenKind_StringLiteralTickTriplet:        result |= MD_NodeFlag_StringTripletTick;        goto string_lit;
-        string_lit:;
-        {
-            result |= MD_NodeFlag_StringLiteral;
-        }break;
-    }
-    return(result);
-}
-
 MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_TokenBoundariesAreBalanced(MD_Token token)
 {
@@ -1113,22 +1092,30 @@ _MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_b32
-MD_TokenKindIsWhitespace(MD_TokenKind kind)
+MD_FUNCTION MD_TokenGroups
+MD_TokenGroupsFromTokenKind(MD_TokenKind kind)
 {
-    return MD_TokenKind_WhitespaceMin < kind && kind < MD_TokenKind_WhitespaceMax;
-}
-
-MD_FUNCTION_IMPL MD_b32
-MD_TokenKindIsComment(MD_TokenKind kind)
-{
-    return(kind == MD_TokenKind_Comment);
-}
-
-MD_FUNCTION_IMPL MD_b32
-MD_TokenKindIsRegular(MD_TokenKind kind)
-{
-    return(MD_TokenKind_RegularMin < kind && kind < MD_TokenKind_RegularMax);
+    MD_TokenGroups groups = 0;
+    switch(kind)
+    {
+        //- rjf: nil
+        default:
+        case MD_TokenKind_Nil: break;
+        
+        //- rjf: regular
+        case MD_TokenKind_Identifier:     groups |= MD_TokenGroup_Regular|MD_TokenGroup_LabelString; break;
+        case MD_TokenKind_NumericLiteral: groups |= MD_TokenGroup_Regular|MD_TokenGroup_LabelString; break;
+        case MD_TokenKind_StringLiteral:  groups |= MD_TokenGroup_Regular|MD_TokenGroup_LabelString; break;
+        case MD_TokenKind_Symbol:         groups |= MD_TokenGroup_Regular|MD_TokenGroup_LabelString; break;
+        
+        //- rjf: comments
+        case MD_TokenKind_Comment:        groups |= MD_TokenGroup_Comment; break;
+        
+        //- rjf: whitespace
+        case MD_TokenKind_Whitespace:     groups |= MD_TokenGroup_Whitespace; break;
+        case MD_TokenKind_Newline:        groups |= MD_TokenGroup_Whitespace; break;
+    }
+    return groups;
 }
 
 MD_FUNCTION MD_Token
@@ -1236,6 +1223,8 @@ MD_TokenFromString(MD_String8 string)
             case '\'':
             case '`':
             {
+                token.kind = MD_TokenKind_StringLiteral;
+                
                 // TODO(allen): proposal:
                 // go see the proposal in the block comment lexer, same idea here?
                 
@@ -1318,14 +1307,15 @@ MD_TokenFromString(MD_String8 string)
                     }
                 }
                 
-                // set token kind
+                //- rjf: set relevant node flags on token
+                token.node_flags |= MD_NodeFlag_StringLiteral;
                 if(is_triplet)
                 {
                     switch(d)
                     {
-                        case '\'': token.kind = MD_TokenKind_StringLiteralSingleQuoteTriplet; break;
-                        case '"':  token.kind = MD_TokenKind_StringLiteralDoubleQuoteTriplet; break;
-                        case '`':  token.kind = MD_TokenKind_StringLiteralTickTriplet; break;
+                        case '\'': token.node_flags |= MD_NodeFlag_StringTripletSingleQuote; break;
+                        case '"':  token.node_flags |= MD_NodeFlag_StringTripletDoubleQuote; break;
+                        case '`':  token.node_flags |= MD_NodeFlag_StringTripletTick; break;
                         default: break;
                     }
                 }
@@ -1333,9 +1323,9 @@ MD_TokenFromString(MD_String8 string)
                 {
                     switch(d)
                     {
-                        case '\'': token.kind = MD_TokenKind_StringLiteralSingleQuote; break;
-                        case '"':  token.kind = MD_TokenKind_StringLiteralDoubleQuote; break;
-                        case '`':  token.kind = MD_TokenKind_StringLiteralTick; break;
+                        case '\'': token.node_flags |= MD_NodeFlag_StringSingleQuote; break;
+                        case '"':  token.node_flags |= MD_NodeFlag_StringDoubleQuote; break;
+                        case '`':  token.node_flags |= MD_NodeFlag_StringTick; break;
                         default: break;
                     }
                 }
@@ -1347,6 +1337,7 @@ MD_TokenFromString(MD_String8 string)
             {
                 if (MD_CharIsAlpha(*at) || *at == '_')
                 {
+                    token.node_flags |= MD_NodeFlag_Identifier;
                     token.kind = MD_TokenKind_Identifier;
                     at += 1;
                     MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '_');
@@ -1355,6 +1346,7 @@ MD_TokenFromString(MD_String8 string)
                 else if (MD_CharIsDigit(*at) ||
                          (at + 1 < one_past_last && at[0] == '-' && MD_CharIsDigit(at[1])))
                 {
+                    token.node_flags |= MD_NodeFlag_Numeric;
                     token.kind = MD_TokenKind_NumericLiteral;
                     at += 1;
                     MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.');
@@ -1397,9 +1389,10 @@ MD_BytesFromStringTokenGroupRun(MD_String8 string, MD_TokenGroups groups)
     loop:
     {
         MD_Token token = MD_TokenFromString(MD_StringSkip(string, result));
-        if((skip_comment    && MD_TokenKindIsComment(token.kind))    ||
-           (skip_whitespace && MD_TokenKindIsWhitespace(token.kind)) ||
-           (skip_regular    && MD_TokenKindIsRegular(token.kind)))
+        MD_TokenGroups groups = MD_TokenGroupsFromTokenKind(token.kind);
+        if((skip_comment    && groups & MD_TokenGroup_Comment)    ||
+           (skip_whitespace && groups & MD_TokenGroup_Whitespace) ||
+           (skip_regular    && groups & MD_TokenGroup_Regular))
         {
             result += token.outer_string.size;
             goto loop;
@@ -1791,7 +1784,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                     MD_MemoryZero(&comment_token, sizeof(comment_token));
                 }
             }
-            else if(MD_TokenKindIsWhitespace(token.kind))
+            else if(MD_TokenGroupsFromTokenKind(token.kind) & MD_TokenGroup_Whitespace)
             {
                 off += token.outer_string.size;
             }
@@ -1842,20 +1835,12 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
         //- rjf: try to parse regular node, with/without children
         off += MD_BytesFromStringTokenGroupRun(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
         MD_Token label_name = MD_TokenFromString(MD_StringSkip(string, off));
-        if(label_name.kind == MD_TokenKind_Identifier                        ||
-           label_name.kind == MD_TokenKind_NumericLiteral                    ||
-           label_name.kind == MD_TokenKind_StringLiteralTick                 ||
-           label_name.kind == MD_TokenKind_StringLiteralSingleQuote          ||
-           label_name.kind == MD_TokenKind_StringLiteralDoubleQuote          ||
-           label_name.kind == MD_TokenKind_StringLiteralTickTriplet          ||
-           label_name.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
-           label_name.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet   ||
-           label_name.kind == MD_TokenKind_Symbol                           )
+        if(MD_TokenGroupsFromTokenKind(label_name.kind) & MD_TokenGroup_LabelString)
         {
             off += label_name.outer_string.size;
             parsed_node = MD_MakeNode(MD_NodeKind_Label, label_name.string, label_name.outer_string,
                                       label_name.outer_string.str - string.str);
-            parsed_node->flags |= MD_NodeFlagsFromTokenKind(label_name.kind);
+            parsed_node->flags |= label_name.node_flags;
             
             //- rjf: check for string literal errors
             // TODO(rjf): Before we were just able to check one kind. I think preserving
@@ -1871,12 +1856,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             //
             // If that turned out to be a good idea, maybe we could do something like
             // MD_TokenKindIsLegalLabelHead, MD_TokenKindNeedsBalancing?? I don't know.
-            if(label_name.kind == MD_TokenKind_StringLiteralTick                 ||
-               label_name.kind == MD_TokenKind_StringLiteralSingleQuote          ||
-               label_name.kind == MD_TokenKind_StringLiteralDoubleQuote          ||
-               label_name.kind == MD_TokenKind_StringLiteralTickTriplet          ||
-               label_name.kind == MD_TokenKind_StringLiteralSingleQuoteTriplet   ||
-               label_name.kind == MD_TokenKind_StringLiteralDoubleQuoteTriplet)
+            if(label_name.kind == MD_TokenKind_StringLiteral)
             {
                 if(!_MD_TokenBoundariesAreBalanced(label_name))
                 {
@@ -1989,7 +1969,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             {
                 break;
             }
-            else if(MD_TokenKindIsWhitespace(token.kind))
+            else if(MD_TokenGroupsFromTokenKind(token.kind) & MD_TokenGroup_Whitespace)
             {
                 off += token.outer_string.size;
             }

@@ -422,26 +422,19 @@ struct MD_Map
 
 typedef enum MD_TokenKind
 {
+    // NOTE(rjf): *MUST* stay up-to-date with MD_TokenGroupsFromTokenKind.
+    
     MD_TokenKind_Nil,
     
-    MD_TokenKind_RegularMin,
     MD_TokenKind_Identifier,
     MD_TokenKind_NumericLiteral,
-    MD_TokenKind_StringLiteralSingleQuote,
-    MD_TokenKind_StringLiteralSingleQuoteTriplet,
-    MD_TokenKind_StringLiteralDoubleQuote,
-    MD_TokenKind_StringLiteralDoubleQuoteTriplet,
-    MD_TokenKind_StringLiteralTick,
-    MD_TokenKind_StringLiteralTickTriplet,
+    MD_TokenKind_StringLiteral,
     MD_TokenKind_Symbol,
-    MD_TokenKind_RegularMax,
     
     MD_TokenKind_Comment,
     
-    MD_TokenKind_WhitespaceMin,
     MD_TokenKind_Whitespace,
     MD_TokenKind_Newline,
-    MD_TokenKind_WhitespaceMax,
     
     // Character outside currently supported encodings
     MD_TokenKind_BadCharacter,
@@ -450,24 +443,19 @@ typedef enum MD_TokenKind
 }
 MD_TokenKind;
 
-typedef MD_u32 MD_TokenFlags;
-enum
-{
-    MD_TokenFlag_ErrorUnterminated = (1<<0),
-};
-
 typedef MD_u32 MD_TokenGroups;
 enum{
-    MD_TokenGroup_Comment    = (1 << 0),
-    MD_TokenGroup_Whitespace = (1 << 1),
-    MD_TokenGroup_Regular    = (1 << 2)
+    MD_TokenGroup_Comment        = (1 << 0),
+    MD_TokenGroup_Whitespace     = (1 << 1),
+    MD_TokenGroup_Regular        = (1 << 2),
+    MD_TokenGroup_LabelString    = (1 << 3),
 };
 
 typedef struct MD_Token MD_Token;
 struct MD_Token
 {
     MD_TokenKind kind;
-    MD_TokenFlags flags;
+    MD_NodeFlags node_flags;
     MD_String8 string;
     MD_String8 outer_string;
 };
@@ -731,11 +719,7 @@ MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val);
 
 //~ Parsing
 
-MD_FUNCTION MD_NodeFlags   MD_NodeFlagsFromTokenKind(MD_TokenKind kind);
-
-MD_FUNCTION MD_b32         MD_TokenKindIsWhitespace(MD_TokenKind kind);
-MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
-MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
+MD_FUNCTION MD_TokenGroups MD_TokenGroupsFromTokenKind(MD_TokenKind kind);
 
 MD_FUNCTION MD_Token       MD_TokenFromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_BytesFromStringTokenGroupRun(MD_String8 string, MD_TokenGroups groups);
