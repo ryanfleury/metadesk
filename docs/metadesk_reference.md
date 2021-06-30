@@ -49,6 +49,9 @@ main:
     @title "Helper Macros",
     @paste HelperMacros,
     
+    @title "Memory Operations",
+    @paste MemoryOperations,
+    
     @title "Character Helpers",
     @paste Characters,
     
@@ -569,6 +572,111 @@ main:
 };
 
 ////////////////////////////////
+//~ Linked List Macros
+
+@send(HelperMacros) @macro MD_CheckNull: { p }
+@send(HelperMacros) @macro MD_SetNull: { p }
+@send(HelperMacros) @macro MD_CheckNil: { p }
+@send(HelperMacros) @macro MD_SetNil: { p }
+
+@send(HelperMacros) @macro MD_QueuePush_NZ:
+{
+    f,
+    l,
+    n,
+    next,
+    zchk,
+    zset,
+}
+
+@send(HelperMacros) @macro MD_QueuePop_NZ:
+{
+    f,
+    l,
+    next,
+    zset,
+}
+
+@send(HelperMacros) @macro MD_StackPush_N:
+{
+    f,
+    n,
+    next,
+}
+
+@send(HelperMacros) @macro MD_StackPop_NZ:
+{
+    f,
+    next,
+    zchk,
+}
+
+@send(HelperMacros) @macro MD_DblPushBack_NPZ:
+{
+    f,
+    l,
+    n,
+    next,
+    prev,
+    zchk,
+    zset,
+}
+
+@send(HelperMacros) @macro MD_DblRemove_NPZ:
+{
+    f,
+    l,
+    n,
+    next,
+    prev,
+    zset,
+}
+
+@send(HelperMacros) @macro MD_QueuePush: { f, l, n }
+@send(HelperMacros) @macro MD_QueuePop:  { f, l }
+@send(HelperMacros) @macro MD_StackPush: { f, n }
+@send(HelperMacros) @macro MD_StackPop:  { f }
+@send(HelperMacros) @macro MD_DblPushBack: { f, l, n }
+@send(HelperMacros) @macro MD_DblPushFront: { f, l, n }
+@send(HelperMacros) @macro MD_DblRemove: { f, l, n }
+@send(HelperMacros) @macro MD_NodeDblPushBack: { f, l, n }
+@send(HelperMacros) @macro MD_NodeDblPushFront: { f, l, n }
+@send(HelperMacros) @macro MD_NodeDblRemove: { f, l, n }
+
+////////////////////////////////
+//~ Memory Operations
+
+@send(MemoryOperations)
+@doc("Zeroes @code 'size' bytes at the address stored in @code 'memory'.")
+@func MD_MemoryZero:
+{
+    memory: *void,
+    size: MD_u64,
+}
+
+@send(MemoryOperations)
+@doc("Copies @code 'size' bytes from the address in @code 'src', to the address in @code 'dst'.")
+@func MD_MemoryCopy:
+{
+    dst: *void,
+    src: *void,
+    size: MD_u64,
+}
+
+@send(MemoryOperations)
+@doc("Allocates @code 'size' bytes. This memory cannot be freed.")
+@func MD_AllocZero:
+{
+    size: MD_u64,
+}
+
+@send(MemoryOperations)
+@macro MD_PushArray: { T, c }
+
+@send(MemoryOperations)
+@macro MD_PushArrayZero: { T, c }
+
+////////////////////////////////
 //~ Characters
 
 @send(Characters)
@@ -601,9 +709,18 @@ main:
 
 @send(Characters)
 @doc(```
-     Returns whether an ASCII character is a within the set of characters that Metadesk considers to be symbols: @code '~', @code '!', @code '@', @code '#', @code '$', @code '%', @code '^', @code '&', @code '*', @code '(', @code ')', @code '-', @code '=', @code '+', @code '[', @code ']', @code '{', @code '}', @code ':', @code ';', @code ',', @code '<', @code '.', @code '>', @code '/', @code '?', @code '|', or @code '\\'.
+     Returns whether an ASCII character is a non-reserved symbol as defined by the Metadesk grammar: @code '~', @code '!', @code '$', @code '%', @code '^', @code '&', @code '*', @code '-', @code '=', @code '+', @code '<', @code '.',  @code '>', @code '/', @code '?', @code '|', or @code '\\'.
      ```)
-@func MD_CharIsSymbol: {
+@func MD_CharIsUnreservedSymbol: {
+    c: MD_u8,
+    return: MD_b32,
+};
+
+@send(Characters)
+@doc(```
+     Returns whether an ASCII character is a reserved symbol as defined by the Metadesk grammar: @code '{', @code '}', @code '(', @code ')', @code '\\', @code '[', @code ']', @code '#', @code ',', @code ';', @code ':', or @code '@'.
+     ```)
+@func MD_CharIsReservedSymbol: {
     c: MD_u8,
     return: MD_b32,
 };
@@ -666,7 +783,7 @@ main:
 };
 
 @send(Strings)
-@doc("Constructs an MD_String8 from a C-string literal by using @code 'sizeof'.")
+@doc("Constructs an MD_String8 from a C-string literal by using @code 'sizeof'. In C++, the equivalent can be done with the user-defined literal code provided in the library, which uses @code '_md' as a suffix on a string literal.")
 @macro MD_S8Lit: {
     s,
 };
@@ -805,7 +922,7 @@ main:
 };
 
 @send(Strings)
-@doc("Allocates a new string, with the contents of the string being determined by a standard C formatting string passed in @code 'fmt', with a variable-argument list being passed in @code 'args'. Used when composing variable argument lists at multiple levels, and when you need to pass a @code 'va_list'. Before this call, it is expected that you call @code 'va_start' on the passed @code 'va_list', and also that you call @code 'va_end' after the function returns. If you just want to pass variable arguments yourself (instead of a @code 'va_list'), then see MD_PushStringF.")
+@doc("Allocates a new string, with the contents of the string being determined by a mostly-standard C formatting string passed in @code 'fmt', with a variable-argument list being passed in @code 'args'. Used when composing variable argument lists at multiple levels, and when you need to pass a @code 'va_list'. The format string is non-standard because it allows @code '%S' as a specifier for MD_String8 arguments. Before this call, it is expected that you call @code 'va_start' on the passed @code 'va_list', and also that you call @code 'va_end' after the function returns. If you just want to pass variable arguments yourself (instead of a @code 'va_list'), then see MD_PushStringF.")
 @see(MD_PushStringF)
 @see(MD_PushStringCopy)
 @func MD_PushStringFV: {
@@ -815,7 +932,7 @@ main:
 };
 
 @send(Strings)
-@doc("Allocates a new string, with the contents of the string being determined by a standard C formatting string passed in @code 'fmt', with variable arguments fitting the expected ones in @code 'fmt' being passed in after. If you are composing this with your own variable-arguments call, use MD_PushStringF instead.")
+@doc("Allocates a new string, with the contents of the string being determined by a mostly-standard C formatting string passed in @code 'fmt', with variable arguments fitting the expected ones in @code 'fmt' being passed in after. The format string is non-standard because it allows @code '%S' as a specifier for MD_String8 arguments. If you are composing this with your own variable-arguments call, use MD_PushStringFV instead.")
 @see(MD_PushStringFV)
 @see(MD_PushStringCopy)
 @func MD_PushStringF: {
@@ -868,22 +985,15 @@ main:
 };
 
 @send(Strings)
-@doc("Returns a new MD_String8 that contains the contents of each string in @code 'list', in order, with no separator character.")
+@doc("Returns a new MD_String8 that contains the contents of each string in @code 'list', in order, with the @code 'separator' string inserted between each string.")
 @see(MD_String8)
 @see(MD_String8List)
 @see(MD_String8Node)
 @see(MD_SplitString)
-@see(MD_JoinStringListWithSeparator)
 @func MD_JoinStringList: {
     list: MD_String8List,
+    separator: MD_String8,
     return: MD_String8,
-};
-
-@send(Strings)
-@func MD_JoinStringListWithSeparator: {
-    list: MD_String8List,
-    separator: MD_String8
-        return: MD_String8,
 };
 
 @send(Strings)
@@ -904,6 +1014,7 @@ main:
 //~ Numeric Strings
 
 @send(Strings)
+@doc("Parses @code 'string' as an integer with a base defined by @code 'radix'. Returns the parsed value.")
 @func MD_U64FromString: {
     string: MD_String8,
     radix: MD_u32,
@@ -911,17 +1022,18 @@ main:
 };
 
 @send(Strings)
+@doc("Parses @code 'string' as an integer with a base defined by C-like rules: If the numeric part of the string begins with @code '0x', then it will be parsed as base-16. If it begins with @code '0b', it will be parsed as base-2. Otherwise, it will be parsed as base 10. Returns the parsed value.")
 @func MD_CStyleIntFromString: {
     string: MD_String8,
     return: MD_i64,
 };
 
 @send(Strings)
+@doc("Parses @code 'string' as a floating point number, and returns the parsed value.")
 @func MD_F64FromString: {
     string: MD_String8,
     return: MD_f64,
 };
-
 
 ////////////////////////////////
 //~ Enum/Flag Strings
