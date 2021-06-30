@@ -1904,11 +1904,13 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             }
             
             //- rjf: try to parse children for this node
-            off += MD_BytesFromStringTokenGroupRun(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
-            MD_Token colon = MD_TokenFromString(MD_StringSkip(string, off));
+            MD_u64 colon_check_off = off;
+            colon_check_off += MD_BytesFromStringTokenGroupRun(MD_StringSkip(string, colon_check_off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+            MD_Token colon = MD_TokenFromString(MD_StringSkip(string, colon_check_off));
             if(MD_StringMatch(colon.string, MD_S8Lit(":"), 0) && colon.kind == MD_TokenKind_Symbol)
             {
-                off += colon.outer_string.size;
+                colon_check_off += colon.outer_string.size;
+                off = colon_check_off;
                 
                 //- rjf: prohibit tags here
                 for(MD_u64 tag_check_off = off; tag_check_off < string.size;)
@@ -1958,7 +1960,6 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
     
     end_parse:;
     
-    
     //- rjf: parse comments after nodes.
     MD_String8 comment_after = MD_ZERO_STRUCT;
     {
@@ -2003,6 +2004,11 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
     parsed_node->comment_before = comment_before;
     parsed_node->comment_after = comment_after;
     result.node = parsed_node;
+    if(!MD_NodeIsNil(result.node))
+    {
+        result.node->first_tag = tags_parse.node;
+        result.node->last_tag = tags_parse.last_node;
+    }
     result.last_node = parsed_node;
     result.bytes_parsed = off - offset;
     
@@ -3341,42 +3347,59 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 //~ Generation
 
 MD_FUNCTION_IMPL void
-MD_OutputTree(FILE *file, MD_Node *node)
+MD_OutputTree(FILE *file, MD_Node *node, int indent_spaces)
 {
+#define MD_PrintIndent() do { for(int i = 0; i < indent_spaces; i += 1) fprintf(file, " "); } while(0)
     for(MD_Node *tag = node->first_tag; !MD_NodeIsNil(tag); tag = tag->next)
     {
+        MD_PrintIndent();
         fprintf(file, "@%.*s", MD_StringExpand(tag->string));
         if(!MD_NodeIsNil(tag->first_child))
         {
             fprintf(file, "(");
             for(MD_Node *child = tag->first_child; !MD_NodeIsNil(child); child = child->next)
             {
-                MD_OutputTree(file, child);
+                MD_OutputTree(file, child, 0);
                 fprintf(file, ", ");
             }
             fprintf(file, ")\n");
         }
-        else
+        else if(!MD_NodeIsNil(tag->next))
         {
             fprintf(file, " ");
         }
     }
+    if(!MD_NodeIsNil(node->first_tag))
+    {
+        fprintf(file, "\n");
+    }
     
-    fprintf(file, "%.*s", MD_StringExpand(node->whole_string));
+    if(node->whole_string.size > 0)
+    {
+        MD_PrintIndent();
+        fprintf(file, "%.*s", MD_StringExpand(node->whole_string));
+    }
+    
     if(!MD_NodeIsNil(node->first_child))
     {
-        fprintf(file, ":\n{\n");
+        if(node->whole_string.size > 0)
+        {
+            fprintf(file, ":\n");
+        }
+        MD_PrintIndent();
+        fprintf(file, "{\n");
         for(MD_Node *child = node->first_child; !MD_NodeIsNil(child); child = child->next)
         {
-            MD_OutputTree(file, child);
-            fprintf(file, ",\n");
+            MD_OutputTree(file, child, indent_spaces+2);
         }
+        MD_PrintIndent();
         fprintf(file, "}\n");
     }
     else
     {
-        fprintf(file, " ");
+        fprintf(file, "\n");
     }
+#undef MD_PrintIndent
 }
 
 //~ Command Line Argument Helper

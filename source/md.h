@@ -814,7 +814,7 @@ MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags node_flags);
 
 //~ Generation
-MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node);
+MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node, int indent_spaces);
 
 //~ Command Line Argument Helper
 MD_FUNCTION MD_String8List MD_StringListFromArgCV(int argument_count, char **arguments);
