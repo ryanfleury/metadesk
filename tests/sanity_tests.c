@@ -787,7 +787,7 @@ int main(void)
         MD_String8 *string = test_strings;
         for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
             MD_ParseResult result = MD_ParseWholeString(file_name, *string);
-            TestResult((result.first_error == 0) &&
+            TestResult((result.errors.first == 0) &&
                        (result.node->first_child == result.node->last_child) &&
                        (result.node->first_child->flags & MD_NodeFlag_Numeric));
         }
@@ -820,7 +820,7 @@ int main(void)
         MD_String8 *string = test_strings;
         for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
             MD_ParseResult result = MD_ParseWholeString(file_name, *string);
-            TestResult((result.first_error == 0) &&
+            TestResult((result.errors.first == 0) &&
                        (result.node->first_child == result.node->last_child) &&
                        (result.node->first_child->flags & MD_NodeFlag_Numeric));
         }
@@ -844,7 +844,7 @@ int main(void)
         MD_String8 *string = test_strings;
         for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
             MD_ParseResult result = MD_ParseWholeString(file_name, *string);
-            TestResult((result.first_error == 0) &&
+            TestResult((result.errors.first == 0) &&
                        (result.node->first_child != result.node->last_child));
         }
     }
