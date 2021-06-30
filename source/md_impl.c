@@ -1183,10 +1183,7 @@ MD_TokenFromString(MD_String8 string)
             case '\'':
             case '`':
             {
-                token.kind = MD_TokenKind_StringLiteral;
-                
-                // TODO(allen): proposal:
-                // go see the proposal in the block comment lexer, same idea here?
+                token.kind = MD_TokenKind_BrokenStringLiteral;
                 
                 // determine delimiter setup
                 MD_u8 d = *at;
@@ -1212,6 +1209,7 @@ MD_TokenFromString(MD_String8 string)
                             // close condition
                             if (consecutive_d == 3){
                                 chop_n = 3;
+                                token.kind = MD_TokenKind_StringLiteral;
                                 break;
                             }
                         }
@@ -1246,6 +1244,7 @@ MD_TokenFromString(MD_String8 string)
                         if (*at == d){
                             at += 1;
                             chop_n = 1;
+                            token.kind = MD_TokenKind_StringLiteral;
                             break;
                         }
                         
@@ -1775,16 +1774,8 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                                       label_name.outer_string.str - string.str);
             parsed_node->flags |= label_name.node_flags;
             
-            //- rjf: check for string literal errors
             if(label_name.kind == MD_TokenKind_StringLiteral)
             {
-                if(!_MD_TokenBoundariesAreBalanced(label_name))
-                {
-                    MD_String8 capped = MD_StringPrefix(label_name.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
-                    MD_Error *error = MD_MakeNodeError(parsed_node, MD_MessageKind_CatastrophicError,
-                                                       MD_PushStringF("Unterminated text literal \"%.*s\"", MD_StringExpand(capped)));
-                    MD_PushErrorToList(&result.errors, error);
-                }
             }
             
             //- rjf: check for unexpected reserved symbols

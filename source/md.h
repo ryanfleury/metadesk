@@ -427,9 +427,9 @@ enum
     MD_TokenKind_Comment        = (1<<5),
     MD_TokenKind_Whitespace     = (1<<6),
     MD_TokenKind_Newline        = (1<<7),
-    MD_TokenKind_BrokenComment  = (1<<8),
-    MD_TokenKind_BrokenString   = (1<<9),
-    MD_TokenKind_BadCharacter   = (1<<10),
+    MD_TokenKind_BrokenComment       = (1<<8),
+    MD_TokenKind_BrokenStringLiteral = (1<<9),
+    MD_TokenKind_BadCharacter        = (1<<10),
 };
 
 enum
@@ -445,7 +445,7 @@ enum
                              MD_TokenKind_StringLiteral|
                              MD_TokenKind_Symbol),
     MD_TokenGroup_Error   = (MD_TokenKind_BrokenComment|
-                             MD_TokenKind_BrokenString|
+                             MD_TokenKind_BrokenStringLiteral|
                              MD_TokenKind_BadCharacter),
 };
 
