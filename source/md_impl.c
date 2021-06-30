@@ -4,6 +4,10 @@
 #define MD_PRIVATE_FUNCTION_IMPL MD_FUNCTION_IMPL
 #define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
+#define STB_SPRINTF_IMPLEMENTATION
+#define STB_SPRINTF_DECORATE(name) md_stbsp_##name
+#include "md_stb_sprintf.h"
+
 //~ Nil Node Definition
 
 static MD_Node _md_nil_node =
@@ -305,10 +309,10 @@ MD_PushStringFV(char *fmt, va_list args)
     MD_String8 result = MD_ZERO_STRUCT;
     va_list args2;
     va_copy(args2, args);
-    MD_u64 needed_bytes = vsnprintf(0, 0, fmt, args)+1;
+    MD_u64 needed_bytes = md_stbsp_vsnprintf(0, 0, fmt, args)+1;
     result.str = MD_PushArray(MD_u8, needed_bytes);
     result.size = needed_bytes - 1;
-    vsnprintf((char*)result.str, needed_bytes, fmt, args2);
+    md_stbsp_vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
 }
 
