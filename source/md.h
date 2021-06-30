@@ -12,7 +12,7 @@
 // [ ] pass all tests
 // [ ] simplify error sorting and catastrophic error handling
 // [ ] integer -> string helpers
-// [ ] {rjf} remove symbol digraphs (maybe a test for this or something) and remove from comments
+// [x] {rjf} remove symbol digraphs (maybe a test for this or something) and remove from comments
 // [x] stb_snprintf included and modified for %S ~ MD_String8
 // [ ] naming pass
 // [ ] {rjf} get the branches/labels setup on Git for beta 0.1 and dev
@@ -378,8 +378,8 @@ typedef struct MD_CodeLoc MD_CodeLoc;
 struct MD_CodeLoc
 {
     MD_String8 filename;
-    int line;
-    int column;
+    MD_u32 line;
+    MD_u32 column;
 };
 
 //~ String-To-Ptr and Ptr-To-Ptr tables
@@ -432,6 +432,7 @@ enum
     MD_TokenKind_BadCharacter        = (1<<10),
 };
 
+typedef MD_u32 MD_TokenGroups;
 enum
 {
     MD_TokenGroup_Comment = MD_TokenKind_Comment,

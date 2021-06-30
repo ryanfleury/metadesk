@@ -127,31 +127,6 @@ main:
 }
 
 @send(Strings)
-@doc("This type is used to report the results of consuming one character from a unicode encoded stream.")
-@see(MD_CodepointFromUtf8)
-@see(MD_CodepointFromUtf16)
-@struct MD_UnicodeConsume: {
-    @doc("The codepoint of the consumed character.")
-        codepoint: MD_u32,
-    
-    @doc("The size of the character in the encoded stream, measured in 'units'. A unit is one byte in UTF-8, two bytes in UTF-16, and four bytes in UTF-32.")
-        advance: MD_u32,
-};
-
-@send(Strings)
-@doc("These constants control the @code `MD_StyledStringFromString` function.")
-@enum MD_WordStyle: {
-    @doc("Creates identifiers that look like this @code `ExampleIdentifier`")
-        UpperCamelCase,
-    @doc("Creates identifiers that look like this @code `exampleIdentifier`")
-        LowerCamelCase,
-    @doc("Creates identifiers that look like this @code `Example_Identifier`")
-        UpperCase,
-    @doc("Creates identifiers that look like this @code `example_identifier`")
-        LowerCase,
-};
-
-@send(Strings)
 @doc("These flags control matching rules in routines that perform matching on strings and Metadesk AST nodes.")
 @see(MD_Node)
 @prefix(MD_MatchFlag)
@@ -174,6 +149,31 @@ main:
     
     @doc("When comparing nodes with this flag set in addition to @code 'MD_NodeMatchFlag_Tags', the differences in the arguments of each tag (the tag's children in the tree) are count as differences in the input nodes. Tag arguments are compared with fully recursive compares, whether or not the compare routine would be recursive or not.")
         TagArguments,
+};
+
+@send(Strings)
+@doc("This type is used to report the results of consuming one character from a unicode encoded stream.")
+@see(MD_CodepointFromUtf8)
+@see(MD_CodepointFromUtf16)
+@struct MD_UnicodeConsume: {
+    @doc("The codepoint of the consumed character.")
+        codepoint: MD_u32,
+    
+    @doc("The size of the character in the encoded stream, measured in 'units'. A unit is one byte in UTF-8, two bytes in UTF-16, and four bytes in UTF-32.")
+        advance: MD_u32,
+};
+
+@send(Strings)
+@doc("These constants control how MD_StyledStringFromString forms strings.")
+@enum MD_WordStyle: {
+    @doc("Also known as @code 'PascalCase'. Creates identifiers that look like: @code `ExampleIdentifier`")
+        UpperCamelCase,
+    @doc("Creates identifiers that look like: @code `exampleIdentifier`")
+        LowerCamelCase,
+    @doc("Creates identifiers that look like: @code `Example_Identifier`")
+        UpperCase,
+    @doc("Creates identifiers that look like: @code `example_identifier`")
+        LowerCase,
 };
 
 ////////////////////////////////
@@ -201,8 +201,11 @@ main:
     @doc("A Tag node represents a tag attached to a label node with the @code '@identifer' syntax. The children of a tag node represent the arguments placed in the tag.")
         Tag,
     
+    @doc("An ErrorMarker node is generated when reporting errors. It is used to record the location of an error that occurred in the lexing phase of a parse.")
+        ErrorMarker,
+    
     @doc("Not a real kind value given to nodes, this is always one larger than the largest enum value that can be given to a node.")
-        MAX,
+        COUNT,
 };
 
 @send(Nodes)
@@ -227,13 +230,22 @@ main:
     
     @doc("The delimiter between this node and its next sibling is a @code ';'")
         BeforeSemicolon,
-    @doc("The delimiter between this node and its next sibling is a @code ','")
-        BeforeComma,
-    
     @doc("The delimiter between this node and its previous sibling is a @code ';'")
         AfterSemicolon,
+    
+    @doc("The delimiter between this node and its next sibling is a @code ','")
+        BeforeComma,
     @doc("The delimiter between this node and its previous sibling is a @code ','")
         AfterComma,
+    
+    @doc("This is a string literal, with @code `'` character(s) marking the boundaries.")
+        StringSingleQuote,
+    @doc("This is a string literal, with @code `"` character(s) marking the boundaries." "\"")
+        StringDoubleQuote,
+    @doc("This is a string literal, with @code '`' character(s) marking the boundaries." "\"")
+        StringTick,
+    @doc("This is a string literal that used triplets (three of its boundary characters in a row, on either side) to mark its boundaries, making it multiline.")
+        StringTriplet,
     
     @doc("The label on this node comes from a token with the @code MD_TokenKind_NumericLiteral kind.")
         Numeric,
@@ -241,12 +253,10 @@ main:
         Identifier,
     @doc("The label on this node comes from a token with the @code MD_TokenKind_StringLiteral kind.")
         StringLiteral,
-    @doc("The label on this node comes from a token with the @code MD_TokenKind_CharLiteral kind.")
-        CharLiteral,
 };
 
 @send(Nodes)
-@doc("The @code `MD_Node` is the main 'lego-brick' for modeling the result of a metadesk parse. Also used in some auxiliary data structures.")
+@doc("The @code `MD_Node` is the main 'lego-brick' for modeling the result of a Metadesk parse. Also used in some auxiliary data structures.")
 @struct MD_Node: {
     @doc("The next sibling in the hierarchy, or the next tag in a list of tags, or next node in an externally chained linked list.")
         next: *MD_Node,
@@ -280,12 +290,8 @@ main:
     @doc("The raw string of the comment token after this node, if there is one.")
         comment_after: MD_String8,
     
-    @doc("The name of the file from which this node was parsed; or the name that was passed to the parse call.")
-        filename: MD_String8,
-    @doc("The pointer to the base of the raw string from which this node was parsed.")
-        file_contents: *MD_u8,
-    @doc("A pointer into the raw string from which this was parsed indicating the beginning of the text that generated this node.")
-        at: *MD_u8,
+    @doc("The byte-offset into the string from which this node was parsed. Used for producing data for an MD_CodeLoc.")
+        offset: MD_u64,
     
     @doc("The external pointer from an @code 'MD_NodeKind_Reference' kind node in an externally linked list.")
         ref_target: *MD_Node,
@@ -311,11 +317,11 @@ main:
 @doc("An abstraction over the types of keys used in a MD_Map and the work of hashing those keys, can be constructed from an MD_String8 or an void*.")
 @struct MD_MapKey: {
     @doc("The hash of the key. The hash function used is determined from the key type.")
-    hash: MD_u64,
+        hash: MD_u64,
     @doc("For a non-empty MD_String8, the size of the string data. For a void*, zero.")
-    size: MD_u64,
+        size: MD_u64,
     @doc("For a non-empty MD_String8, points to the string data of the key. For a void*, the direct pointer value.")
-    ptr: *void,
+        ptr: *void,
 };
 
 @send(Map)
@@ -323,81 +329,79 @@ main:
 @struct MD_MapSlot: {
     @doc("The next slot in the same bucket of the MD_Map.")
         next: *MD_MapSlot,
-    @doc("For slots with a string key, the hash of the key.")
-        hash: MD_u64,
-    @doc("The key for slots with a pointer key.")
-        key: *void;
+    @doc("The key that maps to this slot.")
+        key: MD_MapKey;
     @doc("The value part of the pair.")
         value: *void;
 };
 
 @send(Map)
+@doc("The data used to form a table in an MD_Map. Stores pointers that form a linked list of all MD_MapSlot instances that mapped to this bucket.")
+@struct MD_MapBucket:
+{
+    first: *MD_MapSlot,
+    last: *MD_MapSlot,
+}
+
+@send(Map)
 @doc("The map is a chained hash table data structure. Data written to the map is a key-value pair. The key of a pair may either be a pointer, or a string. Both types may be mixed inside a single map. Keys stored with one type never match keys of the other type. The values of the pairs are pointers.")
 @struct MD_Map: {
-    table_size: MD_u64,
-    table: **MD_MapSlot,
+    buckets: *MD_MapBucket,
+    bucket_count: MD_u64,
 };
 
 ////////////////////////////////
 //~ Tokens
 
 @send(Tokens)
-@enum MD_TokenKind: {
-    Nil,
+@doc("Flags encoding the kind of a token produced by the lexer.")
+@see(MD_TokenFromString)
+@flags MD_TokenKind:
+{
+    @doc("When this bit is set, the token follows C-like identifier rules. It may start with an alphabetic character or an underscore, and can contain alphanumeric characters or underscores inside it.")
+        Identifier,
     
-    RegularMin,
+    @doc("When this bit is set, the token follows C-like numeric literal rules.")
+        NumericLiteral,
     
-    // A group of characters that begins with an underscore or alphabetic character,
-    // and consists of numbers, alphabetic characters, or underscores after that.
-    Identifier,
+    @doc("When this bit is set, the token was recognized as a string literal. These may be formed with C-like rules, with a single-quote or double-quote around the string contents. They may also be formed with Metadesk's additional rules. These rules allow using @code '`' characters to mark the boundaries of the string, and also using triplets of any of these characters (@code '```This is a string```') to allow newlines within the string's contents.")
+        StringLiteral,
     
-    // A group of characters beginning with a numeric character or a '-', and then
-    // consisting of only numbers, alphabetic characters, or '.'s after that.
-    NumericLiteral,
+    @doc("When this bit is set, the token was recognized as a symbolic character. Whether a character is considered symbolic is determined by the MD_CharIsSymbol function.")
+        Symbol,
     
-    // A group of arbitrary characters, grouped together by a " character, OR by a
-    // """ symbol at the beginning and end of the group. String literals beginning with
-    // " are to only be specified on a single line, but """ strings can exist across
-    // many lines.
-    StringLiteral,
+    @doc("When this bit is set, the token is reserved for special uses by the Metadesk parser.")
+        Reserved,
     
-    // A group of arbitrary characters, grouped together by a ' character at the
-    // beginning, and a ' character at the end.
-    CharLiteral,
+    @doc("When this bit is set, the token was recognized as a comment. Comments can be formed in the traditional C-like ways, using @code '//' for single-line, or @code '/*' and @code '*/' for multiline. Metadesk differs, slightly, in that it allows nested multiline comments. So, every @code '/*' must be matched by a @code '*/'.")
+        Comment,
     
-    // A group of symbolic characters. The symbolic characters are:
-    // ~!@#$%^&*()-+=[{]}:;<>,./?|\
-    //
-    // Groups of multiple characters are only allowed in specific circumstances. Most of these
-    // are only 1 character long, but some groups are allowed:
-    //
-    // "<<", ">>", "<=", ">=", "+=", "-=", "*=", "/=", "::", ":=", "==", "&=", "|=", "->"
-    Symbol,
+    @doc("When this bit is set, the token contains only whitespace.")
+        Whitespace,
     
-    RegularMax,
+    @doc("When this bit is set, the token is a newline character.")
+        Newline,
     
-    Comment,
-    Whitespace,
-    Newline,
-    BadCharacter,
+    @doc("When this bit is set, the token is a comment that was malformed syntactically.")
+        BrokenComment,
     
-    MAX,
-};
+    @doc("When this bit is set, the token is a string literal that was malformed syntactically.")
+        BrokenStringLiteral,
+    
+    @doc("When this bit is set, the token contains a character in an encoding that is not supported by the parser Metadesk.")
+        BadCharacter,
+}
 
 @send(Tokens)
+@doc("The type used for encoding data about any token produced by the lexer.")
 @struct MD_Token: {
-    kind: MD_TokenKind,
-    string: MD_String8,
-    outer_string: MD_String8,
-};
-
-@send(Tokens)
-@prefix(MD_TokenGroup)
-@base_type(MD_u32)
-@flags MD_TokenGroups: {
-    Comment,
-    Whitespace,
-    Regular,
+    kind: MD_TokenKind;
+    @doc("Flags that should be attached to an MD_Node that uses this token to define its string. Only includes flags that can be understood by the lexer; is not the comprehensive set of node flags that a node needs.")
+        node_flags: MD_NodeFlags;
+    @doc("The contents of this token, not including any boundary characters.")
+        string: MD_String8;
+    @doc("The full contents of the string used to form this token, including all boundary characters.")
+        outer_string: MD_String8;
 };
 
 ////////////////////////////////
@@ -927,55 +931,55 @@ main:
 
 @send(Map)
 MD_MapMakeBucketCount: {
- bucket_count: MD_u64,
- return: MD_Map,
+    bucket_count: MD_u64,
+    return: MD_Map,
 };
 
 @send(Map)
 MD_MapMake: {
- return: MD_Map,
+    return: MD_Map,
 };
 
 @send(Map)
 MD_MapKeyStr: {
- string: MD_String8,
- return: MD_MapKey,
+    string: MD_String8,
+    return: MD_MapKey,
 };
 
 @send(Map)
 MD_MapKeyPtr: {
- ptr: *void,
- return: MD_MapKey,
+    ptr: *void,
+    return: MD_MapKey,
 };
 
 @send(Map)
 MD_MapLookup: {
- map: *MD_Map,
- key: MD_MapKey,
- return: *MD_MapSlot,
+    map: *MD_Map,
+    key: MD_MapKey,
+    return: *MD_MapSlot,
 };
 
 @send(Map)
 MD_MapScan: {
- first_slot: *MD_MapSlot,
- key: MD_MapKey,
- return: *MD_MapSlot,
+    first_slot: *MD_MapSlot,
+    key: MD_MapKey,
+    return: *MD_MapSlot,
 };
 
 @send(Map)
 MD_MapInsert: {
- map: *MD_Map,
- key: MD_MapKey,
- val: *void,
- return: *MD_MapSlot,
+    map: *MD_Map,
+    key: MD_MapKey,
+    val: *void,
+    return: *MD_MapSlot,
 };
 
 @send(Map)
 MD_MapOverwrite: {
- map: *MD_Map,
- key: MD_MapKey,
- val: *void,
- return: *MD_MapSlot,
+    map: *MD_Map,
+    key: MD_MapKey,
+    val: *void,
+    return: *MD_MapSlot,
 };
 
 

@@ -223,12 +223,8 @@ int main(void)
             MD_PushChild(size, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("u64")));
             MD_PushChild(params, size);
             MD_PushChild(tree, params);
-            // TODO(rjf): This test will fail once we have digraphs implemented. Adjust the separate
-            // "-" and ">" set members, and combine them to form a single "->" set member.
-            // {
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("-")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit(">")));
-            // }
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("*")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Label, MD_S8Lit("void")));
             TestResult(MatchParsedWithNode(string, tree));
@@ -286,11 +282,6 @@ int main(void)
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("(a; b)"), 0);
             TestResult(parse.node->first_child->flags & MD_NodeFlag_BeforeSemicolon);
             TestResult(parse.node->first_child->next->flags & MD_NodeFlag_AfterSemicolon);
-        }
-        {
-            // TODO(rjf): Enable this once we have digraphs.
-            // MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit(""), MD_S8Lit("(a -> b)"));
-            // TestResult(parse.node->first_child->flags & MD_NodeFlag_BeforeArrow);
         }
     }
     
