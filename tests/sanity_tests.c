@@ -745,6 +745,32 @@ int main(void)
         }
     }
     
+    Test("Tags")
+    {
+        MD_String8 file_name = MD_S8Lit("raw_text");
+        
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name,
+                                                        MD_S8Lit("@foo bar"));
+            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("foo")));
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name,
+                                                        MD_S8Lit("@+ bar"));
+            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("+")));
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name,
+                                                        MD_S8Lit("@'a b c' bar"));
+            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("a b c")));
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name,
+                                                        MD_S8Lit("@100 bar"));
+            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("100")));
+        }
+    }
+    
     Test("Tagged & Unlabeled")
     {
         MD_String8 file_name = MD_S8Lit("raw_text");
@@ -858,7 +884,35 @@ int main(void)
         }
     }
     
-    MD_String8 str = MD_PushStringF("%i", "foobar");
+    Test("Labels are Not Reserved")
+    {
+        MD_String8 file_name = MD_S8Lit("raw_text");
+        
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name,
+                                                        MD_S8Lit("foo: '(' )"));
+            TestResult(result.errors.first != 0);
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name,
+                                                        MD_S8Lit("foo ':' ( )"));
+            TestResult(result.errors.first == 0);
+            TestResult(MD_ChildCountFromNode(result.node) == 3);
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name,
+                                                        MD_S8Lit("'@'bar foo"));
+            TestResult(result.errors.first == 0);
+            TestResult(MD_ChildCountFromNode(result.node) == 3);
+        }
+        {
+            MD_ParseResult result = MD_ParseWholeString(file_name,
+                                                        MD_S8Lit("foo: '(' ')'"));
+            TestResult(result.errors.first == 0);
+            TestResult(MD_ChildCountFromNode(result.node) == 1);
+            TestResult(MD_ChildCountFromNode(result.node->first_child) == 2);
+        }
+    }
     
     return 0;
 }

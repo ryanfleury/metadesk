@@ -3,12 +3,12 @@
 
 // TODO List
 //
-// [ ] unify string literal token kinds
-// [ ] simplify string literal flags (triple as a single flag)
+// [x] unify string literal token kinds
+// [x] simplify string literal flags (triple as a single flag)
 // [ ] lexer detects broken comments
 // [ ] lexer detects broken strings
-// [ ] tests for legal tag syntaxes
-// [ ] tests that ensure we don't accept labels when expecting symbols e.g. foo ":" b; foo: "(" )
+// [x] tests for legal tag syntaxes
+// [x] tests that ensure we don't accept labels when expecting symbols e.g. foo ":" b; foo: "(" )
 // [ ] pass all tests
 // [ ] simplify error sorting and catastrophic error handling
 // [ ] integer -> string helpers
