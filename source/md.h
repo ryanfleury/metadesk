@@ -202,6 +202,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#define STB_SPRINTF_DECORATE(name) md_stbsp_##name
+#include "md_stb_sprintf.h"
 
 typedef int8_t   MD_i8;
 typedef int16_t  MD_i16;
@@ -217,7 +219,6 @@ typedef int32_t  MD_b32;
 typedef int64_t  MD_b64;
 typedef float    MD_f32;
 typedef double   MD_f64;
-
 
 //~ Basic Unicode string types.
 
