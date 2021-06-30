@@ -1120,33 +1120,18 @@ MD_TokenFromString(MD_String8 string)
                 {
                     if (at[1] == '/')
                     {
-                        
-                        // TODO(allen): This seems like an odd choice to me. What about two spaces!?
-                        // What about an extra /? I'm wondering if there are other places where we make
-                        // this kind of judgement call a lot, or is this the only one? Maybe the user
-                        // should just always skip-chop whitespace if they want to clean this kind of
-                        // thing up? They're going to have to if they ever use two spaces anyways, right?
-                        
-                        // NOTE(rjf): Trim off the first //, and a space after it if one is there.
-                        if(at+2 < one_past_last &&
-                           at[2] == ' ')
-                        {
-                            skip_n = 3;
-                        }
-                        else
-                        {
-                            skip_n = 2;
-                        }
-                        
-                        at += skip_n;
+                        // trim off the first '//'
+                        skip_n = 2;
+                        at += 2;
                         token.kind = MD_TokenKind_Comment;
                         MD_TokenizerScan(*at != '\n' && *at != '\r');
                     }
                     else if (at[1] == '*')
                     {
+                        // trim off the first '/*'
+                        skip_n = 2;
                         at += 2;
                         token.kind = MD_TokenKind_BrokenComment;
-                        skip_n = 2;
                         int counter = 1;
                         for (;at < one_past_last && counter > 0; at += 1)
                         {
