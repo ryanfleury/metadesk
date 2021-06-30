@@ -1169,10 +1169,6 @@ MD_TokenFromString(MD_String8 string)
                             token.kind = MD_TokenKind_Comment;
                             chop_n = 2;
                         }
-                        else
-                        {
-                            // TODO(allen): emit an error *from here*
-                        }
                     }
                 }
                 if (token.kind == 0) goto symbol_lex;
@@ -1845,17 +1841,36 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
         {
             off += bad_token.outer_string.size;
             
-            // TODO(allen): tighten up with good integer <-> string helpers
-            MD_String8List bytes = {0};
-            for(int i_byte = 0; i_byte < bad_token.outer_string.size; ++i_byte)
-            {
-                MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", bad_token.outer_string.str[i_byte]));
+            switch (bad_token.kind){
+                case MD_TokenKind_BadCharacter:
+                {
+                    // TODO(allen): tighten up with good integer <-> string helpers
+                    MD_String8List bytes = {0};
+                    for(int i_byte = 0; i_byte < bad_token.outer_string.size; ++i_byte)
+                    {
+                        MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", bad_token.outer_string.str[i_byte]));
+                    }
+                    MD_String8 byte_string = MD_JoinStringList(bytes, MD_S8Lit(" "));
+                    
+                    MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                                                        MD_PushStringF("Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string)));
+                    MD_PushErrorToList(&result.errors, error);
+                }break;
+                
+                case MD_TokenKind_BrokenComment:
+                {
+                    MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                                                        MD_S8Lit("Unterminated comment"));
+                    MD_PushErrorToList(&result.errors, error);
+                }break;
+                
+                case MD_TokenKind_BrokenStringLiteral:
+                {
+                    MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                                                        MD_S8Lit("Unterminated string literal"));
+                    MD_PushErrorToList(&result.errors, error);
+                }break;
             }
-            MD_String8 byte_string = MD_JoinStringList(bytes, MD_S8Lit(" "));
-            
-            MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
-                                                MD_PushStringF("Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string)));
-            MD_PushErrorToList(&result.errors, error);
             goto retry;
         }
     }

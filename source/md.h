@@ -5,8 +5,8 @@
 //
 // [x] unify string literal token kinds
 // [x] simplify string literal flags (triple as a single flag)
-// [ ] lexer detects broken comments
-// [ ] lexer detects broken strings
+// [x] lexer detects broken comments
+// [x] lexer detects broken strings
 // [x] tests for legal tag syntaxes
 // [x] tests that ensure we don't accept labels when expecting symbols e.g. foo ":" b; foo: "(" )
 // [ ] pass all tests
