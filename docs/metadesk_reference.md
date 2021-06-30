@@ -377,13 +377,9 @@ main:
     RegularMax,
     
     Comment,
-    
-    WhitespaceMin,
     Whitespace,
     Newline,
-    WhitespaceMax,
-    
-    MD_TokenKind_BadCharacter,
+    BadCharacter,
     
     MAX,
 };

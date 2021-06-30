@@ -1081,19 +1081,6 @@ _MD_TokenBoundariesAreBalanced(MD_Token token)
     return result;
 }
 
-// TODO(allen): wouldn't the lexer have already figured this out? Why not just make
-// it a flag or a kind on the token?
-MD_PRIVATE_FUNCTION_IMPL MD_b32
-_MD_CommentIsSyntacticallyCorrect(MD_Token comment_token)
-{
-    MD_String8 inner = comment_token.string;
-    MD_String8 outer = comment_token.outer_string;
-    MD_b32 incorrect = (MD_StringMatch(MD_StringPrefix(outer, 2), MD_S8Lit("/*"), 0) &&   // C-style comment
-                        (inner.str != outer.str + 2 || inner.str + inner.size != outer.str + outer.size - 2)); // Internally unbalanced
-    MD_b32 result = !incorrect;
-    return result;
-}
-
 MD_FUNCTION MD_Token
 MD_TokenFromString(MD_String8 string)
 {
@@ -1157,16 +1144,8 @@ MD_TokenFromString(MD_String8 string)
                     }
                     else if (at[1] == '*')
                     {
-                        // TODO(allen): proposal:
-                        // 1. only set `kind = Comment` in the `counter == 0` case
-                        // 2. otherwise set `kind = RunOnComment` (or something)
-                        //    maybe also emit an error *from here* or signal to a system that
-                        //    runs later that there are token errors to emit.
-                        // Or: keep the `kind = Comment` but in the `counter != 0` case
-                        //     set some kind of error/unclosed/run-on flag on the token.
-                        
                         at += 2;
-                        token.kind = MD_TokenKind_Comment;
+                        token.kind = MD_TokenKind_BrokenComment;
                         skip_n = 2;
                         int counter = 1;
                         for (;at < one_past_last && counter > 0; at += 1)
@@ -1187,7 +1166,12 @@ MD_TokenFromString(MD_String8 string)
                         }
                         if(counter == 0)
                         {
+                            token.kind = MD_TokenKind_Comment;
                             chop_n = 2;
+                        }
+                        else
+                        {
+                            // TODO(allen): emit an error *from here*
                         }
                     }
                 }
@@ -1535,7 +1519,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                 
                 //- rjf: check separators and possible braces from higher parents
                 {
-                    closer_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+                    closer_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
                     MD_Token potential_closer = MD_TokenFromString(MD_StringSkip(string, closer_check_off));
                     if(potential_closer.kind == MD_TokenKind_Symbol &&
                        (MD_StringMatch(potential_closer.outer_string, MD_S8Lit(","), 0) ||
@@ -1560,7 +1544,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             if(!close_with_separator && !parse_all)
             {
                 MD_u64 closer_check_off = off;
-                closer_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+                closer_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
                 MD_Token potential_closer = MD_TokenFromString(MD_StringSkip(string, closer_check_off));
                 if(potential_closer.kind == MD_TokenKind_Symbol)
                 {
@@ -1607,7 +1591,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             MD_NodeFlags trailing_separator_flags = 0;
             if(!close_with_separator)
             {
-                off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+                off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
                 MD_Token trailing_separator = MD_TokenFromString(MD_StringSkip(string, off));
                 if(MD_StringMatch(trailing_separator.string, MD_S8Lit(","), 0) &&
                    trailing_separator.kind == MD_TokenKind_Symbol)
@@ -1665,7 +1649,7 @@ MD_ParseTagList(MD_String8 string, MD_u64 offset)
     for(;off < string.size;)
     {
         //- rjf: parse @ symbol, signifying start of tag
-        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
         MD_Token next_token = MD_TokenFromString(MD_StringSkip(string, off));
         if(!MD_StringMatch(next_token.string, MD_S8Lit("@"), 0) ||
            next_token.kind != MD_TokenKind_Symbol)
@@ -1752,16 +1736,6 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                 break;
             }
             comment_before = comment_token.string;
-            
-            // TODO(allen): I find this odd. Wouldn't it have been easier to generate this
-            // durring or right after the lexing phase?
-            if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
-            {
-                MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
-                MD_Error *error = MD_MakeTokenError(string, comment_token, MD_MessageKind_CatastrophicError,
-                                                    MD_PushStringF("Unterminated comment \"%.*s\"", MD_StringExpand(capped)));
-                MD_PushErrorToList(&result.errors, error);
-            }
         }
     }
     
@@ -1776,7 +1750,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
     retry:;
     {
         //- rjf: try to parse an unnamed set
-        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
         MD_Token unnamed_set_opener = MD_TokenFromString(MD_StringSkip(string, off));
         if(unnamed_set_opener.kind == MD_TokenKind_Symbol &&
            (MD_StringMatch(unnamed_set_opener.string, MD_S8Lit("("), 0) ||
@@ -1792,7 +1766,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
         }
         
         //- rjf: try to parse regular node, with/without children
-        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
         MD_Token label_name = MD_TokenFromString(MD_StringSkip(string, off));
         if((label_name.kind & MD_TokenGroup_Label) != 0)
         {
@@ -1831,7 +1805,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             
             //- rjf: try to parse children for this node
             MD_u64 colon_check_off = off;
-            colon_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, colon_check_off), MD_TokenGroup_Comment|MD_TokenGroup_Whitespace);
+            colon_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, colon_check_off), MD_TokenGroup_Irregular);
             MD_Token colon = MD_TokenFromString(MD_StringSkip(string, colon_check_off));
             if(MD_StringMatch(colon.string, MD_S8Lit(":"), 0) && colon.kind == MD_TokenKind_Symbol)
             {
@@ -1876,7 +1850,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
         
         //- rjf: collect bad token
         MD_Token bad_token = MD_TokenFromString(MD_StringSkip(string, off));
-        if(bad_token.kind == MD_TokenKind_BadCharacter)
+        if(bad_token.kind & MD_TokenGroup_Error)
         {
             off += bad_token.outer_string.size;
             
@@ -1925,16 +1899,6 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             }
         }
         comment_after = comment_token.string;
-        
-        // TODO(allen): I find this odd. Wouldn't it have been easier to generate this
-        // durring or right after the lexing phase?
-        if(!_MD_CommentIsSyntacticallyCorrect(comment_token))
-        {
-            MD_String8 capped = MD_StringPrefix(comment_token.outer_string, MD_UNTERMINATED_TOKEN_LEN_CAP);
-            MD_Error *error = MD_MakeTokenError(string, comment_token, MD_MessageKind_CatastrophicError,
-                                                MD_PushStringF("Unterminated comment \"%.*s\"", MD_StringExpand(capped)));
-            MD_PushErrorToList(&result.errors, error);
-        }
     }
     
     //- rjf: fill result
