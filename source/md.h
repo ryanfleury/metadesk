@@ -370,7 +370,7 @@ struct MD_Node
     MD_String8 comment_after;
     
     // Source code location information.
-    MD_u8 *at;
+    MD_u64 offset;
     
     // Reference.
     MD_Node *ref_target;
@@ -418,7 +418,7 @@ struct MD_Map
     MD_u64 bucket_count;
 };
 
-//~ Token kinds.
+//~ Tokens
 
 typedef enum MD_TokenKind
 {
@@ -450,21 +450,26 @@ typedef enum MD_TokenKind
 }
 MD_TokenKind;
 
-//~ Token type.
-typedef struct MD_Token MD_Token;
-struct MD_Token
+typedef MD_u32 MD_TokenFlags;
+enum
 {
-    MD_TokenKind kind;
-    MD_String8 string;
-    MD_String8 outer_string;
+    MD_TokenFlag_ErrorUnterminated = (1<<0),
 };
 
-//~ Token groups.
 typedef MD_u32 MD_TokenGroups;
 enum{
     MD_TokenGroup_Comment    = (1 << 0),
     MD_TokenGroup_Whitespace = (1 << 1),
     MD_TokenGroup_Regular    = (1 << 2)
+};
+
+typedef struct MD_Token MD_Token;
+struct MD_Token
+{
+    MD_TokenKind kind;
+    MD_TokenFlags flags;
+    MD_String8 string;
+    MD_String8 outer_string;
 };
 
 //~ Parsing State
@@ -487,6 +492,22 @@ struct MD_Error
     MD_String8 string;
 };
 
+typedef struct MD_ErrorList MD_ErrorList;
+struct MD_ErrorList
+{
+    MD_MessageKind max_error_kind;
+    MD_u64 node_count;
+    MD_Error *first;
+    MD_Error *last;
+};
+
+typedef enum MD_ParseSetRule
+{
+    MD_ParseSetRule_EndOnDelimiter,
+    MD_ParseSetRule_Global,
+}
+MD_ParseSetRule;
+
 typedef MD_u32 MD_ParseSetFlags;
 enum
 {
@@ -494,17 +515,7 @@ enum
     MD_ParseSetFlag_Brace    = (1<<1),
     MD_ParseSetFlag_Bracket  = (1<<2),
     MD_ParseSetFlag_Implicit = (1<<3),
-};
-
-typedef struct MD_ParseCtx MD_ParseCtx;
-struct MD_ParseCtx
-{
-    MD_Error *first_error;
-    MD_Error *last_error;
-    MD_u8 *at;
-    MD_String8 filename;
-    MD_String8 file_contents;
-    MD_MessageKind error_level;
+    MD_ParseSetFlag_Global   = (1<<4),
 };
 
 typedef struct MD_Tokenizer MD_Tokenizer;
@@ -520,9 +531,7 @@ struct MD_ParseResult
     MD_Node *node;
     MD_Node *last_node;
     MD_u64 bytes_parsed;
-    MD_Error *first_error;
-    MD_Error *last_error;
-    MD_MessageKind error_level;
+    MD_ErrorList errors;
 };
 
 //~ Command line parsing helper types.
@@ -721,15 +730,18 @@ MD_FUNCTION MD_b32         MD_TokenKindIsComment(MD_TokenKind kind);
 MD_FUNCTION MD_b32         MD_TokenKindIsRegular(MD_TokenKind kind);
 
 MD_FUNCTION MD_Token       MD_TokenFromString(MD_String8 string);
-MD_FUNCTION MD_Token       MD_TokenFromStringSkip(MD_String8 string, MD_TokenGroups skip_groups);
+MD_FUNCTION MD_u64         MD_BytesFromStringTokenGroupRun(MD_String8 string, MD_TokenGroups groups);
 MD_FUNCTION MD_Error *     MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION MD_Error *     MD_MakeTokenError(MD_Token token, MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION MD_Error *     MD_MakeTokenError(MD_String8 parse_contents, MD_Token token, MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION void           MD_PushErrorToList(MD_ErrorList *list, MD_Error *error);
+MD_FUNCTION void           MD_PushErrorListToList(MD_ErrorList *list, MD_ErrorList *to_push);
 MD_FUNCTION MD_ParseResult MD_ParseResultZero(void);
-MD_FUNCTION MD_ParseResult MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetFlags flags);
+MD_FUNCTION MD_ParseResult MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRule rule);
 MD_FUNCTION MD_ParseResult MD_ParseTagList(MD_String8 string, MD_u64 offset);
 MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 string, MD_u64 offset);
 MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
 
+#if 0
 MD_FUNCTION void           MD_PushNodeError(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_String8 str);
 MD_FUNCTION void           MD_PushNodeErrorF(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...);
 MD_FUNCTION void           MD_PushTokenError(MD_ParseCtx *ctx, MD_Token token, MD_MessageKind kind, MD_String8 str);
@@ -747,9 +759,10 @@ MD_FUNCTION void           MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *root,
                                         MD_ParseSetFlags flags);
 
 MD_FUNCTION MD_ParseResult MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx);
+#endif
 
-MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 filename, MD_String8 contents);
-MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
+// MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 string, MD_u64 offset);
+// MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
 MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_String8 filename);
 
 //~ Location Conversion
@@ -759,8 +772,7 @@ MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 //~ Tree/List Building
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
-MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string,
-                                 MD_String8 whole_string, MD_u8 *at);
+MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_u64 offset);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 
