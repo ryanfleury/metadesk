@@ -416,35 +416,37 @@ struct MD_Map
 
 //~ Tokens
 
-typedef enum MD_TokenKind
+typedef MD_u32 MD_TokenKind;
+enum
 {
-    // NOTE(rjf): *MUST* stay up-to-date with MD_TokenGroupsFromTokenKind.
-    
-    MD_TokenKind_Nil,
-    
-    MD_TokenKind_Identifier,
-    MD_TokenKind_NumericLiteral,
-    MD_TokenKind_StringLiteral,
-    MD_TokenKind_Symbol,
-    
-    MD_TokenKind_Comment,
-    
-    MD_TokenKind_Whitespace,
-    MD_TokenKind_Newline,
-    
-    // Character outside currently supported encodings
-    MD_TokenKind_BadCharacter,
-    
-    MD_TokenKind_COUNT,
-}
-MD_TokenKind;
+    MD_TokenKind_Identifier     = (1<<0),
+    MD_TokenKind_NumericLiteral = (1<<1),
+    MD_TokenKind_StringLiteral  = (1<<2),
+    MD_TokenKind_Symbol         = (1<<3),
+    MD_TokenKind_Reserved       = (1<<4),
+    MD_TokenKind_Comment        = (1<<5),
+    MD_TokenKind_Whitespace     = (1<<6),
+    MD_TokenKind_Newline        = (1<<7),
+    MD_TokenKind_BrokenComment  = (1<<8),
+    MD_TokenKind_BrokenString   = (1<<9),
+    MD_TokenKind_BadCharacter   = (1<<10),
+};
 
-typedef MD_u32 MD_TokenGroups;
-enum{
-    MD_TokenGroup_Comment        = (1 << 0),
-    MD_TokenGroup_Whitespace     = (1 << 1),
-    MD_TokenGroup_Regular        = (1 << 2),
-    MD_TokenGroup_LabelString    = (1 << 3),
+enum
+{
+    MD_TokenGroup_Comment = MD_TokenKind_Comment,
+    MD_TokenGroup_Whitespace = (MD_TokenKind_Whitespace|
+                                MD_TokenKind_Newline),
+    MD_TokenGroup_Irregular = (MD_TokenGroup_Comment|
+                               MD_TokenGroup_Whitespace),
+    MD_TokenGroup_Regular = ~MD_TokenGroup_Irregular,
+    MD_TokenGroup_Label   = (MD_TokenKind_Identifier|
+                             MD_TokenKind_NumericLiteral|
+                             MD_TokenKind_StringLiteral|
+                             MD_TokenKind_Symbol),
+    MD_TokenGroup_Error   = (MD_TokenKind_BrokenComment|
+                             MD_TokenKind_BrokenString|
+                             MD_TokenKind_BadCharacter),
 };
 
 typedef struct MD_Token MD_Token;
@@ -725,10 +727,8 @@ MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val);
 
 //~ Parsing
 
-MD_FUNCTION MD_TokenGroups MD_TokenGroupsFromTokenKind(MD_TokenKind kind);
-
 MD_FUNCTION MD_Token       MD_TokenFromString(MD_String8 string);
-MD_FUNCTION MD_u64         MD_BytesFromStringTokenGroupRun(MD_String8 string, MD_TokenGroups groups);
+MD_FUNCTION MD_u64         MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds);
 MD_FUNCTION MD_Error *     MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str);
 MD_FUNCTION MD_Error *     MD_MakeTokenError(MD_String8 parse_contents, MD_Token token, MD_MessageKind kind, MD_String8 str);
 MD_FUNCTION void           MD_PushErrorToList(MD_ErrorList *list, MD_Error *error);
