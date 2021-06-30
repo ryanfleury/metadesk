@@ -1039,12 +1039,14 @@ main:
 //~ Enum/Flag Strings
 
 @send(Nodes)
+@doc("Returns a string that contains a name matching @code 'kind'.")
 @func MD_StringFromNodeKind: {
     kind: MD_NodeKind,
     return: MD_String8,
 };
 
 @send(Nodes)
+@doc("Builds a string list for all bits set in @code 'flags', with each string being the name of one of the flags that is set.")
 @func MD_StringListFromNodeFlags: {
     flags: MD_NodeFlags,
     return: MD_String8List,
@@ -1172,173 +1174,109 @@ MD_MapOverwrite: {
     return: *MD_MapSlot,
 };
 
-
-////////////////////////////////
-//~ String-To-Pointer Table
-
-// TODO(allen): update reference for map
-
-@send(Map)
-@func MD_StringMap_Lookup: {
-    table: *MD_Map,
-    string: MD_String8,
-    return: *MD_MapSlot,
-};
-
-@send(Map)
-@func MD_StringMap_Insert: {
-    table: *MD_Map,
-    collision_rule: MD_MapCollisionRule,
-    string: MD_String8,
-    node: *MD_Node,
-    return: MD_b32,
-};
-
-////////////////////////////////
-//~ Pointer-To-Pointer Table
-
-@send(Map)
-@func MD_PtrMap_Lookup: {
-    table: *MD_Map,
-    key: *void,
-    return: *MD_MapSlot,
-};
-
-@send(Map)
-@func MD_PtrMap_Insert: {
-    table: *MD_Map,
-    collision_rule: MD_MapCollisionRule,
-    key: *void,
-    node: *MD_Node,
-    return: MD_b32,
-};
-
 ////////////////////////////////
 //~ Parsing
 
-@send(Tokens)
-@func MD_TokenKindIsWhitespace: {
-    kind: MD_TokenKind,
-    return: MD_b32,
-};
+@send(Parsing) @func
+MD_TokenFromString:
+{
+    string: MD_String8;
+    return: MD_Token;
+}
 
-@send(Tokens)
-@func MD_TokenKindIsComment: {
-    kind: MD_TokenKind,
-    return: MD_b32,
-};
+@send(Parsing) @func
+MD_LexAdvanceFromSkips:
+{
+    string: MD_String8;
+    skip_kinds: MD_TokenKind;
+    return: MD_u64;
+}
 
-@send(Tokens)
-@func MD_TokenKindIsRegular: {
-    kind: MD_TokenKind,
-    return: MD_b32,
-};
+@send(Parsing) @func
+MD_MakeNodeError:
+{
+    node: *MD_Node;
+    kind: MD_MessageKind;
+    str: MD_String8;
+    return: *MD_Error
+}
 
-@send(Parsing)
-@func MD_PushNodeError: {
-    ctx: *MD_ParseCtx,
-    node: *MD_Node,
-    kind: MD_MessageKind,
-    str: MD_String8,
-};
+@send(Parsing) @func
+MD_MakeTokenError:
+{
+    parse_contents: MD_String8;
+    token: MD_Token;
+    kind: MD_MessageKind;
+    str: MD_String8;
+    return: *MD_Error;
+}
 
-@send(Parsing)
-@func MD_PushNodeErrorF: {
-    ctx: *MD_ParseCtx,
-    node: *MD_Node,
-    kind: MD_MessageKind,
-    fmt: *char,
-    "..."
-};
+@send(Parsing) @func
+MD_PushErrorToList:
+{
+    list: *MD_ErrorList;
+    error: *MD_Error;
+}
 
-@send(Parsing)
-@func MD_PushTokenError: {
-    ctx: *MD_ParseCtx,
-    token: MD_Token,
-    kind: MD_MessageKind,
-    str: MD_String8,
-};
+@send(Parsing) @func
+MD_PushErrorListToList:
+{
+    list: *MD_ErrorList;
+    to_push: *MD_ErrorList;
+}
 
-@send(Parsing)
-@func MD_PushTokenErrorF: {
-    ctx: *MD_ParseCtx,
-    token: MD_Token,
-    kind: MD_MessageKind,
-    fmt: *char,
-    "..."
-};
+@send(Parsing) @func
+MD_ParseResultZero:
+{
+    return: MD_ParseResult;
+}
 
-@send(Parsing)
-@func MD_Parse_InitializeCtx: {
-    filename: MD_String8,
-    contents: MD_String8,
-    return: MD_ParseCtx,
-};
+@send(Parsing) @func
+MD_ParseNodeSet:
+{
+    string: MD_String8;
+    offset: MD_u64;
+    parent: *MD_Node;
+    rule: MD_ParseSetRule;
+    return: MD_ParseResult;
+}
 
-@send(Parsing)
-@func MD_Parse_Bump: {
-    ctx: *MD_ParseCtx,
-    token: MD_Token,
-};
+@send(Parsing) @func
+MD_ParseTagList:
+{
+    string: MD_String8;
+    offset: MD_u64;
+    return: MD_ParseResult;
+}
 
-@send(Parsing)
-@func MD_Parse_BumpNext: {
-    ctx: *MD_ParseCtx,
-};
+@send(Parsing) @func
+MD_ParseOneNode:
+{
+    string: MD_String8;
+    offset: MD_u64;
+    return: MD_ParseResult;
+}
 
-@send(Parsing)
-@func MD_Parse_LexNext: {
-    ctx: *MD_ParseCtx,
-    return: MD_Token,
-};
+@send(Parsing) @func
+MD_ParseWholeString:
+{
+    filename: MD_String8;
+    contents: MD_String8;
+    return: MD_ParseResult;
+}
 
-@send(Parsing)
-@func MD_Parse_PeekSkipSome: {
-    ctx: *MD_ParseCtx,
-    skip_groups: MD_TokenGroups,
-    return: MD_Token,
-};
-
-@send(Parsing)
-@func MD_Parse_Require: {
-    ctx: *MD_ParseCtx,
-    string: MD_String8,
-    return: MD_b32,
-};
-
-@send(Parsing)
-@func MD_Parse_RequireKind: {
-    ctx: *MD_ParseCtx,
-    kind: MD_TokenKind,
-    out_token: *MD_Token,
-    return: MD_b32,
-};
-
-@send(Parsing)
-@func MD_ParseOneNode: {
-    filename: MD_String8,
-    contents: MD_String8,
-    return: MD_ParseResult,
-};
-
-@send(Parsing)
-@func MD_ParseWholeString: {
-    filename: MD_String8,
-    contents: MD_String8,
-    return: MD_ParseResult,
-};
-
-@send(Parsing)
-@func MD_ParseWholeFile: {
-    filename: MD_String8,
-    return: MD_ParseResult,
-};
+@send(Parsing) @func
+MD_ParseWholeFile:
+{
+    filename: MD_String8;
+    return: MD_ParseResult;
+}
 
 ////////////////////////////////
 //~ Location Conversion
 
 @send(CodeLoc)
-@func MD_CodeLocFromFileOffset: {
+@func MD_CodeLocFromFileBaseOff: {
     filename: MD_String8,
     base: *MD_u8,
     off: *MD_u8,
@@ -1350,7 +1288,6 @@ MD_MapOverwrite: {
     node: *MD_Node,
     return: MD_CodeLoc,
 };
-
 
 ////////////////////////////////
 //~ Tree/List Building
