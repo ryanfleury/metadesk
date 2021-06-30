@@ -522,11 +522,17 @@ main:
 @send(FileSystemHelper)
 @prefix(MD_FileFlag)
 @base_type(MD_u32)
+@doc("Flags encoding certain properties of a file.")
+@see(MD_FileInfo)
+@see(MD_FileIterIncrement)
 @flags MD_FileFlags: {
-    Directory,
+    @doc("The associated file is a directory.")
+        Directory,
 };
 
 @send(FileSystemHelper)
+@doc("Encodes general metadata about a file.")
+@see(MD_FileIterIncrement)
 @struct MD_FileInfo: {
     flags: MD_FileFlags;
     filename: MD_String8;
@@ -534,6 +540,8 @@ main:
 };
 
 @send(FileSystemHelper)
+@doc("An opaque iterator type used to store operating-system-specific state, when iterating files.")
+@see(MD_FileIterIncrement)
 @opaque
 @struct MD_FileIter: {};
 
