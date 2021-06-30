@@ -549,16 +549,21 @@ main:
 //~ Basic Utilities
 
 @send(HelperMacros)
+@doc("Will cause a crash when @code 'c' is false.")
 @macro MD_Assert: {
     c,
 };
 
 @send(HelperMacros)
+@doc("Will cause a compilation failure when @code 'c' is false.")
 @macro MD_StaticAssert: {
     c,
+    @doc("A label for this static assertion. Necessary for static asserts in C.")
+        label,
 };
 
 @send(HelperMacros)
+@doc("Treats @code 'a' as a static array to calculate the number of elements in the array. Does not work on pointers used to point at a number of elements.")
 @macro MD_ArrayCount: {
     a,
 };
