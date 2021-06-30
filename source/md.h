@@ -463,7 +463,7 @@ struct MD_Token
 
 typedef enum MD_MessageKind
 {
-    MD_MessageKind_None,
+    MD_MessageKind_Null,
     MD_MessageKind_Warning,
     MD_MessageKind_Error,
     MD_MessageKind_CatastrophicError,
@@ -494,23 +494,6 @@ typedef enum MD_ParseSetRule
     MD_ParseSetRule_Global,
 }
 MD_ParseSetRule;
-
-typedef MD_u32 MD_ParseSetFlags;
-enum
-{
-    MD_ParseSetFlag_Paren    = (1<<0),
-    MD_ParseSetFlag_Brace    = (1<<1),
-    MD_ParseSetFlag_Bracket  = (1<<2),
-    MD_ParseSetFlag_Implicit = (1<<3),
-    MD_ParseSetFlag_Global   = (1<<4),
-};
-
-typedef struct MD_Tokenizer MD_Tokenizer;
-struct MD_Tokenizer
-{
-    MD_String8 contents;
-    MD_u64 off;
-};
 
 typedef struct MD_ParseResult MD_ParseResult;
 struct MD_ParseResult
