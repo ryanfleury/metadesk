@@ -1717,7 +1717,7 @@ MD_ParseTagList(MD_String8 string, MD_u64 offset)
         //- rjf: parse string of tag node
         MD_Token name = MD_TokenFromString(MD_StringSkip(string, off));
         MD_u64 name_off = off;
-        if(MD_TokenGroupsFromTokenKind(name.kind) & MD_TokenGroup_LabelString)
+        if(!(MD_TokenGroupsFromTokenKind(name.kind) & MD_TokenGroup_LabelString))
         {
             MD_Error *error = MD_MakeTokenError(string, name, MD_MessageKind_Error,
                                                 MD_PushStringF("\"%.*s\" is not a proper tag identifier",
