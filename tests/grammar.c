@@ -774,9 +774,9 @@ int main(int argument_count, char **arguments)
             printf("\nFailed test %d\n", i_test);
             printf("> %.*s <\n", MD_StringExpand(test->input));
             printf("MD:\n");
-            MD_OutputTree(stdout, file_node);
+            MD_OutputTree(stdout, file_node, 0);
             printf("Grammar:\n");
-            MD_OutputTree(stdout, test->expected_output); printf("\n");
+            MD_OutputTree(stdout, test->expected_output, 0); printf("\n");
             return -1;
         }
         
@@ -786,9 +786,9 @@ int main(int argument_count, char **arguments)
             printf("\nBad node->at on test %d\n", i_test);
             printf("> %.*s <\n", MD_StringExpand(test->input));
             printf("MD:\n");
-            MD_OutputTree(stdout, file_node);
+            MD_OutputTree(stdout, file_node, 0);
             printf("offending_node");
-            MD_OutputTree(stdout, bad_at_node);
+            MD_OutputTree(stdout, bad_at_node, 0);
             return -1;
         }
         ++i_test;
