@@ -2032,6 +2032,13 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
     MD_Node *root = MD_MakeNode(MD_NodeKind_File, filename, contents, 0);
     MD_ParseResult result = MD_ParseNodeSet(contents, 0, root, MD_ParseSetRule_Global);
     result.node = result.last_node = root;
+    for(MD_Error *error = result.errors.first; error != 0; error = error->next)
+    {
+        if(MD_NodeIsNil(error->node->parent))
+        {
+            error->node->parent = root;
+        }
+    }
     return result;
 }
 

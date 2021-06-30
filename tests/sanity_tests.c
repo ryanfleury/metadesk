@@ -280,10 +280,12 @@ int main(void)
         {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("(a, b)"), 0);
             TestResult(parse.node->first_child->flags & MD_NodeFlag_BeforeComma);
+            TestResult(parse.node->first_child->next->flags & MD_NodeFlag_AfterComma);
         }
         {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("(a; b)"), 0);
             TestResult(parse.node->first_child->flags & MD_NodeFlag_BeforeSemicolon);
+            TestResult(parse.node->first_child->next->flags & MD_NodeFlag_AfterSemicolon);
         }
         {
             // TODO(rjf): Enable this once we have digraphs.
@@ -301,9 +303,17 @@ int main(void)
         TestResult(MD_ParseOneNode(MD_S8Lit("abc"), 0).node->flags &
                    MD_NodeFlag_Identifier);
         TestResult(MD_ParseOneNode(MD_S8Lit("\"foo\""), 0).node->flags &
-                   MD_NodeFlag_StringLiteral);
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringDoubleQuote);
         TestResult(MD_ParseOneNode(MD_S8Lit("'foo'"), 0).node->flags &
-                   MD_NodeFlag_StringLiteral);
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringSingleQuote);
+        TestResult(MD_ParseOneNode(MD_S8Lit("`foo`"), 0).node->flags &
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTick);
+        TestResult(MD_ParseOneNode(MD_S8Lit("\"\"\"foo\"\"\""), 0).node->flags &
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTripletDoubleQuote);
+        TestResult(MD_ParseOneNode(MD_S8Lit("'''foo'''"), 0).node->flags &
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTripletSingleQuote);
+        TestResult(MD_ParseOneNode(MD_S8Lit("```foo```"), 0).node->flags &
+                   MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTripletTick);
     }
     
     Test("Expression Evaluation")

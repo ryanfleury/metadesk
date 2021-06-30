@@ -333,15 +333,15 @@ enum
     MD_NodeFlag_AfterComma              = (1<<9),
     
     MD_NodeFlag_StringSingleQuote       = (1<<10),
-    MD_NodeFlag_StringDoubleQuote       = (1<<13),
-    MD_NodeFlag_StringTick              = (1<<15),
-    MD_NodeFlag_StringTripletSingleQuote= (1<<16),
-    MD_NodeFlag_StringTripletDoubleQuote= (1<<18),
-    MD_NodeFlag_StringTripletTick       = (1<<20),
+    MD_NodeFlag_StringDoubleQuote       = (1<<11),
+    MD_NodeFlag_StringTick              = (1<<12),
+    MD_NodeFlag_StringTripletSingleQuote= (1<<13),
+    MD_NodeFlag_StringTripletDoubleQuote= (1<<14),
+    MD_NodeFlag_StringTripletTick       = (1<<15),
     
-    MD_NodeFlag_Numeric                 = (1<<22),
-    MD_NodeFlag_Identifier              = (1<<23),
-    MD_NodeFlag_StringLiteral           = (1<<24),
+    MD_NodeFlag_Numeric                 = (1<<16),
+    MD_NodeFlag_Identifier              = (1<<17),
+    MD_NodeFlag_StringLiteral           = (1<<18),
 };
 
 typedef struct MD_Node MD_Node;
@@ -577,6 +577,7 @@ struct MD_FileIter
 };
 
 //~ Basic Utilities
+
 #define MD_Assert(c) if (!(c)) { *(volatile MD_u64 *)0 = 0; }
 #define MD_StaticAssert(c,label) MD_u8 MD_static_assert_##label[(c)?(1):(-1)]
 #define MD_ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
@@ -625,6 +626,7 @@ struct MD_FileIter
 
 
 //~ Memory Operations
+
 MD_FUNCTION void MD_MemoryZero(void *memory, MD_u64 size);
 MD_FUNCTION void MD_MemoryCopy(void *dst, void *src, MD_u64 size);
 
@@ -637,6 +639,7 @@ MD_FUNCTION void* MD_AllocZero(MD_u64 size);
 #define MD_PushArrayZero(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
 
 //~ Characters
+
 MD_FUNCTION MD_b32 MD_CharIsAlpha(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaUpper(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaLower(MD_u8 c);
@@ -649,6 +652,7 @@ MD_FUNCTION MD_u8  MD_CharToLower(MD_u8 c);
 MD_FUNCTION MD_u8  MD_CorrectSlash(MD_u8 c);
 
 //~ Strings
+
 MD_FUNCTION MD_String8     MD_S8(MD_u8 *str, MD_u64 size);
 #define MD_S8CString(s)    MD_S8((MD_u8 *)(s), MD_CalculateCStringLength(s))
 
@@ -690,15 +694,18 @@ MD_FUNCTION MD_u64         MD_CalculateCStringLength(char *cstr);
 MD_FUNCTION MD_String8     MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8 separator);
 
 //~ Numeric Strings
+
 MD_FUNCTION MD_u64         MD_U64FromString(MD_String8 string, MD_u32 radix);
 MD_FUNCTION MD_i64         MD_CStyleIntFromString(MD_String8 string);
 MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
 
 //~ Enum/Flag Strings
+
 MD_FUNCTION MD_String8     MD_StringFromNodeKind(MD_NodeKind kind);
 MD_FUNCTION MD_String8List MD_StringListFromNodeFlags(MD_NodeFlags flags);
 
 //~ Unicode Conversions
+
 MD_FUNCTION MD_UnicodeConsume MD_CodepointFromUtf8(MD_u8 *str, MD_u64 max);
 MD_FUNCTION MD_UnicodeConsume MD_CodepointFromUtf16(MD_u16 *str, MD_u64 max);
 MD_FUNCTION MD_u32         MD_Utf8FromCodepoint(MD_u8 *out, MD_u32 codepoint);
@@ -709,6 +716,7 @@ MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
 
 //~ Map Table Data Structure
+
 MD_FUNCTION MD_u64 MD_HashString(MD_String8 string);
 MD_FUNCTION MD_u64 MD_HashPointer(void *p);
 
@@ -741,35 +749,15 @@ MD_FUNCTION MD_ParseResult MD_ParseTagList(MD_String8 string, MD_u64 offset);
 MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 string, MD_u64 offset);
 MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
 
-#if 0
-MD_FUNCTION void           MD_PushNodeError(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION void           MD_PushNodeErrorF(MD_ParseCtx *ctx, MD_Node *node, MD_MessageKind kind, char *fmt, ...);
-MD_FUNCTION void           MD_PushTokenError(MD_ParseCtx *ctx, MD_Token token, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION void           MD_PushTokenErrorF(MD_ParseCtx *ctx, MD_Token token, MD_MessageKind kind, char *fmt, ...);
-
-MD_FUNCTION MD_ParseCtx    MD_Parse_InitializeCtx(MD_String8 filename, MD_String8 contents);
-MD_FUNCTION void           MD_Parse_Bump(MD_ParseCtx *ctx, MD_Token token);
-MD_FUNCTION void           MD_Parse_BumpNext(MD_ParseCtx *ctx);
-MD_FUNCTION MD_Token       MD_Parse_LexNext(MD_ParseCtx *ctx);
-MD_FUNCTION MD_Token       MD_Parse_PeekSkipSome(MD_ParseCtx *ctx, MD_TokenGroups skip_groups);
-MD_FUNCTION MD_b32         MD_Parse_Require(MD_ParseCtx *ctx, MD_String8 string, MD_TokenKind kind);
-MD_FUNCTION MD_b32         MD_Parse_RequireKind(MD_ParseCtx *ctx, MD_TokenKind kind, MD_Token *out_token);
-
-MD_FUNCTION void           MD_Parse_Set(MD_ParseCtx *ctx, MD_Node *root,
-                                        MD_ParseSetFlags flags);
-
-MD_FUNCTION MD_ParseResult MD_ParseOneNodeFromCtx(MD_ParseCtx *ctx);
-#endif
-
-// MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 string, MD_u64 offset);
-// MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
 MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_String8 filename);
 
 //~ Location Conversion
+
 MD_FUNCTION MD_CodeLoc MD_CodeLocFromFileBaseOff(MD_String8 filename, MD_u8 *base, MD_u8 *off);
 MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 
 //~ Tree/List Building
+
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
 MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_u64 offset);
@@ -780,6 +768,7 @@ MD_FUNCTION MD_Node *MD_MakeList(void);
 MD_FUNCTION MD_Node *MD_PushReference(MD_Node *list, MD_Node *target);
 
 //~ Introspection Helpers
+
 MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string);
 MD_FUNCTION MD_Node *  MD_NodeFromIndex(MD_Node *first, MD_Node *last, int n);
 MD_FUNCTION int        MD_IndexFromNode(MD_Node *node);
@@ -804,19 +793,23 @@ MD_FUNCTION MD_Node *  MD_SeekNodeWithFlags(MD_Node *start, MD_NodeFlags one_pas
 it##_r = it##_r->next, it = MD_Deref(it##_r)
 
 //~ Error/Warning Helpers
+
 MD_FUNCTION void MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str);
 MD_FUNCTION void MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...);
 MD_FUNCTION void MD_NodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str);
 MD_FUNCTION void MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...);
 
 //~ Tree Comparison/Verification
+
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags node_flags);
 
 //~ Generation
+
 MD_FUNCTION void MD_OutputTree(FILE *file, MD_Node *node, int indent_spaces);
 
 //~ Command Line Argument Helper
+
 MD_FUNCTION MD_String8List MD_StringListFromArgCV(int argument_count, char **arguments);
 MD_FUNCTION MD_CommandLine MD_CommandLineFromOptions(MD_String8List options);
 MD_FUNCTION MD_String8List MD_CommandLineOptionValues(MD_CommandLine cmdln, MD_String8 name);
@@ -824,6 +817,7 @@ MD_FUNCTION MD_b32 MD_CommandLineOptionPassed(MD_CommandLine cmdln, MD_String8 n
 MD_FUNCTION MD_i64 MD_CommandLineOptionI64(MD_CommandLine cmdln, MD_String8 name);
 
 //~ File System
+
 MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_String8 filename);
 MD_FUNCTION MD_b32      MD_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info);
 
