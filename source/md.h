@@ -630,7 +630,7 @@ MD_FUNCTION MD_b32 MD_CharIsAlpha(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaUpper(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsAlphaLower(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsDigit(MD_u8 c);
-MD_FUNCTION MD_b32 MD_CharIsSymbol(MD_u8 c);
+MD_FUNCTION MD_b32 MD_CharIsUnreservedSymbol(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsReservedSymbol(MD_u8 c);
 MD_FUNCTION MD_b32 MD_CharIsSpace(MD_u8 c);
 MD_FUNCTION MD_u8  MD_CharToUpper(MD_u8 c);

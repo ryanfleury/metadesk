@@ -83,14 +83,12 @@ MD_CharIsDigit(MD_u8 c)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_CharIsSymbol(MD_u8 c)
+MD_CharIsUnreservedSymbol(MD_u8 c)
 {
-    return (c == '~' || c == '!' || c == '@' || c == '#' || c == '$' ||
-            c == '%' || c == '^' || c == '&' || c == '*' || c == '(' ||
-            c == ')' || c == '-' || c == '=' || c == '+' || c == '[' ||
-            c == ']' || c == '{' || c == '}' || c == ':' || c == ';' ||
-            c == ',' || c == '<' || c == '.' || c == '>' || c == '/' ||
-            c == '?' || c == '|' || c == '\\');
+    return (c == '~' || c == '!' || c == '$' || c == '%' || c == '^' ||
+            c == '&' || c == '*' || c == '-' || c == '=' || c == '+' ||
+            c == '<' || c == '.' || c == '>' || c == '/' || c == '?' ||
+            c == '|' || c == '\\');
 }
 
 MD_FUNCTION_IMPL MD_b32
@@ -1283,10 +1281,16 @@ MD_TokenFromString(MD_String8 string)
                     MD_TokenizerScan(MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.');
                 }
                 
-                else if (MD_CharIsSymbol(*at))
+                else if (MD_CharIsUnreservedSymbol(*at))
                 {
                     symbol_lex:
                     token.kind = MD_TokenKind_Symbol;
+                    at += 1;
+                }
+                
+                else if (MD_CharIsReservedSymbol(*at))
+                {
+                    token.kind = MD_TokenKind_Reserved;
                     at += 1;
                 }
                 
@@ -1409,9 +1413,10 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             MD_u64 opener_check_off = off;
             opener_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, opener_check_off), MD_TokenGroup_Irregular);
             initial_token = MD_TokenFromString(MD_StringSkip(string, opener_check_off));
-            if(initial_token.kind == MD_TokenKind_Symbol)
+            if(initial_token.kind == MD_TokenKind_Reserved)
             {
-                if(MD_StringMatch(initial_token.outer_string, MD_S8Lit("{"), 0))
+                MD_u8 c = initial_token.outer_string.str[0];
+                if(c == '{')
                 {
                     set_opener = '{';
                     set_opener_flags |= MD_NodeFlag_BraceLeft;
@@ -1419,7 +1424,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                     off = opener_check_off;
                     close_with_brace = 1;
                 }
-                else if(MD_StringMatch(initial_token.outer_string, MD_S8Lit("("), 0))
+                else if(c == '(')
                 {
                     set_opener = '(';
                     set_opener_flags |= MD_NodeFlag_ParenLeft;
@@ -1427,7 +1432,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                     off = opener_check_off;
                     close_with_paren = 1;
                 }
-                else if(MD_StringMatch(initial_token.outer_string, MD_S8Lit("["), 0))
+                else if(c == '[')
                 {
                     set_opener = '[';
                     set_opener_flags |= MD_NodeFlag_BracketLeft;
@@ -1501,20 +1506,19 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                 {
                     closer_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
                     MD_Token potential_closer = MD_TokenFromString(MD_StringSkip(string, closer_check_off));
-                    if(potential_closer.kind == MD_TokenKind_Symbol &&
-                       (MD_StringMatch(potential_closer.outer_string, MD_S8Lit(","), 0) ||
-                        MD_StringMatch(potential_closer.outer_string, MD_S8Lit(";"), 0)))
+                    if(potential_closer.kind == MD_TokenKind_Reserved)
                     {
-                        closer_check_off += potential_closer.outer_string.size;
-                        off = closer_check_off;
-                        break;
-                    }
-                    else if(potential_closer.kind == MD_TokenKind_Symbol &&
-                            (MD_StringMatch(potential_closer.string, MD_S8Lit("}"), 0) ||
-                             MD_StringMatch(potential_closer.string, MD_S8Lit("]"), 0) ||
-                             MD_StringMatch(potential_closer.string, MD_S8Lit(")"), 0)))
-                    {
-                        goto end_parse;
+                        MD_u8 c = potential_closer.outer_string.str[0];
+                        if (c == ',' || c == ';')
+                        {
+                            closer_check_off += potential_closer.outer_string.size;
+                            off = closer_check_off;
+                            break;
+                        }
+                        else if(c == '}' || c == ']'|| c == ')')
+                        {
+                            goto end_parse;
+                        }
                     }
                 }
                 
@@ -1526,9 +1530,10 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                 MD_u64 closer_check_off = off;
                 closer_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
                 MD_Token potential_closer = MD_TokenFromString(MD_StringSkip(string, closer_check_off));
-                if(potential_closer.kind == MD_TokenKind_Symbol)
+                if(potential_closer.kind == MD_TokenKind_Reserved)
                 {
-                    if(close_with_brace && MD_StringMatch(potential_closer.outer_string, MD_S8Lit("}"), 0))
+                    MD_u8 c = potential_closer.outer_string.str[0];
+                    if(close_with_brace && c == '}')
                     {
                         closer_check_off += potential_closer.outer_string.size;
                         off = closer_check_off;
@@ -1536,7 +1541,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                         got_closer = 1;
                         break;
                     }
-                    else if(close_with_paren && MD_StringMatch(potential_closer.outer_string, MD_S8Lit("]"), 0))
+                    else if(close_with_paren && c == ']')
                     {
                         closer_check_off += potential_closer.outer_string.size;
                         off = closer_check_off;
@@ -1544,7 +1549,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                         got_closer = 1;
                         break;
                     }
-                    else if(close_with_paren && MD_StringMatch(potential_closer.outer_string, MD_S8Lit(")"), 0))
+                    else if(close_with_paren && c == ')')
                     {
                         closer_check_off += potential_closer.outer_string.size;
                         off = closer_check_off;
@@ -1573,17 +1578,18 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             {
                 off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
                 MD_Token trailing_separator = MD_TokenFromString(MD_StringSkip(string, off));
-                if(MD_StringMatch(trailing_separator.string, MD_S8Lit(","), 0) &&
-                   trailing_separator.kind == MD_TokenKind_Symbol)
-                {
-                    trailing_separator_flags |= MD_NodeFlag_BeforeComma;
-                    off += trailing_separator.outer_string.size;
-                }
-                else if(MD_StringMatch(trailing_separator.string, MD_S8Lit(";"), 0) &&
-                        trailing_separator.kind == MD_TokenKind_Symbol)
-                {
-                    trailing_separator_flags |= MD_NodeFlag_BeforeSemicolon;
-                    off += trailing_separator.outer_string.size;
+                if (trailing_separator.kind == MD_TokenKind_Reserved){
+                    MD_u8 c = trailing_separator.string.str[0];
+                    if(c == ',')
+                    {
+                        trailing_separator_flags |= MD_NodeFlag_BeforeComma;
+                        off += trailing_separator.outer_string.size;
+                    }
+                    else if(c == ';')
+                    {
+                        trailing_separator_flags |= MD_NodeFlag_BeforeSemicolon;
+                        off += trailing_separator.outer_string.size;
+                    }
                 }
             }
             
@@ -1631,8 +1637,8 @@ MD_ParseTagList(MD_String8 string, MD_u64 offset)
         //- rjf: parse @ symbol, signifying start of tag
         off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
         MD_Token next_token = MD_TokenFromString(MD_StringSkip(string, off));
-        if(!MD_StringMatch(next_token.string, MD_S8Lit("@"), 0) ||
-           next_token.kind != MD_TokenKind_Symbol)
+        if(next_token.kind != MD_TokenKind_Reserved ||
+           next_token.string.str[0] != '@')
         {
             break;
         }
@@ -1657,8 +1663,8 @@ MD_ParseTagList(MD_String8 string, MD_u64 offset)
         //- rjf: parse tag arguments
         MD_Token open_paren = MD_TokenFromString(MD_StringSkip(string, off));
         MD_ParseResult args_parse = MD_ParseResultZero();
-        if(MD_StringMatch(open_paren.string, MD_S8Lit("("), 0) &&
-           open_paren.kind == MD_TokenKind_Symbol)
+        if(open_paren.kind == MD_TokenKind_Reserved &&
+           open_paren.string.str[0] == '(')
         {
             args_parse = MD_ParseNodeSet(string, off, tag, MD_ParseSetRule_EndOnDelimiter);
             MD_PushErrorListToList(&result.errors, &args_parse.errors);
@@ -1732,17 +1738,30 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
         //- rjf: try to parse an unnamed set
         off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
         MD_Token unnamed_set_opener = MD_TokenFromString(MD_StringSkip(string, off));
-        if(unnamed_set_opener.kind == MD_TokenKind_Symbol &&
-           (MD_StringMatch(unnamed_set_opener.string, MD_S8Lit("("), 0) ||
-            MD_StringMatch(unnamed_set_opener.string, MD_S8Lit("{"), 0) ||
-            MD_StringMatch(unnamed_set_opener.string, MD_S8Lit("["), 0)))
+        if(unnamed_set_opener.kind == MD_TokenKind_Reserved)
         {
-            parsed_node = MD_MakeNode(MD_NodeKind_Label, MD_S8Lit(""), MD_S8Lit(""),
-                                      unnamed_set_opener.outer_string.str - string.str);
-            children_parse = MD_ParseNodeSet(string, off, parsed_node, MD_ParseSetRule_EndOnDelimiter);
-            off += children_parse.bytes_parsed;
-            MD_PushErrorListToList(&result.errors, &children_parse.errors);
+            MD_u8 c = unnamed_set_opener.string.str[0];
+            if (c == '(' || c == '{' || c == '['){
+                parsed_node = MD_MakeNode(MD_NodeKind_Label, MD_S8Lit(""), MD_S8Lit(""),
+                                          unnamed_set_opener.outer_string.str - string.str);
+                children_parse = MD_ParseNodeSet(string, off, parsed_node, MD_ParseSetRule_EndOnDelimiter);
+                off += children_parse.bytes_parsed;
+                MD_PushErrorListToList(&result.errors, &children_parse.errors);
+            }
+            else if (c == ')' || c == '}' || c == ']')
+            {
+                MD_Error *error = MD_MakeNodeError(parsed_node, MD_MessageKind_CatastrophicError, MD_PushStringF("Unbalanced \"%c\"", c));
+                MD_PushErrorToList(&result.errors, error);
+                off += unnamed_set_opener.outer_string.size;
+            }
+            else
+            {
+                MD_Error *error = MD_MakeNodeError(parsed_node, MD_MessageKind_Error, MD_PushStringF("Unexpected reserved symbol \"%c\"", c));
+                MD_PushErrorToList(&result.errors, error);
+                off += unnamed_set_opener.outer_string.size;
+            }
             goto end_parse;
+            
         }
         
         //- rjf: try to parse regular node, with/without children
@@ -1755,31 +1774,12 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                                       label_name.outer_string.str - string.str);
             parsed_node->flags |= label_name.node_flags;
             
-            if(label_name.kind == MD_TokenKind_StringLiteral)
-            {
-            }
-            
-            //- rjf: check for unexpected reserved symbols
-            else if(label_name.kind == MD_TokenKind_Symbol && label_name.string.size == 1 && MD_CharIsReservedSymbol(label_name.string.str[0]))
-            {
-                MD_u8 c = label_name.string.str[0];
-                if(c == '}' || c == ']' || c == ')')
-                {
-                    MD_Error *error = MD_MakeNodeError(parsed_node, MD_MessageKind_CatastrophicError, MD_PushStringF("Unbalanced \"%c\"", c));
-                    MD_PushErrorToList(&result.errors, error);
-                }
-                else
-                {
-                    MD_Error *error = MD_MakeNodeError(parsed_node, MD_MessageKind_Error, MD_PushStringF("Unexpected reserved symbol \"%c\"", c));
-                    MD_PushErrorToList(&result.errors, error);
-                }
-            }
-            
             //- rjf: try to parse children for this node
             MD_u64 colon_check_off = off;
             colon_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, colon_check_off), MD_TokenGroup_Irregular);
             MD_Token colon = MD_TokenFromString(MD_StringSkip(string, colon_check_off));
-            if(MD_StringMatch(colon.string, MD_S8Lit(":"), 0) && colon.kind == MD_TokenKind_Symbol)
+            if(colon.kind == MD_TokenKind_Reserved &&
+               colon.string.str[0] == ':')
             {
                 colon_check_off += colon.outer_string.size;
                 off = colon_check_off;
@@ -1799,7 +1799,8 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                 for(MD_u64 tag_check_off = off; tag_check_off < string.size;)
                 {
                     MD_Token token = MD_TokenFromString(MD_StringSkip(string, tag_check_off));
-                    if(token.kind == MD_TokenKind_Symbol && MD_StringMatch(token.outer_string, MD_S8Lit("@"), 0))
+                    if(token.kind == MD_TokenKind_Reserved &&
+                       token.outer_string.str[0] == '@')
                     {
                         MD_Error *error = MD_MakeTokenError(string, token, MD_MessageKind_Error,
                                                             MD_S8Lit("Tags are not allowed between a `:` and node children. Place tags before the name of the node list."));
