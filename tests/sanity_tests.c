@@ -492,7 +492,6 @@ int main(void)
             {"a:'''\nmulti-line text literal", {3}},
             {"/* foo", {1}},
             {"label:@tag {1, 2, 3} /* /* unterminated comment */", {7, 22}},
-            {"@\"tag\" node", {2}},
             {"{a,,#b,}", {4, 5}},
             {"foo""\x80""bar", {4}},
         };
