@@ -12,11 +12,11 @@
 // [ ] pass all tests
 // [ ] simplify error sorting and catastrophic error handling
 // [ ] integer -> string helpers
-// [ ] remove symbol digraphs (maybe a test for this or something) and remove from comments
-// [ ] stb_snprintf included and modified for %S ~ MD_String8
+// [ ] {rjf} remove symbol digraphs (maybe a test for this or something) and remove from comments
+// [x] stb_snprintf included and modified for %S ~ MD_String8
 // [ ] naming pass
-// [ ] get the branches/labels setup on Git for beta 0.1 and dev
-// [ ] announcement
+// [ ] {rjf} get the branches/labels setup on Git for beta 0.1 and dev
+// [ ] {rjf} announcement
 
 // NOTE(allen): "Plugin" functionality
 //
