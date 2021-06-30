@@ -488,9 +488,32 @@ main:
 //~ Command line parsing helper types.
 
 @send(CommandLineHelper)
-@struct MD_CommandLine: {
-    arguments: *MD_String8;
-    argument_count: MD_u32;
+@doc("A type used to encode parsed command line options, that can have values associated with them.")
+@see(MD_CommandLine)
+@see(MD_CommandLineFromOptions)
+@struct MD_CommandLineOption:
+{
+    @doc("A pointer to the next option, if this is within a chain of options. Will be @code '0' if this is the last option in a chain.")
+        next: *MD_CommandLineOption;
+    @doc("The name of this option.")
+        name: MD_String8;
+    @doc("The values associated with this option.")
+        values: MD_String8List;
+};
+
+@send(CommandLineHelper)
+@doc("The type encoding a fully parsed set of command line options.")
+@see(MD_CommandLineFromOptions)
+@struct MD_CommandLine:
+{
+    @doc("The list of all command line arguments, as an unstructured list of strings.")
+        arguments: MD_String8List;
+    @doc("The list of arguments that were not parsed as structured options (which are a name, with an optional set of values).")
+        inputs: MD_String8List;
+    @doc("The first option that was parsed, forming the head of a chain of options.")
+        first_option: *MD_CommandLineOption;
+    @doc("The last option that was parsed.")
+        last_option: *MD_CommandLineOption;
 };
 
 ////////////////////////////////
