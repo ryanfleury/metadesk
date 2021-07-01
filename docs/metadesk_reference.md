@@ -1572,36 +1572,68 @@ MD_ParseWholeFile:
 //~ Error/Warning Helpers
 
 @send(Nodes)
+@doc("Prints a message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
+@see(MD_MessageF)
+@see(MD_NodeMessage)
+@see(MD_NodeMessageF)
 @func MD_Message: {
-    out: *FILE,
-    loc: MD_CodeLoc,
-    kind: MD_MessageKind,
-    str: MD_String8,
+    @doc("The file to print the message to.")
+        out: *FILE,
+    @doc("The source code location for which the message is intended.")
+        loc: MD_CodeLoc,
+    @doc("The kind/severity of the message.")
+        kind: MD_MessageKind,
+    @doc("The message contents.")
+        str: MD_String8,
 };
 
 @send(Nodes)
-@func MD_Message: {
-    out: *FILE,
-    loc: MD_CodeLoc,
-    kind: MD_MessageKind,
-    fmt: *char,
+@doc("Prints a C format string message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
+@see(MD_Message)
+@see(MD_NodeMessage)
+@see(MD_NodeMessageF)
+@func MD_MessageF: {
+    @doc("The file to print the message to.")
+        out: *FILE,
+    @doc("The source code location for which the message is intended.")
+        loc: MD_CodeLoc,
+    @doc("The kind/severity of the message.")
+        kind: MD_MessageKind,
+    @doc("The format string to form the message contents.")
+        fmt: *char,
     "..."
 };
 
 @send(Nodes)
+@see(MD_Message)
+@see(MD_MessageF)
+@see(MD_NodeMessageF)
+@doc("Prints a message to @code 'out', corresponding with the source code location of @code 'node'.")
 @func MD_NodeMessage: {
-    out: *FILE,
-    node: *MD_Node,
-    kind: MD_MessageKind,
-    str: MD_String8,
+    @doc("The file to print the message to.")
+        out: *FILE,
+    @doc("The node for which the message is intended.")
+        node: *MD_Node,
+    @doc("The kind/severity of the message.")
+        kind: MD_MessageKind,
+    @doc("The message contents.")
+        str: MD_String8,
 };
 
 @send(Nodes)
+@doc("Prints a C format string message to @code 'out', corresponding with the source code location of @code 'node'.")
+@see(MD_Message)
+@see(MD_MessageF)
+@see(MD_NodeMessage)
 @func MD_NodeMessageF: {
-    out: *FILE,
-    node: *MD_Node,
-    kind: MD_MessageKind,
-    fmt: *char,
+    @doc("The file to print the message to.")
+        out: *FILE,
+    @doc("The node for which the message is intended.")
+        node: *MD_Node,
+    @doc("The kind/severity of the message.")
+        kind: MD_MessageKind,
+    @doc("The format string to form the message contents.")
+        fmt: *char,
     "..."
 };
 
