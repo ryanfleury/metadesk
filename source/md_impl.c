@@ -1576,6 +1576,20 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             //- rjf: hook child into parent
             if(!MD_NodeIsNil(child_parse.node))
             {
+                // NOTE(rjf): @error No unnamed set children of implicitly-delimited sets
+                if(close_with_separator &&
+                   child_parse.node->string.size == 0 &&
+                   child_parse.node->flags & (MD_NodeFlag_ParenLeft    |
+                                              MD_NodeFlag_ParenRight   |
+                                              MD_NodeFlag_BracketLeft  |
+                                              MD_NodeFlag_BracketRight |
+                                              MD_NodeFlag_BraceLeft    |
+                                              MD_NodeFlag_BraceRight   ))
+                {
+                    MD_Error *error = MD_MakeNodeError(child_parse.node, MD_MessageKind_Warning, MD_S8Lit("Unnamed set children of implicitly-delimited sets are not legal."));
+                    MD_PushErrorToList(&result.errors, error);
+                }
+                
                 MD_PushChild(parent, child_parse.node);
                 parsed_child_count += 1;
             }
@@ -1613,6 +1627,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
     //- rjf: push missing closer error, if we have one
     if(set_opener != 0 && got_closer == 0)
     {
+        // NOTE(rjf): @error We didn't get a closer for the set
         MD_Error *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_CatastrophicError,
                                             MD_PushStringF("Unbalanced \"%c\"", set_opener));
         MD_PushErrorToList(&result.errors, error);
@@ -1621,6 +1636,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
     //- rjf: push empty implicit set error,
     if(close_with_separator && parsed_child_count == 0)
     {
+        // NOTE(rjf): @error No empty implicitly-delimited sets
         MD_Error *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_Error,
                                             MD_S8Lit("Empty implicitly-delimited node list"));
         MD_PushErrorToList(&result.errors, error);
@@ -1657,6 +1673,7 @@ MD_ParseTagList(MD_String8 string, MD_u64 offset)
         MD_u64 name_off = off;
         if((name.kind & MD_TokenGroup_Label) == 0)
         {
+            // NOTE(rjf): @error Improper token for tag string
             MD_Error *error = MD_MakeTokenError(string, name, MD_MessageKind_Error,
                                                 MD_PushStringF("\"%.*s\" is not a proper tag label",
                                                                MD_StringExpand(name.outer_string)));
@@ -1749,7 +1766,8 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
         if(unnamed_set_opener.kind == MD_TokenKind_Reserved)
         {
             MD_u8 c = unnamed_set_opener.string.str[0];
-            if (c == '(' || c == '{' || c == '['){
+            if (c == '(' || c == '{' || c == '[')
+            {
                 parsed_node = MD_MakeNode(MD_NodeKind_Label, MD_S8Lit(""), MD_S8Lit(""),
                                           unnamed_set_opener.outer_string.str - string.str);
                 children_parse = MD_ParseNodeSet(string, off, parsed_node, MD_ParseSetRule_EndOnDelimiter);
@@ -1758,6 +1776,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             }
             else if (c == ')' || c == '}' || c == ']')
             {
+                // NOTE(rjf): @error Unexpected set closing symbol
                 MD_Error *error = MD_MakeTokenError(string, unnamed_set_opener,
                                                     MD_MessageKind_CatastrophicError,
                                                     MD_PushStringF("Unbalanced \"%c\"", c));
@@ -1766,6 +1785,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             }
             else
             {
+                // NOTE(rjf): @error Unexpected reserved symbol
                 MD_Error *error = MD_MakeTokenError(string, unnamed_set_opener,
                                                     MD_MessageKind_Error, 
                                                     MD_PushStringF("Unexpected reserved symbol \"%c\"", c));
@@ -1820,6 +1840,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                     }
                     MD_String8 byte_string = MD_JoinStringList(bytes, MD_S8Lit(" "));
                     
+                    // NOTE(rjf): @error Bad character
                     MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
                                                         MD_PushStringF("Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string)));
                     MD_PushErrorToList(&result.errors, error);
@@ -1827,6 +1848,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                 
                 case MD_TokenKind_BrokenComment:
                 {
+                    // NOTE(rjf): @error Broken Comments
                     MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
                                                         MD_S8Lit("Unterminated comment"));
                     MD_PushErrorToList(&result.errors, error);
@@ -1834,6 +1856,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                 
                 case MD_TokenKind_BrokenStringLiteral:
                 {
+                    // NOTE(rjf): @error Broken String Literals
                     MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
                                                         MD_S8Lit("Unterminated string literal"));
                     MD_PushErrorToList(&result.errors, error);
@@ -1913,6 +1936,7 @@ MD_ParseWholeFile(MD_String8 filename)
     MD_ParseResult parse = MD_ParseWholeString(filename, file_contents);
     if(file_contents.str == 0)
     {
+        // NOTE(rjf): @error File failing to load
         MD_Error *error = MD_MakeNodeError(parse.node, MD_MessageKind_CatastrophicError,
                                            MD_PushStringF("Could not read file \"%.*s\"", MD_StringExpand(filename)));
         MD_PushErrorToList(&parse.errors, error);

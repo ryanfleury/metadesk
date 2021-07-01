@@ -9,7 +9,7 @@
 // [x] lexer detects broken strings
 // [x] tests for legal tag syntaxes
 // [x] tests that ensure we don't accept labels when expecting symbols e.g. foo ":" b; foo: "(" )
-// [ ] pass all tests
+// [x] pass all tests
 // [ ] simplify error sorting and catastrophic error handling
 // [ ] integer -> string helpers
 // [x] {rjf} remove symbol digraphs (maybe a test for this or something) and remove from comments
