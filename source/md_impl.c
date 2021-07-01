@@ -2112,13 +2112,13 @@ MD_TagFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags)
 MD_FUNCTION_IMPL MD_Node *
 MD_ChildFromIndex(MD_Node *node, int n)
 {
-    return MD_NodeFromIndex(node->first_child, node->last_child, n);
+    return MD_NodeFromIndex(node->first_child, MD_NilNode(), n);
 }
 
 MD_FUNCTION_IMPL MD_Node *
 MD_TagFromIndex(MD_Node *node, int n)
 {
-    return MD_NodeFromIndex(node->first_child, node->last_child, n);
+    return MD_NodeFromIndex(node->first_child, MD_NilNode(), n);
 }
 
 MD_FUNCTION_IMPL MD_Node *
