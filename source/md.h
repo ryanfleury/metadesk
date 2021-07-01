@@ -775,7 +775,7 @@ MD_FUNCTION void MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, 
 //~ Tree Comparison/Verification
 
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
-MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags node_flags);
+MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 
 //~ Generation
 

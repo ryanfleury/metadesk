@@ -1641,20 +1641,22 @@ MD_ParseWholeFile:
 //~ Tree Comparison/Verification
 
 @send(Nodes)
+@doc("Compares the passed MD_Node nodes @code 'a' and @code 'b', and determines whether or not they match. @code 'flags' determines the rules used in the matching algorithm, including tag-sensitivity and case-sensitivity.")
+@see(MD_StringMatch)
+@see(MD_MatchFlags)
 @func MD_NodeMatch: {
     a: *MD_Node,
     b: *MD_Node,
-    str_flags: MD_StringMatchFlags,
-    node_flags: MD_NodeMatchFlags,
+    flags: MD_MatchFlags,
     return: MD_b32,
 };
 
 @send(Nodes)
+@doc("Compares the passed MD_Node trees @code 'a' and @code 'b' recursively, and determines whether or not they and their children match. @code 'flags' determines the rules used in the matching algorithm, including tag-sensitivity and case-sensitivity.")
 @func MD_NodeDeepMatch: {
     a: *MD_Node,
     b: *MD_Node,
-    str_flags: MD_StringMatchFlags,
-    node_flags: MD_NodeMatchFlags,
+    flags: MD_MatchFlags,
     return: MD_b32,
 };
 
@@ -1662,6 +1664,7 @@ MD_ParseWholeFile:
 //~ Generation
 
 @send(Output)
+@doc("Outputs a textual representation of the tree with @code 'node' as its root to @code 'file'.")
 @func MD_OutputTree: {
     file: *FILE,
     node: *MD_Node,
@@ -1671,75 +1674,85 @@ MD_ParseWholeFile:
 //~ Command Line Argument Helper
 
 @send(CommandLineHelper)
-@func MD_CommandLine_Start: {
-    argument_count: int,
-    arguments: **char,
-    return: MD_CommandLine,
-};
+@doc("Converts a traditional C-style @code 'argc, argv' pair into an MD_String8List.")
+@see(MD_CommandLineFromOptions)
+@func MD_StringListFromArgCV:
+{
+    @doc("The number of command line arguments. Traditionally referred to as @code 'argc'.")
+        argument_count: int;
+    @doc("A pointer to the command line arguments. Traditionally referred to as @code 'argv'.")
+        arguments: **char;
+    return: MD_String8List;
+}
 
 @send(CommandLineHelper)
-@func MD_CommandLine_Flag: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    return: MD_b32,
-};
+@doc("Parses an MD_String8List as a set of command line options.")
+@see(MD_StringListFromArgCV)
+@see(MD_CommandLineOptionValues)
+@see(MD_CommandLineOptionPassed)
+@func MD_CommandLineFromOptions:
+{
+    options: MD_String8List;
+    return: MD_CommandLine;
+}
 
 @send(CommandLineHelper)
-@func MD_CommandLine_FlagStrings: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    out_count: int,
-    out: *MD_String8,
-    return: MD_b32,
-};
+@doc("Gets the list of values associated with @code 'name' in the parsed command line arguments.")
+@see(MD_CommandLineFromOptions)
+@see(MD_CommandLineOptionPassed)
+@see(MD_CommandLineOptionI64)
+@func MD_CommandLineOptionValues:
+{
+    cmdln: MD_CommandLine;
+    name: MD_String8;
+    return: MD_String8List;
+}
 
 @send(CommandLineHelper)
-@func MD_CommandLine_FlagIntegers: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    out_count: int,
-    out: *MD_i64,
-    return: MD_b32,
-};
+@doc("Determines whether a command line argument explicitly passed an option matching @code 'name'.")
+@see(MD_CommandLineFromOptions)
+@see(MD_CommandLineOptionPassed)
+@see(MD_CommandLineOptionValues)
+@func MD_CommandLineOptionPassed:
+{
+    cmdln: MD_CommandLine;
+    name: MD_String8;
+    return: MD_b32;
+}
 
 @send(CommandLineHelper)
-@func MD_CommandLine_FlagString: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    out: *MD_String8,
-    return: MD_b32,
-};
-
-@send(CommandLineHelper)
-@func MD_CommandLine_FlagInteger: {
-    cmdln: *MD_CommandLine,
-    string: MD_String8,
-    out: *MD_i64,
-    return: MD_b32,
-};
-
-@send(CommandLineHelper)
-@func MD_CommandLine_Increment: {
-    cmdln: *MD_CommandLine,
-    string_ptr: **MD_String8,
-    return: MD_b32,
-};
+@see(MD_CommandLineFromOptions)
+@see(MD_CommandLineOptionValues)
+@see(MD_CommandLineOptionPassed)
+@doc("Gets the list of values associated with @code 'name' in the parsed command line arguments, treats them as a string representation of a 64-bit signed integer value, and returns that integer value.")
+@func MD_CommandLineOptionI64:
+{
+    cmdln: MD_CommandLine;
+    name: MD_String8;
+    return: MD_i64;
+}
 
 ////////////////////////////////
 //~ File System
 
 @send(FileSystemHelper)
+@doc("Uses the C standard library to load the contents of the file with @code 'filename' into an MD_String8.")
 @func MD_LoadEntireFile: {
     filename: MD_String8,
     return: MD_String8,
 };
 
 @send(FileSystemHelper)
+@doc("Increments an MD_FileIter iterator, and returns the iterated-onto file metadata.")
 @func MD_FileIterIncrement: {
-    it: *MD_FileIter,
-    path: MD_String8,
-    out_info: *MD_FileInfo,
-    return: MD_b32,
+    @doc("The MD_FileIter to increment. To begin iterating and iterate to the first file, zero-initialize the iterator.")
+        it: *MD_FileIter,
+    @doc("The path to the folder that should be iterated.")
+        path: MD_String8,
+    @doc("A pointer to an MD_FileInfo, into which the file metadata is returned.")
+        out_info: *MD_FileInfo,
+    @doc("@code '1' if a new file was iterated onto, and @code '0' if the iteration is over.")
+        return: MD_b32,
 };
 
 ////////////////////////////////
