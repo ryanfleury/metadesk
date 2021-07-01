@@ -88,7 +88,7 @@ static void PrintRule(MD_Map *depth_map, MD_Node *rule)
 {
     MD_b32 is_literal_char = rule->flags & MD_NodeFlag_StringLiteral;
     
-    MD_b32 optional = MD_NodeHasTag(rule, MD_S8Lit(OPTIONAL_TAG));
+    MD_b32 optional = MD_NodeHasTag(rule, MD_S8Lit(OPTIONAL_TAG), 0);
     
     if(optional)
     {
@@ -163,7 +163,7 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
     for(MD_EachNode(rule_element, rule->first_child))
     {
         MD_b32 expand = 1;
-        if(MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG)))
+        if(MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG), 0))
         {
             expand = rand_U32(globals.random_series)%2;
             
@@ -656,7 +656,7 @@ int main(int argument_count, char **arguments)
                     ComputeElementDepth(depth_map, rule_element);
                     MD_u64 depth = GET_DEPTH(depth_map, rule_element);
                     
-                    if(!MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG)))
+                    if(!MD_NodeHasTag(rule_element, MD_S8Lit(OPTIONAL_TAG), 0))
                     {
                         MD_u64 depth = 0;
                         MD_Assert(MD_NodeIsNil(rule_element->first_child));

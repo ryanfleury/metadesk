@@ -744,19 +744,19 @@ int main(void)
         
         {
             MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("@foo bar"));
-            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("foo")));
+            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("foo"), 0));
         }
         {
             MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("@+ bar"));
-            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("+")));
+            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("+"), 0));
         }
         {
             MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("@'a b c' bar"));
-            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("a b c")));
+            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("a b c"), 0));
         }
         {
             MD_ParseResult result = MD_ParseWholeString(file_name, MD_S8Lit("@100 bar"));
-            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("100")));
+            TestResult(MD_NodeHasTag(result.node->first_child, MD_S8Lit("100"), 0));
         }
     }
     

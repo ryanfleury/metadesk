@@ -382,17 +382,17 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
     {
         char *html_tag = "p";
         char *style = "paragraph";
-        if(MD_NodeHasTag(node, MD_S8Lit("title")))
+        if(MD_NodeHasTag(node, MD_S8Lit("title"), 0))
         {
             html_tag = "h1";
             style = "title";
         }
-        else if(MD_NodeHasTag(node, MD_S8Lit("subtitle")))
+        else if(MD_NodeHasTag(node, MD_S8Lit("subtitle"), 0))
         {
             html_tag = "h2";
             style = "subtitle";
         }
-        else if(MD_NodeHasTag(node, MD_S8Lit("code")))
+        else if(MD_NodeHasTag(node, MD_S8Lit("code"), 0))
         {
             html_tag = "pre";
             style = "code";
@@ -414,19 +414,19 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
                     MD_ParseResult parse =  MD_ParseOneNode(MD_StringSubstring(strnode->string, i, strnode->string.size), 0);
                     if(!MD_NodeIsNil(parse.node))
                     {
-                        if(MD_NodeHasTag(node, MD_S8Lit("i")))
+                        if(MD_NodeHasTag(node, MD_S8Lit("i"), 0))
                         {
                             fprintf(file, "<i>%.*s</i>", MD_StringExpand(parse.node->string));
                         }
-                        else if(MD_NodeHasTag(node, MD_S8Lit("b")))
+                        else if(MD_NodeHasTag(node, MD_S8Lit("b"), 0))
                         {
                             fprintf(file, "<strong>%.*s</strong>", MD_StringExpand(parse.node->string));
                         }
-                        else if(MD_NodeHasTag(node, MD_S8Lit("code")))
+                        else if(MD_NodeHasTag(node, MD_S8Lit("code"), 0))
                         {
                             fprintf(file, "<span class=\"inline_code\">%.*s</span>", MD_StringExpand(parse.node->string));
                         }
-                        else if(MD_NodeHasTag(node, MD_S8Lit("link")))
+                        else if(MD_NodeHasTag(node, MD_S8Lit("link"), 0))
                         {
                             MD_Node *text = MD_ChildFromIndex(parse.node, 0);
                             MD_Node *link = MD_ChildFromIndex(parse.node, 1);
@@ -474,7 +474,7 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
     
     if(!MD_NodeIsNil(node->first_child))
     {
-        if(MD_NodeHasTag(node, MD_S8Lit("list")))
+        if(MD_NodeHasTag(node, MD_S8Lit("list"), 0))
         {
             fprintf(file, "<ul class=\"list\">\n");
             for(MD_EachNode(child, node->first_child))
@@ -491,19 +491,19 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
             }
             fprintf(file, "</ul>\n");
         }
-        else if(MD_NodeHasTag(node, MD_S8Lit("img")))
+        else if(MD_NodeHasTag(node, MD_S8Lit("img"), 0))
         {
             MD_Node *src = MD_ChildFromIndex(node, 0);
             MD_Node *alt = MD_ChildFromIndex(node, 1);
             fprintf(file, "<div class=\"img_container\"><img class=\"img\" src=\"%.*s\"></img></div>\n", MD_StringExpand(src->string));
         }
-        else if(MD_NodeHasTag(node, MD_S8Lit("youtube")))
+        else if(MD_NodeHasTag(node, MD_S8Lit("youtube"), 0))
         {
             MD_Node *id = MD_ChildFromIndex(node, 0);
             fprintf(file, "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/%.*s\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n",
                     MD_StringExpand(id->string));
         }
-        else if(MD_NodeHasTag(node, MD_S8Lit("lister")))
+        else if(MD_NodeHasTag(node, MD_S8Lit("lister"), 0))
         {
             static int lister_idx = 0;
             fprintf(file, "<input autofocus id=\"lister_search_%i\" class=\"lister_search\" oninput=\"SearchInput(event, %i)\" onkeydown=\"SearchKeyDown(event, %i)\" placeholder=\"Filter...\"></input>", lister_idx, lister_idx, lister_idx);

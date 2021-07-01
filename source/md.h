@@ -727,7 +727,7 @@ MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_String8 filename);
 
 //~ Location Conversion
 
-MD_FUNCTION MD_CodeLoc MD_CodeLocFromFileBaseOff(MD_String8 filename, MD_u8 *base, MD_u8 *off);
+MD_FUNCTION MD_CodeLoc MD_CodeLocFromFileBaseOffset(MD_String8 filename, MD_u8 *base, MD_u64 offset);
 MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 
 //~ Tree/List Building
@@ -743,18 +743,17 @@ MD_FUNCTION MD_Node *MD_PushReference(MD_Node *list, MD_Node *target);
 
 //~ Introspection Helpers
 
-MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string);
-MD_FUNCTION MD_Node *  MD_NodeFromIndex(MD_Node *first, MD_Node *last, int n);
+MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *one_past_last, MD_String8 string, MD_MatchFlags flags);
+MD_FUNCTION MD_Node *  MD_NodeFromIndex(MD_Node *first, MD_Node *one_past_last, int n);
 MD_FUNCTION int        MD_IndexFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_RootFromNode(MD_Node *node);
-MD_FUNCTION MD_Node *  MD_NextNodeSibling(MD_Node *last, MD_String8 string);
-MD_FUNCTION MD_Node *  MD_ChildFromString(MD_Node *node, MD_String8 child_string);
-MD_FUNCTION MD_Node *  MD_TagFromString(MD_Node *node, MD_String8 tag_string);
+MD_FUNCTION MD_Node *  MD_ChildFromString(MD_Node *node, MD_String8 child_string, MD_MatchFlags flags);
+MD_FUNCTION MD_Node *  MD_TagFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags);
 MD_FUNCTION MD_Node *  MD_ChildFromIndex(MD_Node *node, int n);
 MD_FUNCTION MD_Node *  MD_TagFromIndex(MD_Node *node, int n);
-MD_FUNCTION MD_Node *  MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, int n);
-MD_FUNCTION MD_Node *  MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_String8 arg_string);
-MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string);
+MD_FUNCTION MD_Node *  MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags, int n);
+MD_FUNCTION MD_Node *  MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags tag_str_flags, MD_String8 arg_string, MD_MatchFlags arg_str_flags);
+MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags);
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_Deref(MD_Node *node);

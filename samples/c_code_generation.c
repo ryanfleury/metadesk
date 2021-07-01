@@ -27,7 +27,7 @@ int main(int argument_count, char **arguments)
     printf("Generated C Code:\n");
     for(MD_EachNode(node, code->first_child))
     {
-        if(MD_NodeHasTag(node, MD_S8Lit("struct")))
+        if(MD_NodeHasTag(node, MD_S8Lit("struct"), 0))
         {
             MD_C_Generate_Struct(stdout, node);
         }

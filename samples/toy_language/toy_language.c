@@ -194,7 +194,7 @@ int main(int argument_count, char **arguments)
         MD_Node *file = MD_Deref(file_ref);
         for(MD_EachNode(top_level, file->first_child))
         {
-            if(MD_NodeHasTag(top_level, MD_S8Lit("proc")))
+            if(MD_NodeHasTag(top_level, MD_S8Lit("proc"), 0))
             {
                 InsertValueToNamespace(&global_ns_node, top_level->string, MakeValue_Procedure(top_level));
             }

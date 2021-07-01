@@ -1923,7 +1923,7 @@ MD_ParseWholeFile(MD_String8 filename)
 //~ Location Conversions
 
 MD_FUNCTION_IMPL MD_CodeLoc
-MD_CodeLocFromFileBaseOff(MD_String8 filename, MD_u8 *base, MD_u8 *at)
+MD_CodeLocFromFileBaseOffset(MD_String8 filename, MD_u8 *base, MD_u64 offset)
 {
     MD_CodeLoc loc;
     loc.filename = filename;
@@ -1931,6 +1931,7 @@ MD_CodeLocFromFileBaseOff(MD_String8 filename, MD_u8 *base, MD_u8 *at)
     loc.column = 1;
     if(base != 0)
     {
+        MD_u8 *at = base + offset;
         for(MD_u64 i = 0; base+i < at && base[i]; i += 1)
         {
             if(base[i] == '\n')
@@ -1951,7 +1952,7 @@ MD_FUNCTION_IMPL MD_CodeLoc
 MD_CodeLocFromNode(MD_Node *node)
 {
     MD_Node *root = MD_RootFromNode(node);
-    MD_CodeLoc loc = MD_CodeLocFromFileBaseOff(root->string, root->whole_string.str, root->whole_string.str + node->offset);
+    MD_CodeLoc loc = MD_CodeLocFromFileBaseOffset(root->string, root->whole_string.str, node->offset);
     return loc;
 }
 
@@ -2020,12 +2021,12 @@ MD_PushReference(MD_Node *list, MD_Node *target)
 //~ Introspection Helpers
 
 MD_FUNCTION_IMPL MD_Node *
-MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string)
+MD_NodeFromString(MD_Node *first, MD_Node *one_past_last, MD_String8 string, MD_MatchFlags flags)
 {
     MD_Node *result = MD_NilNode();
-    for(MD_Node *node = first; !MD_NodeIsNil(node); node = node->next)
+    for(MD_Node *node = first; !MD_NodeIsNil(node) && node != one_past_last; node = node->next)
     {
-        if(MD_StringMatch(string, node->string, 0))
+        if(MD_StringMatch(string, node->string, flags))
         {
             result = node;
             break;
@@ -2035,13 +2036,13 @@ MD_NodeFromString(MD_Node *first, MD_Node *last, MD_String8 string)
 }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_NodeFromIndex(MD_Node *first, MD_Node *last, int n)
+MD_NodeFromIndex(MD_Node *first, MD_Node *one_past_last, int n)
 {
     MD_Node *result = MD_NilNode();
     if(n >= 0)
     {
         int idx = 0;
-        for(MD_Node *node = first; !MD_NodeIsNil(node); node = node->next, idx += 1)
+        for(MD_Node *node = first; !MD_NodeIsNil(node) && node != one_past_last; node = node->next, idx += 1)
         {
             if(idx == n)
             {
@@ -2057,10 +2058,7 @@ MD_FUNCTION_IMPL int
 MD_IndexFromNode(MD_Node *node)
 {
     int idx = 0;
-    if(node && !MD_NodeIsNil(node))
-    {
-        for(MD_Node *last = node->prev; !MD_NodeIsNil(last); last = last->prev, idx += 1);
-    }
+    for(MD_Node *last = node->prev; !MD_NodeIsNil(last); last = last->prev, idx += 1);
     return idx;
 }
 
@@ -2076,33 +2074,15 @@ MD_RootFromNode(MD_Node *node)
 }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_NextNodeSibling(MD_Node *last, MD_String8 string)
+MD_ChildFromString(MD_Node *node, MD_String8 child_string, MD_MatchFlags flags)
 {
-    MD_Node *result = MD_NilNode();
-    if(last)
-    {
-        for(MD_Node *node = last->next; node; node = node->next)
-        {
-            if(MD_StringMatch(string, node->string, 0))
-            {
-                result = node;
-                break;
-            }
-        }
-    }
-    return result;
+    return MD_NodeFromString(node->first_child, MD_NilNode(), child_string, flags);
 }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_ChildFromString(MD_Node *node, MD_String8 child_string)
+MD_TagFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags)
 {
-    return MD_NodeFromString(node->first_child, node->last_child, child_string);
-}
-
-MD_FUNCTION_IMPL MD_Node *
-MD_TagFromString(MD_Node *node, MD_String8 tag_string)
-{
-    return MD_NodeFromString(node->first_tag, node->last_tag, tag_string);
+    return MD_NodeFromString(node->first_tag, MD_NilNode(), tag_string, flags);
 }
 
 MD_FUNCTION_IMPL MD_Node *
@@ -2118,24 +2098,24 @@ MD_TagFromIndex(MD_Node *node, int n)
 }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, int n)
+MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags, int n)
 {
-    MD_Node *tag = MD_TagFromString(node, tag_string);
+    MD_Node *tag = MD_TagFromString(node, tag_string, flags);
     return MD_ChildFromIndex(tag, n);
 }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_String8 arg_string)
+MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags tag_str_flags, MD_String8 arg_string, MD_MatchFlags arg_str_flags)
 {
-    MD_Node *tag = MD_TagFromString(node, tag_string);
-    MD_Node *arg = MD_ChildFromString(tag, arg_string);
+    MD_Node *tag = MD_TagFromString(node, tag_string, tag_str_flags);
+    MD_Node *arg = MD_ChildFromString(tag, arg_string, arg_str_flags);
     return arg;
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_NodeHasTag(MD_Node *node, MD_String8 tag_string)
+MD_NodeHasTag(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags)
 {
-    return !MD_NodeIsNil(MD_TagFromString(node, tag_string));
+    return !MD_NodeIsNil(MD_TagFromString(node, tag_string, flags));
 }
 
 MD_FUNCTION_IMPL MD_i64

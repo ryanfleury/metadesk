@@ -1319,15 +1319,21 @@ MD_ParseWholeFile:
 //~ Location Conversion
 
 @send(CodeLoc)
-@func MD_CodeLocFromFileBaseOff: {
+@doc("Calculates a position in a source code file in filename/line/column coordinates, provided a filename, a base pointer for the file's contents, and an offset into the file's contents.")
+@see(MD_CodeLocFromNode)
+@func MD_CodeLocFromFileBaseOffset:
+{
     filename: MD_String8,
     base: *MD_u8,
-    off: *MD_u8,
+    offset: MD_u64,
     return: MD_CodeLoc,
 };
 
 @send(CodeLoc)
-@func MD_CodeLocFromNode: {
+@doc("Calculates a position in a source code file in filename/line/column coordinates, provided a parsed MD_Node.")
+@see(MD_CodeLocFromFileBaseOffset)
+@func MD_CodeLocFromNode:
+{
     node: *MD_Node,
     return: MD_CodeLoc,
 };
@@ -1336,29 +1342,36 @@ MD_ParseWholeFile:
 //~ Tree/List Building
 
 @send(Nodes)
+@doc("Returns @code '1' if the @code 'node' is nil, or @code '0' otherwise. A nil node pointer is not equivalent to a null pointer. It can still be dereferenced, and is treated as a dummy placeholder node value.")
+@see(MD_NilNode)
 @func MD_NodeIsNil: {
     node: *MD_Node,
     return: MD_b32,
 };
 
 @send(Nodes)
+@doc("Returns a nil node pointer.")
+@see(MD_NodeIsNil)
 @func MD_NilNode: {
     return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Links @code 'new_child' up as being a child of @code 'parent', inserting it into the end of @code `parent`'s children list.")
 @func MD_PushChild: {
     parent: *MD_Node,
     new_child: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Links @code 'tag' up as being a tag of @code 'node', inserting it into the end of @code `node`'s tag list.")
 @func MD_PushTag: {
     node: *MD_Node,
     tag: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Creates a new reference node, pointing at @code 'target', and links it up as a child of @code 'list'.")
 @func MD_PushReference: {
     list: *MD_Node,
     target: *MD_Node,
@@ -1369,91 +1382,191 @@ MD_ParseWholeFile:
 //~ Introspection Helpers
 
 @send(Nodes)
+@doc("Finds a node in the range defined by @code 'first' and @code 'one_past_last', with the string matching @code 'string' in accordance with @code 'flags', or returns a nil node pointer if it is not found.")
+@see(MD_NodeFromIndex)
+@see(MD_StringMatch)
 @func MD_NodeFromString: {
-    first: *MD_Node,
-    last: *MD_Node,
-    string: MD_String8,
-    return: *MD_Node,
+    @doc("The first node in the range to search.")
+        first: *MD_Node,
+    @doc("One past the last node in the range to search. A nil node, if the entire available range starting with @code 'first' is to be searched.")
+        one_past_last: *MD_Node,
+    @doc("The string to search for.")
+        string: MD_String8,
+    @doc("Controls what is considered a match, when doing string matching.")
+        flags: MD_MatchFlags,
+    @doc("The found node, or a nil node pointer if no node was found.")
+        return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Finds the @code 'n'th node in the range defined by @code 'first' and @code 'one_past_last', or returns a nil node pointer if it is not found. @code '0' would match @code 'first', @code '1' would match @code 'first->next', and so on.")
+@see(MD_NodeFromString)
 @func MD_NodeFromIndex: {
-    first: *MD_Node,
-    last: *MD_Node,
-    n: int,
-    return: *MD_Node,
+    @doc("The first node in the range to search.")
+        first: *MD_Node,
+    @doc("One past the last node in the range to search. A nil node, if the entire available range starting with @code 'first' is to be searched.")
+        one_past_last: *MD_Node,
+    @doc("The index to search for.")
+        n: int,
+    @doc("The found node, or a nil node pointer if no node was found.")
+        return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Finds the child index of @code 'node', with @code '0' being the first child, @code '1' being the second, and so on.")
+@see(MD_NodeFromIndex)
 @func MD_IndexFromNode: {
     node: *MD_Node,
     return: int,
 };
 
 @send(Nodes)
-@func MD_NextNodeSibling: {
-    last: *MD_Node,
-    string: MD_String8,
-    return: *MD_Node,
+@doc("Finds the highest-most node in the parent chain of @code 'node', starting with @code 'node'. If @code 'node' has no parent, then @code 'node' is returned.")
+@func MD_RootFromNode: {
+    @doc("The node for which the root is to be found.")
+        node: *MD_Node,
+    @doc("The found root.")
+        return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Finds a child of @code 'node' with a string matching @code 'child_string', where the rules of matching are determined by @code 'flags'.")
+@see(MD_NodeFromString)
+@see(MD_TagFromString)
 @func MD_ChildFromString: {
-    node: *MD_Node,
-    child_string: MD_String8,
-    return: *MD_Node,
+    @doc("The parent whose children are to be searched.")
+        node: *MD_Node,
+    @doc("The string that the found child should match.")
+        child_string: MD_String8,
+    @doc("Controls what is considered a string match.")
+        flags: MD_MatchFlags,
+    @doc("The found node, or a nil node pointer if no node was found.")
+        return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Finds a tag on @code 'node' with a string matching @code 'tag_string', where the rules of matching are determined by @code 'flags'.")
+@see(MD_NodeFromString)
+@see(MD_ChildFromString)
 @func MD_TagFromString: {
-    node: *MD_Node,
-    tag_string: MD_String8,
-    return: *MD_Node,
+    @doc("The parent whose tags are to be searched.")
+        node: *MD_Node,
+    @doc("The string that the found tag should match.")
+        tag_string: MD_String8,
+    @doc("Controls what is considered a string match.")
+        flags: MD_MatchFlags,
+    @doc("The found node, or a nil node pointer if no node was found.")
+        return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Finds a child of @code 'node' with an index matching @code 'n'. Returns a nil node pointer if no such child is found.")
+@see(MD_NodeFromIndex)
+@see(MD_IndexFromNode)
+@see(MD_TagFromIndex)
 @func MD_ChildFromIndex: {
-    node: *MD_Node,
-    n: int,
-    return: *MD_Node,
+    @doc("The node whose children are to be searched.")
+        node: *MD_Node,
+    @doc("The index that the return value should match.")
+        n: int,
+    @doc("The found node, or a nil node pointer if no such node was found.")
+        return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Finds a tag on @code 'node' with an index matching @code 'n'. Returns a nil node pointer if no such tag is found.")
+@see(MD_NodeFromIndex)
+@see(MD_IndexFromNode)
+@see(MD_ChildFromIndex)
 @func MD_TagFromIndex: {
-    node: *MD_Node,
-    n: int,
-    return: *MD_Node,
+    @doc("The node whose tags are to be searched.")
+        node: *MD_Node,
+    @doc("The index that the return value should match.")
+        n: int,
+    @doc("The found node, or a nil node pointer if no such node was found.")
+        return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Finds the @code 'n'th tag argument of the tag matching @code 'tag_string' on @code 'node', with the matching on @code 'tag_string' being controlled by @code 'flags'. Returns a nil node pointer if no such node was found.")
 @func MD_TagArgFromIndex: {
-    node: *MD_Node,
-    tag_string: MD_String8,
-    n: int,
-    return: *MD_Node,
+    @doc("The node whose tags are to be searched.")
+        node: *MD_Node,
+    @doc("The string that the found tag should match.")
+        tag_string: MD_String8,
+    @doc("Controls what is considered a string match.")
+        flags: MD_MatchFlags,
+    @doc("The index that the return value should match.")
+        n: int,
+    @doc("The found node, or a nil node pointer if no such node was found.")
+        return: *MD_Node,
 };
 
 @send(Nodes)
+@doc("Finds the tag argument with a string matching @code 'arg_string', of the tag matching @code 'tag_string', on @code 'node'. Matching @code 'tag_string' is controlled by @code 'tag_str_flags'. Matching @code 'arg_string' is controlled by @code 'arg_str_flags'. Returns a nil node pointer if no such node was found.")
+@func MD_TagArgFromString: {
+    @doc("The node whose tags are to be searched.")
+        node: *MD_Node,
+    @doc("The string that the found tag should match.")
+        tag_string: MD_String8,
+    @doc("Controls what is considered a string match, when finding the appropriate tag.")
+        tag_str_flags: MD_MatchFlags,
+    @doc("The string that the found tag argument should match.")
+        arg_string: int,
+    @doc("Controls what is considered a string match, when finding the appropriate tag argument.")
+        arg_str_flags: MD_MatchFlags,
+    @doc("The found node, or a nil node pointer if no such node was found.")
+        return: *MD_Node,
+};
+
+@send(Nodes)
+@doc("Returns @code '1' if @code 'node' has a tag with a string matching @code 'tag_string', with the matching rules being controlled by @code 'flags', or @code '0' otherwise.")
+@see(MD_TagFromIndex)
+@see(MD_TagFromString)
 @func MD_NodeHasTag: {
-    node: *MD_Node,
-    tag_string: MD_String8,
-    return: MD_b32,
+    @doc("The node whose tags are to be searched.")
+        node: *MD_Node,
+    @doc("The string that should match a tag in @code 'node'.")
+        tag_string: MD_String8,
+    @doc("Controls what is considered a match, when comparing against @code 'tag_string'.")
+        flags: MD_MatchFlags,
+    @doc("@code '1' if a suitable tag was found, or @code '0' otherwise.")
+        return: MD_b32,
 };
 
 @send(Nodes)
+@doc("Returns the number of children of @code 'node'.")
 @func MD_ChildCountFromNode: {
     node: *MD_Node,
     return: MD_i64,
 };
 
 @send(Nodes)
+@doc("Returns the number of tags on @code 'node'.")
 @func MD_TagCountFromNode: {
     node: *MD_Node,
     return: MD_i64,
 };
 
 @send(Nodes)
-@macro MD_EachNode: { it, first, };
+@doc("A helper macro for building for-loops over entire lists of nodes. Place inside of the parentheses of a for-loop, e.g. @code 'for(MD_EachNode(child, node->first_child))', to use.")
+@macro MD_EachNode:
+{
+    @doc("The name of the iterator node, as it will be available in the for-loop.")
+        it,
+    @doc("The first node to iterate on.")
+        first,
+};
+
+@send(Nodes)
+@doc("A helper macro for building for-loops over entire lists of node references. Place inside of the parentheses of a for-loop, e.g. @code 'for(MD_EachNodeRef(child, node->first_child))', to use.")
+@macro MD_EachNodeRef:
+{
+    @doc("The name of the dereferenced node from the iterator, as it will be available in the for-loop.")
+        it,
+    @doc("The first reference node to iterate on.")
+        first,
+};
 
 ////////////////////////////////
 //~ Error/Warning Helpers
