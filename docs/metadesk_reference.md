@@ -317,7 +317,7 @@ main:
 //~ String-To-Ptr and Ptr-To-Ptr tables
 
 @send(Map)
-@doc("An abstraction over the types of keys used in a MD_Map and the work of hashing those keys, can be constructed from an MD_String8 or an void*.")
+@doc("An abstraction over the types of keys used in a MD_Map and the work of hashing those keys, can be constructed from an MD_String8 or a @code 'void *'.")
 @struct MD_MapKey: {
     @doc("The hash of the key. The hash function used is determined from the key type.")
         hash: MD_u64,
@@ -904,7 +904,7 @@ main:
 };
 
 @send(Strings)
-@doc("Searches @code 'string' for the last @code '/' or @code '\' character, and returns the substring that ends with that character. For usual file naming schemes where folders are encoded with @code '/' or @code '\' characters, this will return the entire path to the passed filename, not including the filename itself.")
+@doc("Searches @code 'string' for the last @code '/' or @code '\\' character, and returns the substring that ends with that character. For usual file naming schemes where folders are encoded with @code '/' or @code '\\' characters, this will return the entire path to the passed filename, not including the filename itself.")
 @see(MD_ExtensionFromPath)
 @see(MD_StringPrefix)
 @see(MD_StringSubstring)
