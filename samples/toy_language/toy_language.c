@@ -111,10 +111,12 @@ result = MakeValue_Number(left.number op right.number);\
                 MD_Node *param = callee.node->first_child;
                 for(MD_Node *arg_first = call->first_child; !MD_NodeIsNil(arg_first); param = param->next)
                 {
-                    MD_Node *arg_last = MD_SeekNodeWithFlags(arg_first, MD_NodeFlag_AfterComma|MD_NodeFlag_AfterSemicolon);
+#if 0
+                    MD_Node *arg_last = MD_SeekNodeWithFlags(arg_first, MD_NodeFlag_IsAfterComma|MD_NodeFlag_IsAfterSemicolon);
                     MD_C_Expr *expr = MD_C_ParseAsExpr(arg_first, arg_last);
                     InsertValueToNamespace(&args_ns, param->string, EvaluateExpr(ns, expr));
                     arg_first = arg_last->next;
+#endif
                 }
                 
                 args_ns.parent = top_level_ns;
@@ -147,9 +149,11 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
     NamespaceNode local_namespace = {0};
     local_namespace.parent = ns;
     
+    // TODO(rjf): fix this, using last instead of opl
+    
     for(MD_Node *first = code->first_child; !MD_NodeIsNil(first);)
     {
-        MD_Node *last = MD_SeekNodeWithFlags(first, MD_NodeFlag_AfterSemicolon|MD_NodeFlag_AfterComma);
+        MD_Node *opl = MD_NodeFromFlags(first->next, MD_NilNode(), MD_NodeFlag_IsAfterSemicolon|MD_NodeFlag_IsAfterComma);
         
         //- rjf: declaration
         if(first == last && first->string.size != 0 && !MD_NodeIsNil(first->first_child))
@@ -177,21 +181,21 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
 int main(int argument_count, char **arguments)
 {
     //- rjf: parse command line
-    MD_CommandLine cmdln = MD_CommandLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
+    MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
     
     //- rjf: parse all input files
     MD_Node *file_list = MD_MakeList();
     for(MD_String8Node *n = cmdln.inputs.first; n; n = n->next)
     {
         MD_ParseResult parse = MD_ParseWholeFile(n->string);
-        MD_PushReference(file_list, parse.node);
+        MD_PushNewReference(file_list, parse.node);
     }
     
     //- rjf: gather top-level symbol map
     NamespaceNode global_ns_node = {0};
     for(MD_EachNode(file_ref, file_list->first_child))
     {
-        MD_Node *file = MD_Deref(file_ref);
+        MD_Node *file = MD_NodeFromReference(file_ref);
         for(MD_EachNode(top_level, file->first_child))
         {
             if(MD_NodeHasTag(top_level, MD_S8Lit("proc"), 0))
@@ -234,7 +238,7 @@ int main(int argument_count, char **arguments)
         
         case ValueKind_Procedure:
         {
-            printf("[proc] %.*s\n", MD_StringExpand(result.node->string));
+            printf("[proc] %.*s\n", MD_S8VArg(result.node->string));
         }break;
     }
     

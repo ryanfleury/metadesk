@@ -1,5 +1,5 @@
 inspecting error information
-MD_CodeLocFromNode, (MD_Node from MD_Error)
+MD_CodeLocFromNode, (MD_Node from MD_Message)
 nil nodes
 tips on generating C
 concat

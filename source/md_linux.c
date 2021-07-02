@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
- #include <sys/syscall.h>
+#include <sys/syscall.h>
 
 // NOTE(mal): To get these constants I need to #define _GNU_SOURCE, which invites non-POSIX behavior I'd rather avoid
 #ifndef O_PATH
@@ -26,22 +26,22 @@ static MD_b32
 MD_LINUX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo *out_info)
 {
     MD_b32 result = 0;
-
+    
     MD_LINUX_FileIter *it = (MD_LINUX_FileIter *)opaque_it;
     if(it->dir == 0)
     {
         it->dir = opendir((char*)path.str);
         it->dir_fd = open((char *)path.str, O_PATH|O_CLOEXEC);
     }
-
+    
     if(it->dir != 0 && it->dir_fd != -1)
     {
         struct dirent *dir_entry = readdir(it->dir);
         if(dir_entry)
         {
-            out_info->filename = MD_PushStringF("%s", dir_entry->d_name);
+            out_info->filename = MD_S8Fmt("%s", dir_entry->d_name);
             out_info->flags = 0;
-
+            
             struct stat st; 
             if(fstatat(it->dir_fd, dir_entry->d_name, &st, AT_NO_AUTOMOUNT|AT_SYMLINK_NOFOLLOW) == 0)
             {
@@ -54,7 +54,7 @@ MD_LINUX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo 
             result = 1;
         }
     }
-
+    
     if(result == 0)
     {
         if(it->dir != 0)
@@ -68,7 +68,7 @@ MD_LINUX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo 
             it->dir_fd = -1;
         }
     }
-
+    
     return result;
 }
 

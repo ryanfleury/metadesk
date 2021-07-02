@@ -7,14 +7,14 @@ int main(int argument_count, char **arguments)
     for(int i = 1; i < argument_count; i += 1)
     {
         MD_Node *root = MD_ParseWholeFile(MD_S8CString(arguments[i])).node;
-        MD_PushReference(list, root);
+        MD_PushNewReference(list, root);
     }
     
     for(MD_EachNodeRef(root, list->first_child))
     {
         for(MD_EachNode(node, root->first_child))
         {
-            MD_OutputTree(stdout, node, 0);
+            MD_DebugOutputTree(stdout, node, 0);
         }
     }
     

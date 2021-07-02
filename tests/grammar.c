@@ -42,8 +42,8 @@ MD_GLOBAL struct
 
 static void TagSquareBracketSetsAsOptional(MD_Node *node, MD_Node *optional_tag)
 {
-    if(node->kind == MD_NodeKind_Label && 
-       (node->flags & MD_NodeFlag_BracketLeft) && (node->flags & MD_NodeFlag_BracketRight))
+    if(node->kind == MD_NodeKind_Main && 
+       (node->flags & MD_NodeFlag_HasBracketLeft) && (node->flags & MD_NodeFlag_HasBracketRight))
     {
         if(node->string.size) // NOTE(mal): Production. Tag belongs to the first child
         {
@@ -66,7 +66,7 @@ static MD_Node * NewChildLabel(MD_Node *parent, MD_String8 label)
 {
     MD_Node *result = 0;
     
-    result = MD_MakeNode(MD_NodeKind_Label, label, label, 0);
+    result = MD_MakeNode(MD_NodeKind_Main, label, label, 0);
     if(parent)
     {
         MD_PushChild(parent, result);
@@ -97,9 +97,9 @@ static void PrintRule(MD_Map *depth_map, MD_Node *rule)
     
     for(MD_EachNode(tag, rule->first_tag))
     {
-        if(!MD_StringMatch(tag->string, MD_S8Lit(OPTIONAL_TAG), 0))
+        if(!MD_S8Match(tag->string, MD_S8Lit(OPTIONAL_TAG), 0))
         {
-            printf("@%.*s ", MD_StringExpand(tag->string));
+            printf("@%.*s ", MD_S8VArg(tag->string));
         }
     }
     
@@ -127,7 +127,7 @@ static void PrintRule(MD_Map *depth_map, MD_Node *rule)
     else
     {
         MD_Assert(rule->string.size > 0);
-        printf("%.*s", MD_StringExpand(rule->string));
+        printf("%.*s", MD_S8VArg(rule->string));
     }
     
     if(is_literal_char)
@@ -150,7 +150,7 @@ typedef enum OperationFlags
 
 static void Extend(MD_String8 *s, char c)
 {
-    *s = MD_PushStringF("%.*s%c", MD_StringExpand(*s), c);
+    *s = MD_S8Fmt("%.*s%c", MD_S8VArg(*s), c);
 }
 
 static void ExpandProduction(MD_Node *production, MD_String8List *out, MD_Node *cur_node, 
@@ -181,31 +181,31 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
             MD_Node *node_to_tag = 0;
             OperationFlags old_op_flags = op_flags;
             for(MD_EachNode(tag_node, rule_element->first_tag)){
-                if(MD_StringMatch(tag_node->string, MD_S8Lit("child"), 0))
+                if(MD_S8Match(tag_node->string, MD_S8Lit("child"), 0))
                 {
                     cur_node = NewChild(cur_node);
                     op_flags &= ~OperationFlag_Tag; // NOTE(mal): Tag parameters are not tags
                 }
-                else if(MD_StringMatch(tag_node->string, MD_S8Lit("sibling"), 0))
+                else if(MD_S8Match(tag_node->string, MD_S8Lit("sibling"), 0))
                 {
                     cur_node = NewChild(cur_node->parent);
                 }
-                else if(MD_StringMatch(tag_node->string, MD_S8Lit("fill"), 0))
+                else if(MD_S8Match(tag_node->string, MD_S8Lit("fill"), 0))
                 {
                     op_flags |= OperationFlag_Fill;
                 }
-                else if(MD_StringMatch(tag_node->string, MD_S8Lit("tag"), 0))
+                else if(MD_S8Match(tag_node->string, MD_S8Lit("tag"), 0))
                 {
                     op_flags |= OperationFlag_Tag;
                     node_to_tag = cur_node;
                     cur_node = NewChild(0);
                     cur_node->kind = MD_NodeKind_Tag;
                 }
-                else if(MD_StringMatch(tag_node->string, MD_S8Lit("markup"), 0))
+                else if(MD_S8Match(tag_node->string, MD_S8Lit("markup"), 0))
                 {
                     op_flags |= OperationFlag_Markup;
                 }
-                else if(MD_StringMatch(tag_node->string, MD_S8Lit(OPTIONAL_TAG), 0))
+                else if(MD_S8Match(tag_node->string, MD_S8Lit(OPTIONAL_TAG), 0))
                 {
                 }
                 else
@@ -238,12 +238,12 @@ static void ExpandRule(MD_Node *rule, MD_String8List *out_strings, MD_Node *cur_
                         c = rule_element->string.str[0];
                     }
                     
-                    MD_String8 character = MD_PushStringF("%c", c);
-                    MD_PushStringToList(out_strings, character);
+                    MD_String8 character = MD_S8Fmt("%c", c);
+                    MD_S8ListPush(out_strings, character);
                     
                     if(op_flags & OperationFlag_Fill)
                     {
-                        Extend(&cur_node->whole_string, c);
+                        Extend(&cur_node->raw_string, c);
                         if(!(op_flags & OperationFlag_Markup))
                         {
                             Extend(&cur_node->string, c);
@@ -360,11 +360,11 @@ static MD_b32 EqualList(MD_Node *a, MD_Node *b)
 static MD_b32 EqualTrees(MD_Node *a, MD_Node *b)
 {
     MD_b32 result = (a->kind == b->kind && 
-                     MD_StringMatch(a->string, b->string, 0) && 
-                     MD_StringMatch(a->whole_string, b->whole_string, 0));
+                     MD_S8Match(a->string, b->string, 0) && 
+                     MD_S8Match(a->raw_string, b->raw_string, 0));
     result &= EqualList(a->first_tag, b->first_tag);
     result &= EqualList(a->first_child, b->first_child);
-    result &= MD_StringMatch(a->comment_before, b->comment_before, 0);
+    result &= MD_S8Match(a->prev_comment, b->prev_comment, 0);
     return result;
 }
 
@@ -475,16 +475,16 @@ FirstBadNodeAtPointer(MD_Node *node)
 {
     MD_Node *result = 0;
     MD_Node *root = MD_RootFromNode(node);
-    MD_u8 *node_at = root->whole_string.str + node->offset;
+    MD_u8 *node_at = root->raw_string.str + node->offset;
     switch(node->kind){
         case MD_NodeKind_File:
         {
         } break;
-        case MD_NodeKind_Label:
+        case MD_NodeKind_Main:
         {
-            if(node_at != node->whole_string.str)
+            if(node_at != node->raw_string.str)
             {
-                if(node->whole_string.size)
+                if(node->raw_string.size)
                 {
                     result = node;
                 }
@@ -505,7 +505,7 @@ FirstBadNodeAtPointer(MD_Node *node)
         case MD_NodeKind_List:
         case MD_NodeKind_Tag:
         {
-            if(node_at != node->whole_string.str)
+            if(node_at != node->raw_string.str)
             {
                 result = node;
                 goto end;
@@ -562,7 +562,7 @@ int main(int argument_count, char **arguments)
             }
             else
             {
-                if(MD_StringMatch(rule_element->string, MD_S8Lit("|"), 0) && 
+                if(MD_S8Match(rule_element->string, MD_S8Lit("|"), 0) && 
                    !(rule_element->flags & MD_NodeFlag_StringLiteral))
                 {
                     rule = NewChild(production);
@@ -607,7 +607,7 @@ int main(int argument_count, char **arguments)
         MD_Node *non_terminal_production = FindNonTerminalProduction(production, &visited_productions);
         if(non_terminal_production)
         {
-            fprintf(stderr, "Error: Non-terminal production \"%.*s\"\n", MD_StringExpand(non_terminal_production->string));
+            fprintf(stderr, "Error: Non-terminal production \"%.*s\"\n", MD_S8VArg(non_terminal_production->string));
             goto error;
         }
     }
@@ -618,7 +618,7 @@ int main(int argument_count, char **arguments)
         MD_MapSlot *slot = MD_MapLookup(&visited_productions, MD_MapKeyStr(production->string));
         if(!slot)
         {
-            fprintf(stderr, "Warning: Unreachable production \"%.*s\"\n", MD_StringExpand(production->string));
+            fprintf(stderr, "Warning: Unreachable production \"%.*s\"\n", MD_S8VArg(production->string));
         }
     }
     
@@ -702,7 +702,7 @@ int main(int argument_count, char **arguments)
 #if DEBUG_RULES_AFTER_TRANSFORMATIONS
     for(MD_EachNode(production, productions->first_child))
     {
-        printf("%.*s (min %lu): \n", MD_StringExpand(production->string), GET_DEPTH(production));
+        printf("%.*s (min %lu): \n", MD_S8VArg(production->string), GET_DEPTH(production));
         for(MD_EachNode(rule, production->first_child))
         {
             printf("    ");
@@ -732,7 +732,7 @@ int main(int argument_count, char **arguments)
         MD_String8List string_list = {0};
         // NOTE(mal): Generate a random MD file
         ExpandProduction(file_production_node, &string_list, test.expected_output, 0, depth_map, max_production_depth, 0);
-        test.input = MD_JoinStringList(string_list, MD_S8Lit(""));
+        test.input = MD_S8ListJoin(string_list, MD_S8Lit(""));
         
         Test *prev = 0;
         for(Test *cur = first_test; cur; cur = cur->next)
@@ -766,19 +766,19 @@ int main(int argument_count, char **arguments)
     for(Test *test = first_test; test; test = test->next)
     {
         MD_Node *file_node = MD_ParseWholeString(MD_S8Lit(""), test->input).node;
-        file_node->string = file_node->whole_string = (MD_String8){0};
+        file_node->string = file_node->raw_string = (MD_String8){0};
         
 #if DEBUG_PRINT_GENERATED_TESTS
-        printf("> %.*s <\n", MD_StringExpand(EscapeNewlines(test->input)));
+        printf("> %.*s <\n", MD_S8VArg(EscapeNewlines(test->input)));
 #endif
         if(!EqualTrees(file_node, test->expected_output))
         {
             printf("\nFailed test %d\n", i_test);
-            printf("> %.*s <\n", MD_StringExpand(test->input));
+            printf("> %.*s <\n", MD_S8VArg(test->input));
             printf("MD:\n");
-            MD_OutputTree(stdout, file_node, 0);
+            MD_DebugOutputTree(stdout, file_node, 0);
             printf("Grammar:\n");
-            MD_OutputTree(stdout, test->expected_output, 0); printf("\n");
+            MD_DebugOutputTree(stdout, test->expected_output, 0); printf("\n");
             return -1;
         }
         
@@ -786,11 +786,11 @@ int main(int argument_count, char **arguments)
         if(bad_at_node)
         {
             printf("\nBad node->at on test %d\n", i_test);
-            printf("> %.*s <\n", MD_StringExpand(test->input));
+            printf("> %.*s <\n", MD_S8VArg(test->input));
             printf("MD:\n");
-            MD_OutputTree(stdout, file_node, 0);
+            MD_DebugOutputTree(stdout, file_node, 0);
             printf("offending_node");
-            MD_OutputTree(stdout, bad_at_node, 0);
+            MD_DebugOutputTree(stdout, bad_at_node, 0);
             return -1;
         }
         ++i_test;

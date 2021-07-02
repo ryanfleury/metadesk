@@ -1,22 +1,22 @@
 Node {
-  Kind: Label,
+  Kind: Main,
   Flags: 0000110000000001000000000000000000000000000000000000000000000000,
-  Flag Names: BraceLeft, BraceRight, Identifier,
+  Flag Names: HasBraceLeft, HasBraceRight, Identifier,
   String: foo,
   Whole String: foo,
   Tag: @struct
   Node {
-    Kind: Label,
+    Kind: Main,
     Flags: 1100000010000001000000000000000000000000000000000000000000000000,
-    Flag Names: ParenLeft, ParenRight, BeforeComma, Identifier,
+    Flag Names: HasParenLeft, HasParenRight, IsBeforeComma, Identifier,
     String: x,
     Whole String: x,
     Node {
-      Kind: Label,
+      Kind: Main,
       Flags: 0011000000000000000000000000000000000000000000000000000000000000,
-      Flag Names: BracketLeft, BracketRight,
+      Flag Names: HasBracketLeft, HasBracketRight,
       Node {
-        Kind: Label,
+        Kind: Main,
         Flags: 0000000000000001000000000000000000000000000000000000000000000000,
         Flag Names: Identifier,
         String: MAX_PATH,
@@ -24,7 +24,7 @@ Node {
       }
     }
     Node {
-      Kind: Label,
+      Kind: Main,
       Flags: 0000000000000001000000000000000000000000000000000000000000000000,
       Flag Names: Identifier,
       String: char,
@@ -34,21 +34,21 @@ Node {
 }
 
 Node {
-  Kind: Label,
+  Kind: Main,
   Flags: 0000110000000001000000000000000000000000000000000000000000000000,
-  Flag Names: BraceLeft, BraceRight, Identifier,
+  Flag Names: HasBraceLeft, HasBraceRight, Identifier,
   String: bar,
   Whole String: bar,
   Tag: @struct
   Tag: @test_tag
   Node {
-    Kind: Label,
+    Kind: Main,
     Flags: 0000000000000001000000000000000000000000000000000000000000000000,
     Flag Names: Identifier,
     String: y,
     Whole String: y,
     Node {
-      Kind: Label,
+      Kind: Main,
       Flags: 0000000000000001000000000000000000000000000000000000000000000000,
       Flag Names: Identifier,
       String: float,
@@ -56,13 +56,13 @@ Node {
     }
   }
   Node {
-    Kind: Label,
+    Kind: Main,
     Flags: 0000000000000001000000000000000000000000000000000000000000000000,
     Flag Names: Identifier,
     String: z,
     Whole String: z,
     Node {
-      Kind: Label,
+      Kind: Main,
       Flags: 0000000000000001000000000000000000000000000000000000000000000000,
       Flag Names: Identifier,
       String: i32,

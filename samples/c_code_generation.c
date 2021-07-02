@@ -22,7 +22,7 @@ int main(int argument_count, char **arguments)
     MD_Node *code = MD_ParseWholeString(MD_S8Lit("Generated Test Code"), example_code).node;
     
     printf("Source Metadesk Code:\n");
-    printf("%.*s\n\n", MD_StringExpand(example_code));
+    printf("%.*s\n\n", MD_S8VArg(example_code));
     
     printf("Generated C Code:\n");
     for(MD_EachNode(node, code->first_child))

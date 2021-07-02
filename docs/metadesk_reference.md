@@ -96,9 +96,9 @@ main:
 
 @send(Strings)
 @doc("This type is implemented as a singly linked list with an MD_String8 at each node.")
-@see(MD_PushStringToList)
-@see(MD_SplitString)
-@see(MD_JoinStringList)
+@see(MD_S8ListPush)
+@see(MD_S8Split)
+@see(MD_S8ListJoin)
 @struct MD_String8List: {
     @doc("The number of nodes in the list.")
         node_count: MD_u64,
@@ -156,9 +156,9 @@ main:
 
 @send(Strings)
 @doc("This type is used to report the results of consuming one character from a unicode encoded stream.")
-@see(MD_CodepointFromUtf8)
-@see(MD_CodepointFromUtf16)
-@struct MD_UnicodeConsume: {
+@see(MD_DecodeCodepointFromUtf8)
+@see(MD_DecodeCodepointFromUtf16)
+@struct MD_DecodedCodepoint: {
     @doc("The codepoint of the consumed character.")
         codepoint: MD_u32,
     
@@ -167,8 +167,8 @@ main:
 };
 
 @send(Strings)
-@doc("These constants control how MD_StyledStringFromString forms strings.")
-@enum MD_WordStyle: {
+@doc("These constants control how MD_S8Stylize forms strings.")
+@enum MD_IdentifierStyle: {
     @doc("Also known as @code 'PascalCase'. Creates identifiers that look like: @code `ExampleIdentifier`")
         UpperCamelCase,
     @doc("Creates identifiers that look like: @code `exampleIdentifier`")
@@ -284,14 +284,14 @@ main:
     @doc("The string of the token labeling this node, after processing. Processing removing quote marks that delimits string literals and character literals")
         string: MD_String8,
     @doc("The raw string of the token labeling this node.")
-        whole_string: MD_String8,
+        raw_string: MD_String8,
     @doc("A hash of the string field using the metadesk built in hash function.")
         string_hash: MD_u64,
     
     @doc("The raw string of the comment token before this node, if there is one.")
-        comment_before: MD_String8,
+        prev_comment: MD_String8,
     @doc("The raw string of the comment token after this node, if there is one.")
-        comment_after: MD_String8,
+        next_comment: MD_String8,
     
     @doc("The byte-offset into the string from which this node was parsed. Used for producing data for an MD_CodeLoc.")
         offset: MD_u64,
@@ -404,7 +404,7 @@ main:
     @doc("The contents of this token, not including any boundary characters.")
         string: MD_String8;
     @doc("The full contents of the string used to form this token, including all boundary characters.")
-        outer_string: MD_String8;
+        raw_string: MD_String8;
 };
 
 ////////////////////////////////
@@ -425,9 +425,9 @@ main:
 
 @send(Parsing)
 @doc("This type encodes information about messages.")
-@struct MD_Error: {
+@struct MD_Message: {
     @doc("A pointer to the next error, in a chain of errors. This is @code '0' when it is the last error in a chain.")
-        next: *MD_Error,
+        next: *MD_Message,
     @doc("The node that this message refers to.")
         node: *MD_Node,
     @doc("This message's kind.")
@@ -438,22 +438,22 @@ main:
 
 @send(Parsing)
 @doc("This type is for a chain of error messages, with data about the entire list.")
-@struct MD_ErrorList:
+@struct MD_MessageList:
 {
     @doc("""The "worst" message kind in this chain, where a message kind is "worse" than another if it has a higher numeric value (if it is defined later in MD_MessageKind) than another.""")
-        max_error_kind: MD_MessageKind;
+        max_message_kind: MD_MessageKind;
     @doc("The number of errors in this list.")
         node_count: MD_u64;
     @doc("The first error in the list.")
-        first: *MD_Error;
+        first: *MD_Message;
     @doc("The last error in the list.")
-        last: *MD_Error;
+        last: *MD_Message;
 }
 
 @send(Parsing)
 @struct MD_ParseResult: {
     node: *MD_Node;
-    first_error: *MD_Error;
+    first_error: *MD_Message;
     bytes_parse: MD_u64;
 };
 
@@ -482,9 +482,9 @@ main:
     @doc("The last node, in a chain, produced by the parser, when the parsing call is capable of returning many nodes.")
         last_node: *MD_Node;
     @doc("The number of bytes processed by the parser. Any bytes after this number, in the string that was passed to the parser, were not considered.")
-        bytes_parsed: MD_u64;
+        string_advance: MD_u64;
     @doc("The list of errors produced by the parser when parsing the provided string.")
-        errors: MD_ErrorList;
+        errors: MD_MessageList;
 }
 
 ////////////////////////////////
@@ -492,12 +492,12 @@ main:
 
 @send(CommandLineHelper)
 @doc("A type used to encode parsed command line options, that can have values associated with them.")
-@see(MD_CommandLine)
-@see(MD_CommandLineFromOptions)
-@struct MD_CommandLineOption:
+@see(MD_CmdLine)
+@see(MD_MakeCmdLineFromOptions)
+@struct MD_CmdLineOption:
 {
     @doc("A pointer to the next option, if this is within a chain of options. Will be @code '0' if this is the last option in a chain.")
-        next: *MD_CommandLineOption;
+        next: *MD_CmdLineOption;
     @doc("The name of this option.")
         name: MD_String8;
     @doc("The values associated with this option.")
@@ -506,17 +506,17 @@ main:
 
 @send(CommandLineHelper)
 @doc("The type encoding a fully parsed set of command line options.")
-@see(MD_CommandLineFromOptions)
-@struct MD_CommandLine:
+@see(MD_MakeCmdLineFromOptions)
+@struct MD_CmdLine:
 {
     @doc("The list of all command line arguments, as an unstructured list of strings.")
         arguments: MD_String8List;
     @doc("The list of arguments that were not parsed as structured options (which are a name, with an optional set of values).")
-        inputs: MD_String8List;
+        raw_arguments: MD_String8List;
     @doc("The first option that was parsed, forming the head of a chain of options.")
-        first_option: *MD_CommandLineOption;
+        first_option: *MD_CmdLineOption;
     @doc("The last option that was parsed.")
-        last_option: *MD_CommandLineOption;
+        last_option: *MD_CmdLineOption;
 };
 
 ////////////////////////////////
@@ -758,7 +758,7 @@ main:
 
 @send(Characters)
 @doc("Return a @code '/' if @code '\\' is passed in, otherwise just returns the passed character.")
-@func MD_CorrectSlash: {
+@func MD_CharToForwardSlash: {
     c: MD_u8,
     return: MD_u8,
 };
@@ -791,14 +791,14 @@ main:
 @send(Strings)
 @doc("Constructs an MD_String8 from two pointers into the same buffer, corresponding to the beginning and one past the last byte of a string.")
 @func MD_S8Range: {
-    str: *MD_u8,
+    first: *MD_u8,
     opl: *MD_u8,
     return: MD_String8,
 };
 
 @send(Strings)
 @doc("Returns an MD_String8 encoding a sub-range of the passed MD_String8.")
-@func MD_StringSubstring: {
+@func MD_S8Substring: {
     @doc("The string for which the substring is returned.")
         str: MD_String8,
     @doc("The offset, from the passed string's base, of the first character of the returned substring.")
@@ -810,7 +810,7 @@ main:
 
 @send(Strings)
 @doc("Returns a sub-range of the passed MD_String8, skipping the first @code 'min' bytes.")
-@func MD_StringSkip: {
+@func MD_S8Skip: {
     @doc("The string for which the substring is returned.")
         str: MD_String8,
     @doc("The new minimum offset, relative to the base of @code 'str'. Also the number of bytes to skip at the beginning of @code 'str'.")
@@ -820,7 +820,7 @@ main:
 
 @send(Strings)
 @doc("Returns a sub-range of the passed MD_String8, chopping off the last @code 'min' bytes.")
-@func MD_StringChop: {
+@func MD_S8Chop: {
     @doc("The string for which the substring is returned.")
         str: MD_String8,
     @doc("The number of bytes to chop off at the end of @code 'str'.")
@@ -830,7 +830,7 @@ main:
 
 @send(Strings)
 @doc("Returns a prefix of the passed MD_String8.")
-@func MD_StringPrefix: {
+@func MD_S8Prefix: {
     @doc("The string for which the substring is returned.")
         str: MD_String8,
     @doc("The desired size of the returned prefix.")
@@ -840,7 +840,7 @@ main:
 
 @send(Strings)
 @doc("Returns a suffix of the passed MD_String8.")
-@func MD_StringSuffix: {
+@func MD_S8Suffix: {
     @doc("The string for which the substring is returned.")
         str: MD_String8,
     @doc("The desired size of the returned suffix.")
@@ -850,7 +850,7 @@ main:
 
 @send(Strings)
 @doc("Compares the passed strings @code 'a' and @code 'b', and determines whether or not the two strings match. The passed MD_MatchFlags argument will modify the string matching algorithm; for example, allowing case insensitivity. Return @code '1' if the strings are found to match, and @code '0' otherwise.")
-@func MD_StringMatch: {
+@func MD_S8Match: {
     @doc("The first string to compare.")
         a: MD_String8,
     @doc("The second string to compare.")
@@ -863,7 +863,7 @@ main:
 
 @send(Strings)
 @doc("Searches @code 'str' for an occurrence of @code 'substring'. The passed @code 'flags' can be used to modify the matching rules. Returns the position at which the search ended; if the return value is equivalent to @code 'str.size', then the substring was not found.")
-@func MD_FindSubstring: {
+@func MD_S8FindSubstring: {
     @doc("The string to search within for the substring.")
         str: MD_String8,
     @doc("The 'needle' string to find within @code 'str'.")
@@ -878,64 +878,64 @@ main:
 
 @send(Strings)
 @doc("Searches @code 'string' for the last @code '.' character occurring in the string, and chops the @code '.' and anything following after it off of the returned string.")
-@see(MD_StringChop)
-@func MD_ChopExtension: {
+@see(MD_S8Chop)
+@func MD_PathChopLastPeriod: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
 @doc("Searches @code 'string' for the last @code '/' or @code '\' character occurring in the string, and skips it and anything before it in the returned string.")
-@see(MD_StringSkip)
-@func MD_SkipFolder: {
+@see(MD_S8Skip)
+@func MD_PathSkipLastSlash: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
 @doc("Searches @code 'string' for the last @code '.' character, and returns the substring starting at the character after it, to the end of the string. For usual file naming schemes where the extension of a file is encoded by any characters following the last @code '.' of a filename, this will return the extension.")
-@see(MD_FolderFromPath)
-@see(MD_StringSuffix)
-@see(MD_StringSubstring)
-@see(MD_StringChop)
-@func MD_ExtensionFromPath: {
+@see(MD_PathChopLastSlash)
+@see(MD_S8Suffix)
+@see(MD_S8Substring)
+@see(MD_S8Chop)
+@func MD_PathSkipLastPeriod: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
 @doc("Searches @code 'string' for the last @code '/' or @code '\\' character, and returns the substring that ends with that character. For usual file naming schemes where folders are encoded with @code '/' or @code '\\' characters, this will return the entire path to the passed filename, not including the filename itself.")
-@see(MD_ExtensionFromPath)
-@see(MD_StringPrefix)
-@see(MD_StringSubstring)
-@see(MD_StringSkip)
-@func MD_FolderFromPath: {
+@see(MD_PathSkipLastPeriod)
+@see(MD_S8Prefix)
+@see(MD_S8Substring)
+@see(MD_S8Skip)
+@func MD_PathChopLastSlash: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
 @doc("Copies @code 'string' by allocating an entirely new portion of memory and copying the passed string's memory to the newly allocated memory. Returns the copy of @code 'string' using the new memory.")
-@func MD_PushStringCopy: {
+@func MD_S8Copy: {
     string: MD_String8,
     return: MD_String8,
 };
 
 @send(Strings)
-@doc("Allocates a new string, with the contents of the string being determined by a mostly-standard C formatting string passed in @code 'fmt', with a variable-argument list being passed in @code 'args'. Used when composing variable argument lists at multiple levels, and when you need to pass a @code 'va_list'. The format string is non-standard because it allows @code '%S' as a specifier for MD_String8 arguments. Before this call, it is expected that you call @code 'va_start' on the passed @code 'va_list', and also that you call @code 'va_end' after the function returns. If you just want to pass variable arguments yourself (instead of a @code 'va_list'), then see MD_PushStringF.")
-@see(MD_PushStringF)
-@see(MD_PushStringCopy)
-@func MD_PushStringFV: {
+@doc("Allocates a new string, with the contents of the string being determined by a mostly-standard C formatting string passed in @code 'fmt', with a variable-argument list being passed in @code 'args'. Used when composing variable argument lists at multiple levels, and when you need to pass a @code 'va_list'. The format string is non-standard because it allows @code '%S' as a specifier for MD_String8 arguments. Before this call, it is expected that you call @code 'va_start' on the passed @code 'va_list', and also that you call @code 'va_end' after the function returns. If you just want to pass variable arguments yourself (instead of a @code 'va_list'), then see MD_S8Fmt.")
+@see(MD_S8Fmt)
+@see(MD_S8Copy)
+@func MD_S8FmtV: {
     fmt: *char,
     args: va_list,
     return: MD_String8,
 };
 
 @send(Strings)
-@doc("Allocates a new string, with the contents of the string being determined by a mostly-standard C formatting string passed in @code 'fmt', with variable arguments fitting the expected ones in @code 'fmt' being passed in after. The format string is non-standard because it allows @code '%S' as a specifier for MD_String8 arguments. If you are composing this with your own variable-arguments call, use MD_PushStringFV instead.")
-@see(MD_PushStringFV)
-@see(MD_PushStringCopy)
-@func MD_PushStringF: {
+@doc("Allocates a new string, with the contents of the string being determined by a mostly-standard C formatting string passed in @code 'fmt', with variable arguments fitting the expected ones in @code 'fmt' being passed in after. The format string is non-standard because it allows @code '%S' as a specifier for MD_String8 arguments. If you are composing this with your own variable-arguments call, use MD_S8FmtV instead.")
+@see(MD_S8FmtV)
+@see(MD_S8Copy)
+@func MD_S8Fmt: {
     fmt: *char,
     "...",
     return: MD_String8,
@@ -944,14 +944,14 @@ main:
 @send(Strings)
 @doc("This is a helper macro that is normally used with passing an MD_String8 into a @code 'printf' like function, usually used in combination with the @code '%.*s' format specifier. Metadesk uses length-based strings, not null-terminated (like many C functions expect), so this is often convenient when interacting with C-like APIs. This will expand to passing the size of the passed string first, a comma, and the pointer to the base of the string being passed immediately after.")
 @see(MD_String8)
-@macro MD_StringExpand: { s, }
+@macro MD_S8VArg: { s, }
 
 @send(Strings)
 @doc("Pushes a new MD_String8 to an MD_String8List by allocating a new MD_String8Node, filling it with @code 'string', and modifying the existing list elements in @code 'list' to end with the newly allocated node.")
 @see(MD_String8List)
 @see(MD_String8Node)
 @see(MD_String8)
-@func MD_PushStringToList: {
+@func MD_S8ListPush: {
     list: *MD_String8List,
     string: MD_String8,
 };
@@ -961,8 +961,8 @@ main:
 @see(MD_String8List)
 @see(MD_String8Node)
 @see(MD_String8)
-@see(MD_PushStringToList)
-@func MD_PushStringListToList: {
+@see(MD_S8ListPush)
+@func MD_S8ListConcat: {
     list: *MD_String8List,
     to_push: *MD_String8List,
 };
@@ -972,8 +972,8 @@ main:
 @see(MD_String8)
 @see(MD_String8List)
 @see(MD_String8Node)
-@see(MD_JoinStringList)
-@func MD_SplitString: {
+@see(MD_S8ListJoin)
+@func MD_S8Split: {
     @doc("The string to search for splitting strings, and to subdivide.")
         string: MD_String8,
     @doc("The number of splitting strings to search for.")
@@ -989,8 +989,8 @@ main:
 @see(MD_String8)
 @see(MD_String8List)
 @see(MD_String8Node)
-@see(MD_SplitString)
-@func MD_JoinStringList: {
+@see(MD_S8Split)
+@func MD_S8ListJoin: {
     list: MD_String8List,
     separator: MD_String8,
     return: MD_String8,
@@ -1003,9 +1003,9 @@ main:
 };
 
 @send(Strings)
-@func MD_StyledStringFromString: {
+@func MD_S8Stylize: {
     string: MD_String8,
-    word_style: MD_WordStyle,
+    word_style: MD_IdentifierStyle,
     separator: MD_String8,
     return: MD_String8
 };
@@ -1056,17 +1056,17 @@ main:
 //~ Unicode Conversions
 
 @send(Strings)
-@func MD_CodepointFromUtf8: {
+@func MD_DecodeCodepointFromUtf8: {
     str: MD_u8,
     max: MD_u64,
-    return: MD_UnicodeConsume,
+    return: MD_DecodedCodepoint,
 };
 
 @send(Strings)
-@func MD_CodepointFromUtf16: {
+@func MD_DecodeCodepointFromUtf16: {
     str: *MD_u16,
     max: MD_u64,
-    return: MD_UnicodeConsume,
+    return: MD_DecodedCodepoint,
 };
 
 @send(Strings)
@@ -1111,13 +1111,13 @@ main:
 //~ Map Table Data Structure
 
 @send(Map)
-@func MD_HashString: {
+@func MD_HashStr: {
     string: MD_String8,
     return: MD_u64,
 };
 
 @send(Map)
-@func MD_HashPointer: {
+@func MD_HashPtr: {
     p: *void,
 };
 
@@ -1199,8 +1199,8 @@ MD_LexAdvanceFromSkips:
 }
 
 @send(Parsing) @func
-@doc("Allocates and initializes an MD_Error associated with a particular MD_Node.")
-@see(MD_Error)
+@doc("Allocates and initializes an MD_Message associated with a particular MD_Node.")
+@see(MD_Message)
 MD_MakeNodeError:
 {
     @doc("The node associated with the message.")
@@ -1209,12 +1209,12 @@ MD_MakeNodeError:
         kind: MD_MessageKind;
     @doc("The string for the message.")
         str: MD_String8;
-    return: *MD_Error
+    return: *MD_Message
 }
 
 @send(Parsing) @func
-@doc("Allocates and initializes an MD_Error associated with a particular MD_Token.")
-@see(MD_Error)
+@doc("Allocates and initializes an MD_Message associated with a particular MD_Token.")
+@see(MD_Message)
 MD_MakeTokenError:
 {
     @doc("The entire string that is being parsed. The parser used a substring of this string to form @code 'token'.")
@@ -1225,27 +1225,27 @@ MD_MakeTokenError:
         kind: MD_MessageKind;
     @doc("The string for the message.")
         str: MD_String8;
-    return: *MD_Error;
+    return: *MD_Message;
 }
 
 @send(Parsing) @func
-@doc("Pushes a constructed MD_Error into an MD_ErrorList.")
-@see(MD_Error)
-@see(MD_ErrorList)
-MD_PushErrorToList:
+@doc("Pushes a constructed MD_Message into an MD_MessageList.")
+@see(MD_Message)
+@see(MD_MessageList)
+MD_MessageListPush:
 {
-    list: *MD_ErrorList;
-    error: *MD_Error;
+    list: *MD_MessageList;
+    error: *MD_Message;
 }
 
 @send(Parsing) @func
-@see(MD_Error)
-@see(MD_ErrorList)
+@see(MD_Message)
+@see(MD_MessageList)
 @doc("Pushes the contents of @code 'to_push' into @code 'list'. Zeroes @code 'to_push'; the memory used in forming @code 'to_push' will be used in @code 'list', and nothing will be copied.")
-MD_PushErrorListToList:
+MD_MessageListConcat:
 {
-    list: *MD_ErrorList;
-    to_push: *MD_ErrorList;
+    list: *MD_MessageList;
+    to_push: *MD_MessageList;
 }
 
 @send(Parsing) @func
@@ -1321,7 +1321,7 @@ MD_ParseWholeFile:
 @send(CodeLoc)
 @doc("Calculates a position in a source code file in filename/line/column coordinates, provided a filename, a base pointer for the file's contents, and an offset into the file's contents.")
 @see(MD_CodeLocFromNode)
-@func MD_CodeLocFromFileBaseOffset:
+@func MD_CodeLocFromFileOffset:
 {
     filename: MD_String8,
     base: *MD_u8,
@@ -1331,7 +1331,7 @@ MD_ParseWholeFile:
 
 @send(CodeLoc)
 @doc("Calculates a position in a source code file in filename/line/column coordinates, provided a parsed MD_Node.")
-@see(MD_CodeLocFromFileBaseOffset)
+@see(MD_CodeLocFromFileOffset)
 @func MD_CodeLocFromNode:
 {
     node: *MD_Node,
@@ -1372,7 +1372,7 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Creates a new reference node, pointing at @code 'target', and links it up as a child of @code 'list'.")
-@func MD_PushReference: {
+@func MD_PushNewReference: {
     list: *MD_Node,
     target: *MD_Node,
     return: *MD_Node,
@@ -1384,7 +1384,7 @@ MD_ParseWholeFile:
 @send(Nodes)
 @doc("Finds a node in the range defined by @code 'first' and @code 'one_past_last', with the string matching @code 'string' in accordance with @code 'flags', or returns a nil node pointer if it is not found.")
 @see(MD_NodeFromIndex)
-@see(MD_StringMatch)
+@see(MD_S8Match)
 @func MD_NodeFromString: {
     @doc("The first node in the range to search.")
         first: *MD_Node,
@@ -1573,10 +1573,10 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Prints a message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
-@see(MD_MessageF)
-@see(MD_NodeMessage)
-@see(MD_NodeMessageF)
-@func MD_Message: {
+@see(MD_PrintMessageFmt)
+@see(MD_PrintNodeMessage)
+@see(MD_PrintNodeMessageFmt)
+@func MD_PrintMessage: {
     @doc("The file to print the message to.")
         out: *FILE,
     @doc("The source code location for which the message is intended.")
@@ -1589,10 +1589,10 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Prints a C format string message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
-@see(MD_Message)
-@see(MD_NodeMessage)
-@see(MD_NodeMessageF)
-@func MD_MessageF: {
+@see(MD_PrintMessage)
+@see(MD_PrintNodeMessage)
+@see(MD_PrintNodeMessageFmt)
+@func MD_PrintMessageFmt: {
     @doc("The file to print the message to.")
         out: *FILE,
     @doc("The source code location for which the message is intended.")
@@ -1605,11 +1605,11 @@ MD_ParseWholeFile:
 };
 
 @send(Nodes)
-@see(MD_Message)
-@see(MD_MessageF)
-@see(MD_NodeMessageF)
+@see(MD_PrintMessage)
+@see(MD_PrintMessageFmt)
+@see(MD_PrintNodeMessageFmt)
 @doc("Prints a message to @code 'out', corresponding with the source code location of @code 'node'.")
-@func MD_NodeMessage: {
+@func MD_PrintNodeMessage: {
     @doc("The file to print the message to.")
         out: *FILE,
     @doc("The node for which the message is intended.")
@@ -1622,10 +1622,10 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Prints a C format string message to @code 'out', corresponding with the source code location of @code 'node'.")
-@see(MD_Message)
-@see(MD_MessageF)
-@see(MD_NodeMessage)
-@func MD_NodeMessageF: {
+@see(MD_PrintMessage)
+@see(MD_PrintMessageFmt)
+@see(MD_PrintNodeMessage)
+@func MD_PrintNodeMessageFmt: {
     @doc("The file to print the message to.")
         out: *FILE,
     @doc("The node for which the message is intended.")
@@ -1642,7 +1642,7 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Compares the passed MD_Node nodes @code 'a' and @code 'b', and determines whether or not they match. @code 'flags' determines the rules used in the matching algorithm, including tag-sensitivity and case-sensitivity.")
-@see(MD_StringMatch)
+@see(MD_S8Match)
 @see(MD_MatchFlags)
 @func MD_NodeMatch: {
     a: *MD_Node,
@@ -1665,7 +1665,7 @@ MD_ParseWholeFile:
 
 @send(Output)
 @doc("Outputs a textual representation of the tree with @code 'node' as its root to @code 'file'.")
-@func MD_OutputTree: {
+@func MD_DebugOutputTree: {
     file: *FILE,
     node: *MD_Node,
 };
@@ -1675,7 +1675,7 @@ MD_ParseWholeFile:
 
 @send(CommandLineHelper)
 @doc("Converts a traditional C-style @code 'argc, argv' pair into an MD_String8List.")
-@see(MD_CommandLineFromOptions)
+@see(MD_MakeCmdLineFromOptions)
 @func MD_StringListFromArgCV:
 {
     @doc("The number of command line arguments. Traditionally referred to as @code 'argc'.")
@@ -1688,46 +1688,46 @@ MD_ParseWholeFile:
 @send(CommandLineHelper)
 @doc("Parses an MD_String8List as a set of command line options.")
 @see(MD_StringListFromArgCV)
-@see(MD_CommandLineOptionValues)
-@see(MD_CommandLineOptionPassed)
-@func MD_CommandLineFromOptions:
+@see(MD_CmdLineValuesFromString)
+@see(MD_CmdLineB32FromString)
+@func MD_MakeCmdLineFromOptions:
 {
     options: MD_String8List;
-    return: MD_CommandLine;
+    return: MD_CmdLine;
 }
 
 @send(CommandLineHelper)
 @doc("Gets the list of values associated with @code 'name' in the parsed command line arguments.")
-@see(MD_CommandLineFromOptions)
-@see(MD_CommandLineOptionPassed)
-@see(MD_CommandLineOptionI64)
-@func MD_CommandLineOptionValues:
+@see(MD_MakeCmdLineFromOptions)
+@see(MD_CmdLineB32FromString)
+@see(MD_CmdLineI64FromString)
+@func MD_CmdLineValuesFromString:
 {
-    cmdln: MD_CommandLine;
+    cmdln: MD_CmdLine;
     name: MD_String8;
     return: MD_String8List;
 }
 
 @send(CommandLineHelper)
 @doc("Determines whether a command line argument explicitly passed an option matching @code 'name'.")
-@see(MD_CommandLineFromOptions)
-@see(MD_CommandLineOptionPassed)
-@see(MD_CommandLineOptionValues)
-@func MD_CommandLineOptionPassed:
+@see(MD_MakeCmdLineFromOptions)
+@see(MD_CmdLineB32FromString)
+@see(MD_CmdLineValuesFromString)
+@func MD_CmdLineB32FromString:
 {
-    cmdln: MD_CommandLine;
+    cmdln: MD_CmdLine;
     name: MD_String8;
     return: MD_b32;
 }
 
 @send(CommandLineHelper)
-@see(MD_CommandLineFromOptions)
-@see(MD_CommandLineOptionValues)
-@see(MD_CommandLineOptionPassed)
+@see(MD_MakeCmdLineFromOptions)
+@see(MD_CmdLineValuesFromString)
+@see(MD_CmdLineB32FromString)
 @doc("Gets the list of values associated with @code 'name' in the parsed command line arguments, treats them as a string representation of a 64-bit signed integer value, and returns that integer value.")
-@func MD_CommandLineOptionI64:
+@func MD_CmdLineI64FromString:
 {
-    cmdln: MD_CommandLine;
+    cmdln: MD_CmdLine;
     name: MD_String8;
     return: MD_i64;
 }

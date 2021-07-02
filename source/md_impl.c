@@ -22,10 +22,10 @@ static MD_Node _md_nil_node =
     MD_NodeKind_Nil,       // kind
     0,                     // flags
     MD_ZERO_STRUCT,        // string
-    MD_ZERO_STRUCT,        // whole_string
+    MD_ZERO_STRUCT,        // raw_string
     0xdeadffffffffffull,   // string_hash
-    MD_ZERO_STRUCT,        // comment_before
-    MD_ZERO_STRUCT,        // comment_after
+    MD_ZERO_STRUCT,        // prev_comment
+    MD_ZERO_STRUCT,        // next_comment
     0,                     // at
     &_md_nil_node,         // ref_target
 };
@@ -118,12 +118,20 @@ MD_CharToLower(MD_u8 c)
 }
 
 MD_FUNCTION_IMPL MD_u8
-MD_CorrectSlash(MD_u8 c)
+MD_CharToForwardSlash(MD_u8 c)
 {
     return (c == '\\' ? '/' : c);
 }
 
 //~ Strings
+
+MD_FUNCTION_IMPL MD_u64
+MD_CalculateCStringLength(char *cstr)
+{
+    MD_u64 i = 0;
+    for(; cstr[i]; i += 1);
+    return i;
+}
 
 MD_FUNCTION_IMPL MD_String8
 MD_S8(MD_u8 *str, MD_u64 size)
@@ -135,16 +143,16 @@ MD_S8(MD_u8 *str, MD_u64 size)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_S8Range(MD_u8 *str, MD_u8 *opl)
+MD_S8Range(MD_u8 *first, MD_u8 *opl)
 {
     MD_String8 string;
-    string.str = str;
-    string.size = (MD_u64)(opl - str);
+    string.str = first;
+    string.size = (MD_u64)(opl - first);
     return string;
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_StringSubstring(MD_String8 str, MD_u64 min, MD_u64 max)
+MD_S8Substring(MD_String8 str, MD_u64 min, MD_u64 max)
 {
     if(max > str.size)
     {
@@ -166,46 +174,46 @@ MD_StringSubstring(MD_String8 str, MD_u64 min, MD_u64 max)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_StringSkip(MD_String8 str, MD_u64 min)
+MD_S8Skip(MD_String8 str, MD_u64 min)
 {
-    return MD_StringSubstring(str, min, str.size);
+    return MD_S8Substring(str, min, str.size);
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_StringChop(MD_String8 str, MD_u64 nmax)
+MD_S8Chop(MD_String8 str, MD_u64 nmax)
 {
-    return MD_StringSubstring(str, 0, str.size - nmax);
+    return MD_S8Substring(str, 0, str.size - nmax);
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_StringPrefix(MD_String8 str, MD_u64 size)
+MD_S8Prefix(MD_String8 str, MD_u64 size)
 {
-    return MD_StringSubstring(str, 0, size);
+    return MD_S8Substring(str, 0, size);
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_StringSuffix(MD_String8 str, MD_u64 size)
+MD_S8Suffix(MD_String8 str, MD_u64 size)
 {
-    return MD_StringSubstring(str, str.size - size, str.size);
+    return MD_S8Substring(str, str.size - size, str.size);
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_StringMatch(MD_String8 a, MD_String8 b, MD_MatchFlags flags)
+MD_S8Match(MD_String8 a, MD_String8 b, MD_MatchFlags flags)
 {
     int result = 0;
-    if(a.size == b.size || flags & MD_MatchFlag_RightSideSloppy)
+    if(a.size == b.size || flags & MD_StringMatchFlag_RightSideSloppy)
     {
         result = 1;
         for(MD_u64 i = 0; i < a.size; i += 1)
         {
             MD_b32 match = (a.str[i] == b.str[i]);
-            if(flags & MD_MatchFlag_CaseInsensitive)
+            if(flags & MD_StringMatchFlag_CaseInsensitive)
             {
                 match |= (MD_CharToLower(a.str[i]) == MD_CharToLower(b.str[i]));
             }
-            if(flags & MD_MatchFlag_SlashInsensitive)
+            if(flags & MD_StringMatchFlag_SlashInsensitive)
             {
-                match |= (MD_CorrectSlash(a.str[i]) == MD_CorrectSlash(b.str[i]));
+                match |= (MD_CharToForwardSlash(a.str[i]) == MD_CharToForwardSlash(b.str[i]));
             }
             if(match == 0)
             {
@@ -218,7 +226,7 @@ MD_StringMatch(MD_String8 a, MD_String8 b, MD_MatchFlags flags)
 }
 
 MD_FUNCTION_IMPL MD_u64
-MD_FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_MatchFlags flags)
+MD_S8FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_MatchFlags flags)
 {
     MD_b32 found = 0;
     MD_u64 found_idx = str.size;
@@ -226,8 +234,8 @@ MD_FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_Matc
     {
         if(i + substring.size <= str.size)
         {
-            MD_String8 substr_from_str = MD_StringSubstring(str, i, i+substring.size);
-            if(MD_StringMatch(substr_from_str, substring, flags))
+            MD_String8 substr_from_str = MD_S8Substring(str, i, i+substring.size);
+            if(MD_S8Match(substr_from_str, substring, flags))
             {
                 found_idx = i;
                 found = 1;
@@ -242,57 +250,7 @@ MD_FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_Matc
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_ChopExtension(MD_String8 string)
-{
-    MD_u64 period_pos = MD_FindSubstring(string, MD_S8Lit("."), 0, MD_MatchFlag_FindLast);
-    if(period_pos < string.size)
-    {
-        string.size = period_pos;
-    }
-    return string;
-}
-
-MD_FUNCTION_IMPL MD_String8
-MD_SkipFolder(MD_String8 string)
-{
-    MD_u64 slash_pos = MD_FindSubstring(string, MD_S8Lit("/"), 0,
-                                        MD_MatchFlag_SlashInsensitive|
-                                        MD_MatchFlag_FindLast);
-    if(slash_pos < string.size)
-    {
-        string.str += slash_pos+1;
-        string.size -= slash_pos+1;
-    }
-    return string;
-}
-
-MD_FUNCTION_IMPL MD_String8
-MD_ExtensionFromPath(MD_String8 string)
-{
-    MD_u64 period_pos = MD_FindSubstring(string, MD_S8Lit("."), 0, MD_MatchFlag_FindLast);
-    if(period_pos < string.size)
-    {
-        string.str += period_pos+1;
-        string.size -= period_pos+1;
-    }
-    return string;
-}
-
-MD_FUNCTION_IMPL MD_String8
-MD_FolderFromPath(MD_String8 string)
-{
-    MD_u64 slash_pos = MD_FindSubstring(string, MD_S8Lit("/"), 0,
-                                        MD_MatchFlag_SlashInsensitive|
-                                        MD_MatchFlag_FindLast);
-    if(slash_pos < string.size)
-    {
-        string.size = slash_pos;
-    }
-    return string;
-}
-
-MD_FUNCTION_IMPL MD_String8
-MD_PushStringCopy(MD_String8 string)
+MD_S8Copy(MD_String8 string)
 {
     MD_String8 res;
     res.size = string.size;
@@ -302,7 +260,7 @@ MD_PushStringCopy(MD_String8 string)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_PushStringFV(char *fmt, va_list args)
+MD_S8FmtV(char *fmt, va_list args)
 {
     MD_String8 result = MD_ZERO_STRUCT;
     va_list args2;
@@ -315,18 +273,18 @@ MD_PushStringFV(char *fmt, va_list args)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_PushStringF(char *fmt, ...)
+MD_S8Fmt(char *fmt, ...)
 {
     MD_String8 result = MD_ZERO_STRUCT;
     va_list args;
     va_start(args, fmt);
-    result = MD_PushStringFV(fmt, args);
+    result = MD_S8FmtV(fmt, args);
     va_end(args);
     return result;
 }
 
 MD_FUNCTION_IMPL void
-MD_PushStringToList(MD_String8List *list, MD_String8 string)
+MD_S8ListPush(MD_String8List *list, MD_String8 string)
 {
     MD_String8Node *node = MD_PushArray(MD_String8Node, 1);
     node->string = string;
@@ -337,7 +295,7 @@ MD_PushStringToList(MD_String8List *list, MD_String8 string)
 }
 
 MD_FUNCTION_IMPL void
-MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push)
+MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push)
 {
     if(to_push->first)
     {
@@ -358,7 +316,7 @@ MD_PushStringListToList(MD_String8List *list, MD_String8List *to_push)
 }
 
 MD_FUNCTION_IMPL MD_String8List
-MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits)
+MD_S8Split(MD_String8 string, int split_count, MD_String8 *splits)
 {
     MD_String8List list = MD_ZERO_STRUCT;
     
@@ -384,7 +342,7 @@ MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits)
             if(match)
             {
                 MD_String8 split_string = MD_S8(string.str + split_start, i - split_start);
-                MD_PushStringToList(&list, split_string);
+                MD_S8ListPush(&list, split_string);
                 split_start = i + splits[split_idx].size;
                 i += splits[split_idx].size - 1;
                 was_split = 1;
@@ -395,7 +353,7 @@ MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits)
         if(was_split == 0 && i == string.size - 1)
         {
             MD_String8 split_string = MD_S8(string.str + split_start, i+1 - split_start);
-            MD_PushStringToList(&list, split_string);
+            MD_S8ListPush(&list, split_string);
             break;
         }
     }
@@ -404,7 +362,7 @@ MD_SplitString(MD_String8 string, int split_count, MD_String8 *splits)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_JoinStringList(MD_String8List list, MD_String8 separator)
+MD_S8ListJoin(MD_String8List list, MD_String8 separator)
 {
     if (list.node_count == 0)
     {
@@ -426,96 +384,8 @@ MD_JoinStringList(MD_String8List list, MD_String8 separator)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_u64
-MD_CalculateCStringLength(char *cstr)
-{
-    MD_u64 i = 0;
-    for(; cstr[i]; i += 1);
-    return i;
-}
-
-MD_FUNCTION_IMPL MD_u64
-MD_U64FromString(MD_String8 string, MD_u32 radix)
-{
-    MD_Assert(2 <= radix && radix <= 16);
-    static MD_u8 char_to_value[] = {
-        0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
-        0x08,0x09,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-        0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,
-        0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-    };
-    MD_u64 value = 0;
-    for (MD_u64 i = 0; i < string.size; i += 1){
-        value *= radix;
-        MD_u8 c = string.str[i];
-        value += char_to_value[(c - 0x30)&0x1F];
-    }
-    return(value);
-}
-
-MD_FUNCTION_IMPL MD_i64
-MD_CStyleIntFromString(MD_String8 string)
-{
-    MD_u64 p = 0;
-    
-    // consume sign
-    MD_i64 sign = +1;
-    if (p < string.size){
-        MD_u8 c = string.str[p];
-        if (c == '-'){
-            sign = -1;
-            p += 1;
-        }
-        else if (c == '+'){
-            p += 1;
-        }
-    }
-    
-    // radix from prefix
-    MD_u64 radix = 10;
-    if (p < string.size){
-        MD_u8 c0 = string.str[p];
-        if (c0 == '0'){
-            p += 1;
-            radix = 8;
-            if (p < string.size){
-                MD_u8 c1 = string.str[p];
-                if (c1 == 'x'){
-                    p += 1;
-                    radix = 16;
-                }
-                else if (c1 == 'b'){
-                    p += 1;
-                    radix = 2;
-                }
-            }
-        }
-    }
-    
-    // consume integer "digits"
-    MD_String8 digits_substr = MD_StringSkip(string, p);
-    MD_u64 n = MD_U64FromString(digits_substr, radix);
-    
-    // combine result
-    MD_i64 result = sign*n;
-    return(result);
-}
-
-MD_FUNCTION_IMPL MD_f64
-MD_F64FromString(MD_String8 string)
-{
-    char str[64];
-    MD_u64 str_size = string.size;
-    if (str_size > sizeof(str) - 1){
-        str_size = sizeof(str) - 1;
-    }
-    MD_MemoryCopy(str, string.str, str_size);
-    str[str_size] = 0;
-    return(atof(str));
-}
-
 MD_FUNCTION_IMPL MD_String8
-MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8 separator)
+MD_S8Stylize(MD_String8 string, MD_IdentifierStyle word_style, MD_String8 separator)
 {
     MD_String8 result = MD_ZERO_STRUCT;
     
@@ -550,7 +420,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
                     word.size += 1;
                 }
                 making_word = 0;
-                MD_PushStringToList(&words, word);
+                MD_S8ListPush(&words, word);
             }
             else
             {
@@ -589,7 +459,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
                 // NOTE(rjf): Transform string based on word style.
                 switch(word_style)
                 {
-                    case MD_WordStyle_UpperCamelCase:
+                    case MD_IdentifierStyle_UpperCamelCase:
                     {
                         result.str[write_pos] = MD_CharToUpper(result.str[write_pos]);
                         for(MD_u64 i = write_pos+1; i < write_pos + node->string.size; i += 1)
@@ -598,7 +468,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
                         }
                     }break;
                     
-                    case MD_WordStyle_LowerCamelCase:
+                    case MD_IdentifierStyle_LowerCamelCase:
                     {
                         result.str[write_pos] = node == words.first ? MD_CharToLower(result.str[write_pos]) : MD_CharToUpper(result.str[write_pos]);
                         for(MD_u64 i = write_pos+1; i < write_pos + node->string.size; i += 1)
@@ -607,7 +477,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
                         }
                     }break;
                     
-                    case MD_WordStyle_UpperCase:
+                    case MD_IdentifierStyle_UpperCase:
                     {
                         for(MD_u64 i = write_pos; i < write_pos + node->string.size; i += 1)
                         {
@@ -615,7 +485,7 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
                         }
                     }break;
                     
-                    case MD_WordStyle_LowerCase:
+                    case MD_IdentifierStyle_LowerCase:
                     {
                         for(MD_u64 i = write_pos; i < write_pos + node->string.size; i += 1)
                         {
@@ -640,74 +510,14 @@ MD_StyledStringFromString(MD_String8 string, MD_WordStyle word_style, MD_String8
     return result;
 }
 
-//~ Enum/Flag Strings
-
-MD_FUNCTION_IMPL MD_String8
-MD_StringFromNodeKind(MD_NodeKind kind)
-{
-    // NOTE(rjf): Must be kept in sync with MD_NodeKind enum.
-    static char *cstrs[MD_NodeKind_COUNT] =
-    {
-        "Nil",
-        "File",
-        "List",
-        "Reference",
-        "Label",
-        "Tag",
-        "ErrorMarker",
-    };
-    return MD_S8CString(cstrs[kind]);
-}
-
-MD_FUNCTION_IMPL MD_String8List
-MD_StringListFromNodeFlags(MD_NodeFlags flags)
-{
-    // NOTE(rjf): Must be kept in sync with MD_NodeFlags enum.
-    static char *flag_cstrs[] =
-    {
-        "ParenLeft",
-        "ParenRight",
-        "BracketLeft",
-        "BracketRight",
-        "BraceLeft",
-        "BraceRight",
-        
-        "BeforeSemicolon",
-        "AfterSemicolon",
-        
-        "BeforeComma",
-        "AfterComma",
-        
-        "StringSingleQuote",
-        "StringDoubleQuote",
-        "StringTick",
-        "StringTriplet",
-        
-        "Numeric",
-        "Identifier",
-        "StringLiteral",
-    };
-    
-    MD_String8List list = MD_ZERO_STRUCT;
-    MD_u64 bits = sizeof(flags) * 8;
-    for(MD_u64 i = 0; i < bits && i < MD_ArrayCount(flag_cstrs); i += 1)
-    {
-        if(flags & (1ull << i))
-        {
-            MD_PushStringToList(&list, MD_S8CString(flag_cstrs[i]));
-        }
-    }
-    return list;
-}
-
 //~ Unicode Conversions
 
 MD_GLOBAL MD_u8 md_utf8_class[32] = {
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5,
 };
 
-MD_FUNCTION_IMPL MD_UnicodeConsume
-MD_CodepointFromUtf8(MD_u8 *str, MD_u64 max)
+MD_FUNCTION_IMPL MD_DecodedCodepoint
+MD_DecodeCodepointFromUtf8(MD_u8 *str, MD_u64 max)
 {
 #define MD_bitmask1 0x01
 #define MD_bitmask2 0x03
@@ -720,7 +530,7 @@ MD_CodepointFromUtf8(MD_u8 *str, MD_u64 max)
 #define MD_bitmask9  0x01FF
 #define MD_bitmask10 0x03FF
     
-    MD_UnicodeConsume result = {~((MD_u32)0), 1};
+    MD_DecodedCodepoint result = {~((MD_u32)0), 1};
     MD_u8 byte = str[0];
     MD_u8 byte_class = md_utf8_class[byte >> 3];
     switch (byte_class)
@@ -782,10 +592,10 @@ MD_CodepointFromUtf8(MD_u8 *str, MD_u64 max)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_UnicodeConsume
-MD_CodepointFromUtf16(MD_u16 *out, MD_u64 max)
+MD_FUNCTION_IMPL MD_DecodedCodepoint
+MD_DecodeCodepointFromUtf16(MD_u16 *out, MD_u64 max)
 {
-    MD_UnicodeConsume result = {~((MD_u32)0), 1};
+    MD_DecodedCodepoint result = {~((MD_u32)0), 1};
     result.codepoint = out[0];
     result.advance = 1;
     if (1 < max && 0xD800 <= out[0] && out[0] < 0xDC00 && 0xDC00 <= out[1] && out[1] < 0xE000)
@@ -865,10 +675,10 @@ MD_S8FromS16(MD_String16 in)
     MD_u16 *ptr = in.str;
     MD_u16 *opl = ptr + in.size;
     MD_u64 size = 0;
-    MD_UnicodeConsume consume;
+    MD_DecodedCodepoint consume;
     for (;ptr < opl;)
     {
-        consume = MD_CodepointFromUtf16(ptr, opl - ptr);
+        consume = MD_DecodeCodepointFromUtf16(ptr, opl - ptr);
         ptr += consume.advance;
         size += MD_Utf8FromCodepoint(str + size, consume.codepoint);
     }
@@ -884,10 +694,10 @@ MD_S16FromS8(MD_String8 in)
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
-    MD_UnicodeConsume consume;
+    MD_DecodedCodepoint consume;
     for (;ptr < opl;)
     {
-        consume = MD_CodepointFromUtf8(ptr, opl - ptr);
+        consume = MD_DecodeCodepointFromUtf8(ptr, opl - ptr);
         ptr += consume.advance;
         size += MD_Utf16FromCodepoint(str + size, consume.codepoint);
     }
@@ -904,7 +714,7 @@ MD_S8FromS32(MD_String32 in)
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
-    MD_UnicodeConsume consume;
+    MD_DecodedCodepoint consume;
     for (;ptr < opl; ptr += 1)
     {
         size += MD_Utf8FromCodepoint(str + size, *ptr);
@@ -921,10 +731,10 @@ MD_S32FromS8(MD_String8 in)
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
-    MD_UnicodeConsume consume;
+    MD_DecodedCodepoint consume;
     for (;ptr < opl;)
     {
-        consume = MD_CodepointFromUtf8(ptr, opl - ptr);
+        consume = MD_DecodeCodepointFromUtf8(ptr, opl - ptr);
         ptr += consume.advance;
         str[size] = consume.codepoint;
         size += 1;
@@ -934,10 +744,207 @@ MD_S32FromS8(MD_String8 in)
     return(result);
 }
 
+//~ File Name Strings
+
+MD_FUNCTION_IMPL MD_String8
+MD_PathChopLastPeriod(MD_String8 string)
+{
+    MD_u64 period_pos = MD_S8FindSubstring(string, MD_S8Lit("."), 0, MD_MatchFlag_FindLast);
+    if(period_pos < string.size)
+    {
+        string.size = period_pos;
+    }
+    return string;
+}
+
+MD_FUNCTION_IMPL MD_String8
+MD_PathSkipLastSlash(MD_String8 string)
+{
+    MD_u64 slash_pos = MD_S8FindSubstring(string, MD_S8Lit("/"), 0,
+                                          MD_StringMatchFlag_SlashInsensitive|
+                                          MD_MatchFlag_FindLast);
+    if(slash_pos < string.size)
+    {
+        string.str += slash_pos+1;
+        string.size -= slash_pos+1;
+    }
+    return string;
+}
+
+MD_FUNCTION_IMPL MD_String8
+MD_PathSkipLastPeriod(MD_String8 string)
+{
+    MD_u64 period_pos = MD_S8FindSubstring(string, MD_S8Lit("."), 0, MD_MatchFlag_FindLast);
+    if(period_pos < string.size)
+    {
+        string.str += period_pos+1;
+        string.size -= period_pos+1;
+    }
+    return string;
+}
+
+MD_FUNCTION_IMPL MD_String8
+MD_PathChopLastSlash(MD_String8 string)
+{
+    MD_u64 slash_pos = MD_S8FindSubstring(string, MD_S8Lit("/"), 0,
+                                          MD_StringMatchFlag_SlashInsensitive|
+                                          MD_MatchFlag_FindLast);
+    if(slash_pos < string.size)
+    {
+        string.size = slash_pos;
+    }
+    return string;
+}
+
+//~ Numeric Strings
+
+MD_FUNCTION_IMPL MD_u64
+MD_U64FromString(MD_String8 string, MD_u32 radix)
+{
+    MD_Assert(2 <= radix && radix <= 16);
+    static MD_u8 char_to_value[] = {
+        0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+        0x08,0x09,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+        0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,
+        0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+    };
+    MD_u64 value = 0;
+    for (MD_u64 i = 0; i < string.size; i += 1){
+        value *= radix;
+        MD_u8 c = string.str[i];
+        value += char_to_value[(c - 0x30)&0x1F];
+    }
+    return(value);
+}
+
+MD_FUNCTION_IMPL MD_i64
+MD_CStyleIntFromString(MD_String8 string)
+{
+    MD_u64 p = 0;
+    
+    // consume sign
+    MD_i64 sign = +1;
+    if (p < string.size){
+        MD_u8 c = string.str[p];
+        if (c == '-'){
+            sign = -1;
+            p += 1;
+        }
+        else if (c == '+'){
+            p += 1;
+        }
+    }
+    
+    // radix from prefix
+    MD_u64 radix = 10;
+    if (p < string.size){
+        MD_u8 c0 = string.str[p];
+        if (c0 == '0'){
+            p += 1;
+            radix = 8;
+            if (p < string.size){
+                MD_u8 c1 = string.str[p];
+                if (c1 == 'x'){
+                    p += 1;
+                    radix = 16;
+                }
+                else if (c1 == 'b'){
+                    p += 1;
+                    radix = 2;
+                }
+            }
+        }
+    }
+    
+    // consume integer "digits"
+    MD_String8 digits_substr = MD_S8Skip(string, p);
+    MD_u64 n = MD_U64FromString(digits_substr, radix);
+    
+    // combine result
+    MD_i64 result = sign*n;
+    return(result);
+}
+
+MD_FUNCTION_IMPL MD_f64
+MD_F64FromString(MD_String8 string)
+{
+    char str[64];
+    MD_u64 str_size = string.size;
+    if (str_size > sizeof(str) - 1){
+        str_size = sizeof(str) - 1;
+    }
+    MD_MemoryCopy(str, string.str, str_size);
+    str[str_size] = 0;
+    return(atof(str));
+}
+
+//~ Enum/Flag Strings
+
+MD_FUNCTION_IMPL MD_String8
+MD_StringFromNodeKind(MD_NodeKind kind)
+{
+    // NOTE(rjf): @maintenance Must be kept in sync with MD_NodeKind enum.
+    static char *cstrs[MD_NodeKind_COUNT] =
+    {
+        "Nil",
+        
+        "File",
+        "ErrorMarker",
+        
+        "Main",
+        "Tag",
+        
+        "List",
+        "Reference",
+    };
+    return MD_S8CString(cstrs[kind]);
+}
+
+MD_FUNCTION_IMPL MD_String8List
+MD_StringListFromNodeFlags(MD_NodeFlags flags)
+{
+    // NOTE(rjf): @maintenance Must be kept in sync with MD_NodeFlags enum.
+    static char *flag_cstrs[] =
+    {
+        "HasParenLeft",
+        "HasParenRight",
+        "HasBracketLeft",
+        "HasBracketRight",
+        "HasBraceLeft",
+        "HasBraceRight",
+        
+        "IsBeforeSemicolon",
+        "IsAfterSemicolon",
+        
+        "IsBeforeComma",
+        "IsAfterComma",
+        
+        "StringSingleQuote",
+        "StringDoubleQuote",
+        "StringTick",
+        "StringTriplet",
+        
+        "Numeric",
+        "Identifier",
+        "StringLiteral",
+    };
+    
+    MD_String8List list = MD_ZERO_STRUCT;
+    MD_u64 bits = sizeof(flags) * 8;
+    for(MD_u64 i = 0; i < bits && i < MD_ArrayCount(flag_cstrs); i += 1)
+    {
+        if(flags & (1ull << i))
+        {
+            MD_S8ListPush(&list, MD_S8CString(flag_cstrs[i]));
+        }
+    }
+    return list;
+}
+
 //~ Map Table Data Structure
 
 MD_FUNCTION_IMPL MD_u64
-MD_HashString(MD_String8 string)
+MD_HashStr(MD_String8 string)
 {
     MD_u64 result = 5381;
     for(MD_u64 i = 0; i < string.size; i += 1)
@@ -950,7 +957,7 @@ MD_HashString(MD_String8 string)
 // NOTE(mal): Generic 64-bit hash function (https://nullprogram.com/blog/2018/07/31/)
 //            Reversible, so no collisions. Assumes all bits of the pointer matter.
 MD_FUNCTION_IMPL MD_u64 
-MD_HashPointer(void *p)
+MD_HashPtr(void *p)
 {
     MD_u64 h = (MD_u64)p;
     // TODO(rjf): Do we want our own equivalent of UINT64_C?
@@ -980,7 +987,7 @@ MD_FUNCTION MD_MapKey
 MD_MapKeyStr(MD_String8 string){
     MD_MapKey result = {0};
     if (string.size != 0){
-        result.hash = MD_HashString(string);
+        result.hash = MD_HashStr(string);
         result.size = string.size;
         if (string.size > 0){
             result.ptr = string.str;
@@ -993,7 +1000,7 @@ MD_FUNCTION MD_MapKey
 MD_MapKeyPtr(void *ptr){
     MD_MapKey result = {0};
     if (ptr != 0){
-        result.hash = MD_HashPointer(ptr);
+        result.hash = MD_HashPtr(ptr);
         result.size = 0;
         result.ptr = ptr;
     }
@@ -1028,7 +1035,7 @@ MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key){
                 }
                 else{
                     MD_String8 slot_string = MD_S8((MD_u8*)slot->key.ptr, slot->key.size);
-                    if (MD_StringMatch(slot_string, key_string, 0)){
+                    if (MD_S8Match(slot_string, key_string, 0)){
                         result = slot;
                         break;
                     }
@@ -1069,6 +1076,12 @@ MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val){
 }
 
 //~ Parsing
+
+MD_FUNCTION MD_b32
+MD_TokenGroupContainsKind(MD_TokenGroups groups, MD_TokenKind kind)
+{
+    return (groups & kind) != 0;
+}
 
 MD_FUNCTION_IMPL MD_Token
 MD_TokenFromString(MD_String8 string)
@@ -1310,8 +1323,8 @@ MD_TokenFromString(MD_String8 string)
             }break;
         }
         
-        token.outer_string = MD_S8Range(first, at);
-        token.string = MD_StringSubstring(token.outer_string, skip_n, token.outer_string.size - chop_n);
+        token.raw_string = MD_S8Range(first, at);
+        token.string = MD_S8Substring(token.raw_string, skip_n, token.raw_string.size - chop_n);
         
 #undef MD_TokenizerScan
         
@@ -1327,48 +1340,48 @@ MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds)
     MD_u64 p = 0;
     for (;;)
     {
-        MD_Token token = MD_TokenFromString(MD_StringSkip(string, p));
+        MD_Token token = MD_TokenFromString(MD_S8Skip(string, p));
         if ((skip_kinds & token.kind) == 0)
         {
             result = p;
             break;
         }
-        p += token.outer_string.size;
+        p += token.raw_string.size;
     }
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_Error *
+MD_FUNCTION_IMPL MD_Message *
 MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str)
 {
-    MD_Error *error = MD_PushArrayZero(MD_Error, 1);
+    MD_Message *error = MD_PushArrayZero(MD_Message, 1);
     error->node = node;
     error->kind = kind;
     error->string = str;
     return error;
 }
 
-MD_FUNCTION_IMPL MD_Error *
+MD_FUNCTION_IMPL MD_Message *
 MD_MakeTokenError(MD_String8 parse_contents, MD_Token token, MD_MessageKind kind, MD_String8 str)
 {
     MD_Node *err_node = MD_MakeNode(MD_NodeKind_ErrorMarker, MD_S8Lit(""), parse_contents,
-                                    token.outer_string.str - parse_contents.str);
+                                    token.raw_string.str - parse_contents.str);
     return MD_MakeNodeError(err_node, kind, str);
 }
 
 MD_FUNCTION_IMPL void
-MD_PushErrorToList(MD_ErrorList *list, MD_Error *error)
+MD_MessageListPush(MD_MessageList *list, MD_Message *message)
 {
-    MD_QueuePush(list->first, list->last, error);
-    if(error->kind > list->max_error_kind)
+    MD_QueuePush(list->first, list->last, message);
+    if(message->kind > list->max_message_kind)
     {
-        list->max_error_kind = error->kind;
+        list->max_message_kind = message->kind;
     }
     list->node_count += 1;
 }
 
 MD_FUNCTION_IMPL void
-MD_PushErrorListToList(MD_ErrorList *list, MD_ErrorList *to_push)
+MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
 {
     if(list->last)
     {
@@ -1377,9 +1390,9 @@ MD_PushErrorListToList(MD_ErrorList *list, MD_ErrorList *to_push)
             list->last->next = to_push->first;
             list->last = to_push->last;
             list->node_count += to_push->node_count;
-            if(to_push->max_error_kind > list->max_error_kind)
+            if(to_push->max_message_kind > list->max_message_kind)
             {
-                list->max_error_kind = to_push->max_error_kind;
+                list->max_message_kind = to_push->max_message_kind;
             }
         }
     }
@@ -1405,7 +1418,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
     MD_u64 off = offset;
     
     //- rjf: fill data from set opener
-    MD_Token initial_token = MD_TokenFromString(MD_StringSkip(string, offset));
+    MD_Token initial_token = MD_TokenFromString(MD_S8Skip(string, offset));
     MD_u8 set_opener = 0;
     MD_NodeFlags set_opener_flags = 0;
     MD_b32 close_with_brace = 0;
@@ -1419,32 +1432,32 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
         case MD_ParseSetRule_EndOnDelimiter:
         {
             MD_u64 opener_check_off = off;
-            opener_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, opener_check_off), MD_TokenGroup_Irregular);
-            initial_token = MD_TokenFromString(MD_StringSkip(string, opener_check_off));
+            opener_check_off += MD_LexAdvanceFromSkips(MD_S8Skip(string, opener_check_off), MD_TokenGroup_Irregular);
+            initial_token = MD_TokenFromString(MD_S8Skip(string, opener_check_off));
             if(initial_token.kind == MD_TokenKind_Reserved)
             {
-                MD_u8 c = initial_token.outer_string.str[0];
+                MD_u8 c = initial_token.raw_string.str[0];
                 if(c == '{')
                 {
                     set_opener = '{';
-                    set_opener_flags |= MD_NodeFlag_BraceLeft;
-                    opener_check_off += initial_token.outer_string.size;
+                    set_opener_flags |= MD_NodeFlag_HasBraceLeft;
+                    opener_check_off += initial_token.raw_string.size;
                     off = opener_check_off;
                     close_with_brace = 1;
                 }
                 else if(c == '(')
                 {
                     set_opener = '(';
-                    set_opener_flags |= MD_NodeFlag_ParenLeft;
-                    opener_check_off += initial_token.outer_string.size;
+                    set_opener_flags |= MD_NodeFlag_HasParenLeft;
+                    opener_check_off += initial_token.raw_string.size;
                     off = opener_check_off;
                     close_with_paren = 1;
                 }
                 else if(c == '[')
                 {
                     set_opener = '[';
-                    set_opener_flags |= MD_NodeFlag_BracketLeft;
-                    opener_check_off += initial_token.outer_string.size;
+                    set_opener_flags |= MD_NodeFlag_HasBracketLeft;
+                    opener_check_off += initial_token.raw_string.size;
                     off = opener_check_off;
                     close_with_paren = 1;
                 }
@@ -1484,10 +1497,10 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                 
                 //- rjf: check newlines
                 {
-                    MD_Token potential_closer = MD_TokenFromString(MD_StringSkip(string, closer_check_off));
+                    MD_Token potential_closer = MD_TokenFromString(MD_S8Skip(string, closer_check_off));
                     if(potential_closer.kind == MD_TokenKind_Newline)
                     {
-                        closer_check_off += potential_closer.outer_string.size;
+                        closer_check_off += potential_closer.raw_string.size;
                         off = closer_check_off;
                         
                         // NOTE(rjf): always terminate with a newline if we have >0 children
@@ -1499,10 +1512,10 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                         }
                         
                         // NOTE(rjf): terminate after double newline if we have 0 children
-                        MD_Token next_closer = MD_TokenFromString(MD_StringSkip(string, closer_check_off));
+                        MD_Token next_closer = MD_TokenFromString(MD_S8Skip(string, closer_check_off));
                         if(next_closer.kind == MD_TokenKind_Newline)
                         {
-                            closer_check_off += next_closer.outer_string.size;
+                            closer_check_off += next_closer.raw_string.size;
                             off = closer_check_off;
                             got_closer = 1;
                             break;
@@ -1512,14 +1525,14 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                 
                 //- rjf: check separators and possible braces from higher parents
                 {
-                    closer_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
-                    MD_Token potential_closer = MD_TokenFromString(MD_StringSkip(string, closer_check_off));
+                    closer_check_off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
+                    MD_Token potential_closer = MD_TokenFromString(MD_S8Skip(string, closer_check_off));
                     if(potential_closer.kind == MD_TokenKind_Reserved)
                     {
-                        MD_u8 c = potential_closer.outer_string.str[0];
+                        MD_u8 c = potential_closer.raw_string.str[0];
                         if (c == ',' || c == ';')
                         {
-                            closer_check_off += potential_closer.outer_string.size;
+                            closer_check_off += potential_closer.raw_string.size;
                             off = closer_check_off;
                             break;
                         }
@@ -1536,32 +1549,32 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             if(!close_with_separator && !parse_all)
             {
                 MD_u64 closer_check_off = off;
-                closer_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
-                MD_Token potential_closer = MD_TokenFromString(MD_StringSkip(string, closer_check_off));
+                closer_check_off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
+                MD_Token potential_closer = MD_TokenFromString(MD_S8Skip(string, closer_check_off));
                 if(potential_closer.kind == MD_TokenKind_Reserved)
                 {
-                    MD_u8 c = potential_closer.outer_string.str[0];
+                    MD_u8 c = potential_closer.raw_string.str[0];
                     if(close_with_brace && c == '}')
                     {
-                        closer_check_off += potential_closer.outer_string.size;
+                        closer_check_off += potential_closer.raw_string.size;
                         off = closer_check_off;
-                        parent->flags |= MD_NodeFlag_BraceRight;
+                        parent->flags |= MD_NodeFlag_HasBraceRight;
                         got_closer = 1;
                         break;
                     }
                     else if(close_with_paren && c == ']')
                     {
-                        closer_check_off += potential_closer.outer_string.size;
+                        closer_check_off += potential_closer.raw_string.size;
                         off = closer_check_off;
-                        parent->flags |= MD_NodeFlag_BracketRight;
+                        parent->flags |= MD_NodeFlag_HasBracketRight;
                         got_closer = 1;
                         break;
                     }
                     else if(close_with_paren && c == ')')
                     {
-                        closer_check_off += potential_closer.outer_string.size;
+                        closer_check_off += potential_closer.raw_string.size;
                         off = closer_check_off;
-                        parent->flags |= MD_NodeFlag_ParenRight;
+                        parent->flags |= MD_NodeFlag_HasParenRight;
                         got_closer = 1;
                         break;
                     }
@@ -1570,8 +1583,8 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             
             //- rjf: parse next child
             MD_ParseResult child_parse = MD_ParseOneNode(string, off);
-            MD_PushErrorListToList(&result.errors, &child_parse.errors);
-            off += child_parse.bytes_parsed;
+            MD_MessageListConcat(&result.errors, &child_parse.errors);
+            off += child_parse.string_advance;
             
             //- rjf: hook child into parent
             if(!MD_NodeIsNil(child_parse.node))
@@ -1579,15 +1592,15 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
                 // NOTE(rjf): @error No unnamed set children of implicitly-delimited sets
                 if(close_with_separator &&
                    child_parse.node->string.size == 0 &&
-                   child_parse.node->flags & (MD_NodeFlag_ParenLeft    |
-                                              MD_NodeFlag_ParenRight   |
-                                              MD_NodeFlag_BracketLeft  |
-                                              MD_NodeFlag_BracketRight |
-                                              MD_NodeFlag_BraceLeft    |
-                                              MD_NodeFlag_BraceRight   ))
+                   child_parse.node->flags & (MD_NodeFlag_HasParenLeft    |
+                                              MD_NodeFlag_HasParenRight   |
+                                              MD_NodeFlag_HasBracketLeft  |
+                                              MD_NodeFlag_HasBracketRight |
+                                              MD_NodeFlag_HasBraceLeft    |
+                                              MD_NodeFlag_HasBraceRight   ))
                 {
-                    MD_Error *error = MD_MakeNodeError(child_parse.node, MD_MessageKind_Warning, MD_S8Lit("Unnamed set children of implicitly-delimited sets are not legal."));
-                    MD_PushErrorToList(&result.errors, error);
+                    MD_Message *error = MD_MakeNodeError(child_parse.node, MD_MessageKind_Warning, MD_S8Lit("Unnamed set children of implicitly-delimited sets are not legal."));
+                    MD_MessageListPush(&result.errors, error);
                 }
                 
                 MD_PushChild(parent, child_parse.node);
@@ -1598,19 +1611,19 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             MD_NodeFlags trailing_separator_flags = 0;
             if(!close_with_separator)
             {
-                off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
-                MD_Token trailing_separator = MD_TokenFromString(MD_StringSkip(string, off));
+                off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
+                MD_Token trailing_separator = MD_TokenFromString(MD_S8Skip(string, off));
                 if (trailing_separator.kind == MD_TokenKind_Reserved){
                     MD_u8 c = trailing_separator.string.str[0];
                     if(c == ',')
                     {
-                        trailing_separator_flags |= MD_NodeFlag_BeforeComma;
-                        off += trailing_separator.outer_string.size;
+                        trailing_separator_flags |= MD_NodeFlag_IsBeforeComma;
+                        off += trailing_separator.raw_string.size;
                     }
                     else if(c == ';')
                     {
-                        trailing_separator_flags |= MD_NodeFlag_BeforeSemicolon;
-                        off += trailing_separator.outer_string.size;
+                        trailing_separator_flags |= MD_NodeFlag_IsBeforeSemicolon;
+                        off += trailing_separator.raw_string.size;
                     }
                 }
             }
@@ -1628,30 +1641,31 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
     if(set_opener != 0 && got_closer == 0)
     {
         // NOTE(rjf): @error We didn't get a closer for the set
-        MD_Error *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_CatastrophicError,
-                                            MD_PushStringF("Unbalanced \"%c\"", set_opener));
-        MD_PushErrorToList(&result.errors, error);
+        MD_Message *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_CatastrophicError,
+                                              MD_S8Fmt("Unbalanced \"%c\"", set_opener));
+        MD_MessageListPush(&result.errors, error);
     }
     
     //- rjf: push empty implicit set error,
     if(close_with_separator && parsed_child_count == 0)
     {
         // NOTE(rjf): @error No empty implicitly-delimited sets
-        MD_Error *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_Error,
-                                            MD_S8Lit("Empty implicitly-delimited node list"));
-        MD_PushErrorToList(&result.errors, error);
+        MD_Message *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_Error,
+                                              MD_S8Lit("Empty implicitly-delimited node list"));
+        MD_MessageListPush(&result.errors, error);
     }
     
     //- rjf: fill result info
     result.node = parent->first_child;
     result.last_node = parent->last_child;
-    result.bytes_parsed = off - offset;
+    result.string_advance= off - offset;
     
     return result;
 }
 
+// TODO(rjf): Inline this in the only place it is called
 MD_FUNCTION_IMPL MD_ParseResult
-MD_ParseTagList(MD_String8 string, MD_u64 offset)
+_MD_ParseTagList(MD_String8 string, MD_u64 offset)
 {
     MD_ParseResult result = MD_ParseResultZero();
     MD_u64 off = offset;
@@ -1659,49 +1673,49 @@ MD_ParseTagList(MD_String8 string, MD_u64 offset)
     for(;off < string.size;)
     {
         //- rjf: parse @ symbol, signifying start of tag
-        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
-        MD_Token next_token = MD_TokenFromString(MD_StringSkip(string, off));
+        off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
+        MD_Token next_token = MD_TokenFromString(MD_S8Skip(string, off));
         if(next_token.kind != MD_TokenKind_Reserved ||
            next_token.string.str[0] != '@')
         {
             break;
         }
-        off += next_token.outer_string.size;
+        off += next_token.raw_string.size;
         
         //- rjf: parse string of tag node
-        MD_Token name = MD_TokenFromString(MD_StringSkip(string, off));
+        MD_Token name = MD_TokenFromString(MD_S8Skip(string, off));
         MD_u64 name_off = off;
         if((name.kind & MD_TokenGroup_Label) == 0)
         {
             // NOTE(rjf): @error Improper token for tag string
-            MD_Error *error = MD_MakeTokenError(string, name, MD_MessageKind_Error,
-                                                MD_PushStringF("\"%.*s\" is not a proper tag label",
-                                                               MD_StringExpand(name.outer_string)));
-            MD_PushErrorToList(&result.errors, error);
+            MD_Message *error = MD_MakeTokenError(string, name, MD_MessageKind_Error,
+                                                  MD_S8Fmt("\"%.*s\" is not a proper tag label",
+                                                           MD_S8VArg(name.raw_string)));
+            MD_MessageListPush(&result.errors, error);
             break;
         }
-        off += name.outer_string.size;
+        off += name.raw_string.size;
         
         //- rjf: build tag
-        MD_Node *tag = MD_MakeNode(MD_NodeKind_Tag, name.string, name.outer_string, name_off);
+        MD_Node *tag = MD_MakeNode(MD_NodeKind_Tag, name.string, name.raw_string, name_off);
         
         //- rjf: parse tag arguments
-        MD_Token open_paren = MD_TokenFromString(MD_StringSkip(string, off));
+        MD_Token open_paren = MD_TokenFromString(MD_S8Skip(string, off));
         MD_ParseResult args_parse = MD_ParseResultZero();
         if(open_paren.kind == MD_TokenKind_Reserved &&
            open_paren.string.str[0] == '(')
         {
             args_parse = MD_ParseNodeSet(string, off, tag, MD_ParseSetRule_EndOnDelimiter);
-            MD_PushErrorListToList(&result.errors, &args_parse.errors);
+            MD_MessageListConcat(&result.errors, &args_parse.errors);
         }
-        off += args_parse.bytes_parsed;
+        off += args_parse.string_advance;
         
         //- rjf: push tag to result
         MD_NodeDblPushBack(result.node, result.last_node, tag);
     }
     
     //- rjf: fill result
-    result.bytes_parsed = off - offset;
+    result.string_advance= off - offset;
     
     return result;
 }
@@ -1713,21 +1727,21 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
     MD_u64 off = offset;
     
     //- rjf: parse pre-comment
-    MD_String8 comment_before = MD_ZERO_STRUCT;
+    MD_String8 prev_comment = MD_ZERO_STRUCT;
     {
         MD_Token comment_token = MD_ZERO_STRUCT;
         for(;off < string.size;)
         {
-            MD_Token token = MD_TokenFromString(MD_StringSkip(string, off));
+            MD_Token token = MD_TokenFromString(MD_S8Skip(string, off));
             if(token.kind == MD_TokenKind_Comment)
             {
-                off += token.outer_string.size;
+                off += token.raw_string.size;
                 comment_token = token;
             }
             else if(token.kind == MD_TokenKind_Newline)
             {
-                off += token.outer_string.size;
-                MD_Token next_token = MD_TokenFromString(MD_StringSkip(string, off));
+                off += token.raw_string.size;
+                MD_Token next_token = MD_TokenFromString(MD_S8Skip(string, off));
                 if(next_token.kind == MD_TokenKind_Comment)
                 {
                     // NOTE(mal): If more than one comment, use the last comment
@@ -1740,20 +1754,20 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             }
             else if((token.kind & MD_TokenGroup_Whitespace) != 0)
             {
-                off += token.outer_string.size;
+                off += token.raw_string.size;
             }
             else
             {
                 break;
             }
-            comment_before = comment_token.string;
+            prev_comment = comment_token.string;
         }
     }
     
     //- rjf: parse tag list
-    MD_ParseResult tags_parse = MD_ParseTagList(string, off);
-    off += tags_parse.bytes_parsed;
-    MD_PushErrorListToList(&result.errors, &tags_parse.errors);
+    MD_ParseResult tags_parse = _MD_ParseTagList(string, off);
+    off += tags_parse.string_advance;
+    MD_MessageListConcat(&result.errors, &tags_parse.errors);
     
     //- rjf: parse node
     MD_Node *parsed_node = MD_NilNode();
@@ -1761,105 +1775,105 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
     retry:;
     {
         //- rjf: try to parse an unnamed set
-        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
-        MD_Token unnamed_set_opener = MD_TokenFromString(MD_StringSkip(string, off));
+        off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
+        MD_Token unnamed_set_opener = MD_TokenFromString(MD_S8Skip(string, off));
         if(unnamed_set_opener.kind == MD_TokenKind_Reserved)
         {
             MD_u8 c = unnamed_set_opener.string.str[0];
             if (c == '(' || c == '{' || c == '[')
             {
-                parsed_node = MD_MakeNode(MD_NodeKind_Label, MD_S8Lit(""), MD_S8Lit(""),
-                                          unnamed_set_opener.outer_string.str - string.str);
+                parsed_node = MD_MakeNode(MD_NodeKind_Main, MD_S8Lit(""), MD_S8Lit(""),
+                                          unnamed_set_opener.raw_string.str - string.str);
                 children_parse = MD_ParseNodeSet(string, off, parsed_node, MD_ParseSetRule_EndOnDelimiter);
-                off += children_parse.bytes_parsed;
-                MD_PushErrorListToList(&result.errors, &children_parse.errors);
+                off += children_parse.string_advance;
+                MD_MessageListConcat(&result.errors, &children_parse.errors);
             }
             else if (c == ')' || c == '}' || c == ']')
             {
                 // NOTE(rjf): @error Unexpected set closing symbol
-                MD_Error *error = MD_MakeTokenError(string, unnamed_set_opener,
-                                                    MD_MessageKind_CatastrophicError,
-                                                    MD_PushStringF("Unbalanced \"%c\"", c));
-                MD_PushErrorToList(&result.errors, error);
-                off += unnamed_set_opener.outer_string.size;
+                MD_Message *error = MD_MakeTokenError(string, unnamed_set_opener,
+                                                      MD_MessageKind_CatastrophicError,
+                                                      MD_S8Fmt("Unbalanced \"%c\"", c));
+                MD_MessageListPush(&result.errors, error);
+                off += unnamed_set_opener.raw_string.size;
             }
             else
             {
                 // NOTE(rjf): @error Unexpected reserved symbol
-                MD_Error *error = MD_MakeTokenError(string, unnamed_set_opener,
-                                                    MD_MessageKind_Error, 
-                                                    MD_PushStringF("Unexpected reserved symbol \"%c\"", c));
-                MD_PushErrorToList(&result.errors, error);
-                off += unnamed_set_opener.outer_string.size;
+                MD_Message *error = MD_MakeTokenError(string, unnamed_set_opener,
+                                                      MD_MessageKind_Error, 
+                                                      MD_S8Fmt("Unexpected reserved symbol \"%c\"", c));
+                MD_MessageListPush(&result.errors, error);
+                off += unnamed_set_opener.raw_string.size;
             }
             goto end_parse;
             
         }
         
         //- rjf: try to parse regular node, with/without children
-        off += MD_LexAdvanceFromSkips(MD_StringSkip(string, off), MD_TokenGroup_Irregular);
-        MD_Token label_name = MD_TokenFromString(MD_StringSkip(string, off));
+        off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
+        MD_Token label_name = MD_TokenFromString(MD_S8Skip(string, off));
         if((label_name.kind & MD_TokenGroup_Label) != 0)
         {
-            off += label_name.outer_string.size;
-            parsed_node = MD_MakeNode(MD_NodeKind_Label, label_name.string, label_name.outer_string,
-                                      label_name.outer_string.str - string.str);
+            off += label_name.raw_string.size;
+            parsed_node = MD_MakeNode(MD_NodeKind_Main, label_name.string, label_name.raw_string,
+                                      label_name.raw_string.str - string.str);
             parsed_node->flags |= label_name.node_flags;
             
             //- rjf: try to parse children for this node
             MD_u64 colon_check_off = off;
-            colon_check_off += MD_LexAdvanceFromSkips(MD_StringSkip(string, colon_check_off), MD_TokenGroup_Irregular);
-            MD_Token colon = MD_TokenFromString(MD_StringSkip(string, colon_check_off));
+            colon_check_off += MD_LexAdvanceFromSkips(MD_S8Skip(string, colon_check_off), MD_TokenGroup_Irregular);
+            MD_Token colon = MD_TokenFromString(MD_S8Skip(string, colon_check_off));
             if(colon.kind == MD_TokenKind_Reserved &&
                colon.string.str[0] == ':')
             {
-                colon_check_off += colon.outer_string.size;
+                colon_check_off += colon.raw_string.size;
                 off = colon_check_off;
                 
                 children_parse = MD_ParseNodeSet(string, off, parsed_node, MD_ParseSetRule_EndOnDelimiter);
-                off += children_parse.bytes_parsed;
-                MD_PushErrorListToList(&result.errors, &children_parse.errors);
+                off += children_parse.string_advance;
+                MD_MessageListConcat(&result.errors, &children_parse.errors);
             }
             goto end_parse;
         }
         
         //- rjf: collect bad token
-        MD_Token bad_token = MD_TokenFromString(MD_StringSkip(string, off));
+        MD_Token bad_token = MD_TokenFromString(MD_S8Skip(string, off));
         if(bad_token.kind & MD_TokenGroup_Error)
         {
-            off += bad_token.outer_string.size;
+            off += bad_token.raw_string.size;
             
             switch (bad_token.kind){
                 case MD_TokenKind_BadCharacter:
                 {
                     // TODO(allen): tighten up with good integer <-> string helpers
                     MD_String8List bytes = {0};
-                    for(int i_byte = 0; i_byte < bad_token.outer_string.size; ++i_byte)
+                    for(int i_byte = 0; i_byte < bad_token.raw_string.size; ++i_byte)
                     {
-                        MD_PushStringToList(&bytes, MD_PushStringF("0x%02X", bad_token.outer_string.str[i_byte]));
+                        MD_S8ListPush(&bytes, MD_S8Fmt("0x%02X", bad_token.raw_string.str[i_byte]));
                     }
-                    MD_String8 byte_string = MD_JoinStringList(bytes, MD_S8Lit(" "));
+                    MD_String8 byte_string = MD_S8ListJoin(bytes, MD_S8Lit(" "));
                     
                     // NOTE(rjf): @error Bad character
-                    MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
-                                                        MD_PushStringF("Non-ASCII character \"%.*s\"", MD_StringExpand(byte_string)));
-                    MD_PushErrorToList(&result.errors, error);
+                    MD_Message *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                                                          MD_S8Fmt("Non-ASCII character \"%.*s\"", MD_S8VArg(byte_string)));
+                    MD_MessageListPush(&result.errors, error);
                 }break;
                 
                 case MD_TokenKind_BrokenComment:
                 {
                     // NOTE(rjf): @error Broken Comments
-                    MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
-                                                        MD_S8Lit("Unterminated comment"));
-                    MD_PushErrorToList(&result.errors, error);
+                    MD_Message *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                                                          MD_S8Lit("Unterminated comment"));
+                    MD_MessageListPush(&result.errors, error);
                 }break;
                 
                 case MD_TokenKind_BrokenStringLiteral:
                 {
                     // NOTE(rjf): @error Broken String Literals
-                    MD_Error *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
-                                                        MD_S8Lit("Unterminated string literal"));
-                    MD_PushErrorToList(&result.errors, error);
+                    MD_Message *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                                                          MD_S8Lit("Unterminated string literal"));
+                    MD_MessageListPush(&result.errors, error);
                 }break;
             }
             goto retry;
@@ -1869,16 +1883,16 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
     end_parse:;
     
     //- rjf: parse comments after nodes.
-    MD_String8 comment_after = MD_ZERO_STRUCT;
+    MD_String8 next_comment = MD_ZERO_STRUCT;
     {
         MD_Token comment_token = MD_ZERO_STRUCT;
         for(;;)
         {
-            MD_Token token = MD_TokenFromString(MD_StringSkip(string, off));
+            MD_Token token = MD_TokenFromString(MD_S8Skip(string, off));
             if(token.kind == MD_TokenKind_Comment)
             {
                 comment_token = token;
-                off += token.outer_string.size;
+                off += token.raw_string.size;
                 break;
             }
             
@@ -1888,19 +1902,19 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             }
             else if((token.kind & MD_TokenGroup_Whitespace) != 0)
             {
-                off += token.outer_string.size;
+                off += token.raw_string.size;
             }
             else
             {
                 break;
             }
         }
-        comment_after = comment_token.string;
+        next_comment = comment_token.string;
     }
     
     //- rjf: fill result
-    parsed_node->comment_before = comment_before;
-    parsed_node->comment_after = comment_after;
+    parsed_node->prev_comment = prev_comment;
+    parsed_node->next_comment = next_comment;
     result.node = parsed_node;
     if(!MD_NodeIsNil(result.node))
     {
@@ -1908,7 +1922,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
         result.node->last_tag = tags_parse.last_node;
     }
     result.last_node = parsed_node;
-    result.bytes_parsed = off - offset;
+    result.string_advance= off - offset;
     
     return result;
 }
@@ -1919,7 +1933,7 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
     MD_Node *root = MD_MakeNode(MD_NodeKind_File, filename, contents, 0);
     MD_ParseResult result = MD_ParseNodeSet(contents, 0, root, MD_ParseSetRule_Global);
     result.node = result.last_node = root;
-    for(MD_Error *error = result.errors.first; error != 0; error = error->next)
+    for(MD_Message *error = result.errors.first; error != 0; error = error->next)
     {
         if(MD_NodeIsNil(error->node->parent))
         {
@@ -1937,9 +1951,9 @@ MD_ParseWholeFile(MD_String8 filename)
     if(file_contents.str == 0)
     {
         // NOTE(rjf): @error File failing to load
-        MD_Error *error = MD_MakeNodeError(parse.node, MD_MessageKind_CatastrophicError,
-                                           MD_PushStringF("Could not read file \"%.*s\"", MD_StringExpand(filename)));
-        MD_PushErrorToList(&parse.errors, error);
+        MD_Message *error = MD_MakeNodeError(parse.node, MD_MessageKind_CatastrophicError,
+                                             MD_S8Fmt("Could not read file \"%.*s\"", MD_S8VArg(filename)));
+        MD_MessageListPush(&parse.errors, error);
     }
     return parse;
 }
@@ -1947,7 +1961,7 @@ MD_ParseWholeFile(MD_String8 filename)
 //~ Location Conversions
 
 MD_FUNCTION_IMPL MD_CodeLoc
-MD_CodeLocFromFileBaseOffset(MD_String8 filename, MD_u8 *base, MD_u64 offset)
+MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u64 offset)
 {
     MD_CodeLoc loc;
     loc.filename = filename;
@@ -1976,7 +1990,7 @@ MD_FUNCTION_IMPL MD_CodeLoc
 MD_CodeLocFromNode(MD_Node *node)
 {
     MD_Node *root = MD_RootFromNode(node);
-    MD_CodeLoc loc = MD_CodeLocFromFileBaseOffset(root->string, root->whole_string.str, node->offset);
+    MD_CodeLoc loc = MD_CodeLocFromFileOffset(root->string, root->raw_string.str, node->offset);
     return loc;
 }
 
@@ -1992,12 +2006,12 @@ MD_FUNCTION_IMPL MD_Node *
 MD_NilNode(void) { return &_md_nil_node; }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 whole_string, MD_u64 offset)
+MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 raw_string, MD_u64 offset)
 {
     MD_Node *node = MD_PushArray(MD_Node, 1);
     node->kind = kind;
     node->string = string;
-    node->whole_string = whole_string;
+    node->raw_string = raw_string;
     node->next = node->prev = node->parent =
         node->first_child = node->last_child =
         node->first_tag = node->last_tag = node->ref_target = MD_NilNode();
@@ -2034,9 +2048,9 @@ MD_MakeList(void)
 }
 
 MD_FUNCTION_IMPL MD_Node*
-MD_PushReference(MD_Node *list, MD_Node *target)
+MD_PushNewReference(MD_Node *list, MD_Node *target)
 {
-    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->whole_string, target->offset);
+    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->raw_string, target->offset);
     n->ref_target = target;
     MD_PushChild(list, n);
     return(n);
@@ -2050,7 +2064,7 @@ MD_NodeFromString(MD_Node *first, MD_Node *one_past_last, MD_String8 string, MD_
     MD_Node *result = MD_NilNode();
     for(MD_Node *node = first; !MD_NodeIsNil(node) && node != one_past_last; node = node->next)
     {
-        if(MD_StringMatch(string, node->string, flags))
+        if(MD_S8Match(string, node->string, flags))
         {
             result = node;
             break;
@@ -2078,6 +2092,21 @@ MD_NodeFromIndex(MD_Node *first, MD_Node *one_past_last, int n)
     return result;
 }
 
+MD_FUNCTION_IMPL MD_Node *
+MD_NodeFromFlags(MD_Node *first, MD_Node *one_past_last, MD_NodeFlags flags)
+{
+    MD_Node *result = MD_NilNode();
+    for(MD_Node *n = first; n != one_past_last && !MD_NodeIsNil(n); n = n->next)
+    {
+        if(n->flags & flags)
+        {
+            result = n;
+            break;
+        }
+    }
+    return result;
+}
+
 MD_FUNCTION_IMPL int
 MD_IndexFromNode(MD_Node *node)
 {
@@ -2086,7 +2115,7 @@ MD_IndexFromNode(MD_Node *node)
     return idx;
 }
 
-MD_FUNCTION MD_Node *
+MD_FUNCTION_IMPL MD_Node *
 MD_RootFromNode(MD_Node *node)
 {
     MD_Node *parent = node;
@@ -2165,7 +2194,7 @@ MD_TagCountFromNode(MD_Node *node)
 }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_Deref(MD_Node *node)
+MD_NodeFromReference(MD_Node *node)
 {
     MD_Node *result = node;
     while(result->kind == MD_NodeKind_Reference)
@@ -2175,62 +2204,48 @@ MD_Deref(MD_Node *node)
     return result;
 }
 
-MD_FUNCTION MD_Node *
-MD_SeekNodeWithFlags(MD_Node *start, MD_NodeFlags one_past_last_flags)
-{
-    MD_Node *result = MD_NilNode();
-    for(MD_EachNode(it, start->next))
-    {
-        if(it->flags & one_past_last_flags)
-        {
-            result = it;
-            break;
-        }
-    }
-    return result;
-}
-
 //~ Error/Warning Helpers
 
-MD_FUNCTION void
-MD_Message(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
+MD_FUNCTION_IMPL void
+MD_PrintMessage(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
 {
     const char *kind_name = "";
     switch (kind){
         default: break;
+        case MD_MessageKind_Note: kind_name = "note: "; break;
         case MD_MessageKind_Warning: kind_name = "warning: "; break;
         case MD_MessageKind_Error: kind_name = "error: "; break;
         case MD_MessageKind_CatastrophicError: kind_name = "fatal error: "; break;
     }
     fprintf(out, "%.*s:%i:%i: %s%.*s\n",
-            MD_StringExpand(loc.filename), loc.line, loc.column,
-            kind_name, MD_StringExpand(str));
+            MD_S8VArg(loc.filename), loc.line, loc.column,
+            kind_name, MD_S8VArg(str));
 }
 
 MD_FUNCTION_IMPL void
-MD_MessageF(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...)
+MD_PrintMessageFmt(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...)
 {
     // TODO(allen): use scratch
     va_list args;
     va_start(args, fmt);
-    MD_Message(out, loc, kind, MD_PushStringFV(fmt, args));
+    MD_PrintMessage(out, loc, kind, MD_S8FmtV(fmt, args));
     va_end(args);
 }
 
 MD_FUNCTION_IMPL void
-MD_NodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str)
+MD_PrintNodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str)
 {
     MD_CodeLoc loc = MD_CodeLocFromNode(node);
-    MD_Message(out, loc, kind, str);
+    MD_PrintMessage(out, loc, kind, str);
 }
 
 MD_FUNCTION_IMPL void
-MD_NodeMessageF(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
+MD_PrintNodeMessageFmt(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
 {
     // TODO(allen): use scratch
     va_list args;
     va_start(args, fmt);
-    MD_NodeMessage(out, node, kind, MD_PushStringFV(fmt, args));
+    MD_PrintNodeMessage(out, node, kind, MD_S8FmtV(fmt, args));
     va_end(args);
 }
 
@@ -2240,10 +2255,10 @@ MD_FUNCTION_IMPL MD_b32
 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 {
     MD_b32 result = 0;
-    if(a->kind == b->kind && MD_StringMatch(a->string, b->string, flags))
+    if(a->kind == b->kind && MD_S8Match(a->string, b->string, flags))
     {
         result = 1;
-        if(a->kind != MD_NodeKind_Tag && (flags & MD_MatchFlag_Tags))
+        if(a->kind != MD_NodeKind_Tag && (flags & MD_NodeMatchFlag_Tags))
         {
             for(MD_Node *a_tag = a->first_tag, *b_tag = b->first_tag;
                 !MD_NodeIsNil(a_tag) || !MD_NodeIsNil(b_tag);
@@ -2251,7 +2266,7 @@ MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
             {
                 if(MD_NodeMatch(a_tag, b_tag, flags))
                 {
-                    if(flags & MD_MatchFlag_TagArguments)
+                    if(flags & MD_NodeMatchFlag_TagArguments)
                     {
                         for(MD_Node *a_tag_arg = a_tag->first_child, *b_tag_arg = b_tag->first_child;
                             !MD_NodeIsNil(a_tag_arg) || !MD_NodeIsNil(b_tag_arg);
@@ -2301,19 +2316,19 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 //~ Generation
 
 MD_FUNCTION_IMPL void
-MD_OutputTree(FILE *file, MD_Node *node, int indent_spaces)
+MD_DebugOutputTree(FILE *file, MD_Node *node, int indent_spaces)
 {
 #define MD_PrintIndent() do { for(int i = 0; i < indent_spaces; i += 1) fprintf(file, " "); } while(0)
     for(MD_Node *tag = node->first_tag; !MD_NodeIsNil(tag); tag = tag->next)
     {
         MD_PrintIndent();
-        fprintf(file, "@%.*s", MD_StringExpand(tag->string));
+        fprintf(file, "@%.*s", MD_S8VArg(tag->string));
         if(!MD_NodeIsNil(tag->first_child))
         {
             fprintf(file, "(");
             for(MD_Node *child = tag->first_child; !MD_NodeIsNil(child); child = child->next)
             {
-                MD_OutputTree(file, child, 0);
+                MD_DebugOutputTree(file, child, 0);
                 fprintf(file, ", ");
             }
             fprintf(file, ")\n");
@@ -2328,15 +2343,15 @@ MD_OutputTree(FILE *file, MD_Node *node, int indent_spaces)
         fprintf(file, "\n");
     }
     
-    if(node->whole_string.size > 0)
+    if(node->raw_string.size > 0)
     {
         MD_PrintIndent();
-        fprintf(file, "%.*s", MD_StringExpand(node->whole_string));
+        fprintf(file, "%.*s", MD_S8VArg(node->raw_string));
     }
     
     if(!MD_NodeIsNil(node->first_child))
     {
-        if(node->whole_string.size > 0)
+        if(node->raw_string.size > 0)
         {
             fprintf(file, ":\n");
         }
@@ -2344,7 +2359,7 @@ MD_OutputTree(FILE *file, MD_Node *node, int indent_spaces)
         fprintf(file, "{\n");
         for(MD_Node *child = node->first_child; !MD_NodeIsNil(child); child = child->next)
         {
-            MD_OutputTree(file, child, indent_spaces+2);
+            MD_DebugOutputTree(file, child, indent_spaces+2);
         }
         MD_PrintIndent();
         fprintf(file, "}\n");
@@ -2364,16 +2379,15 @@ MD_StringListFromArgCV(int argument_count, char **arguments)
     MD_String8List options = MD_ZERO_STRUCT;
     for(int i = 1; i < argument_count; i += 1)
     {
-        MD_PushStringToList(&options, MD_S8CString(arguments[i]));
+        MD_S8ListPush(&options, MD_S8CString(arguments[i]));
     }
     return options;
 }
 
-MD_FUNCTION MD_CommandLine
-MD_CommandLineFromOptions(MD_String8List options)
+MD_FUNCTION MD_CmdLine
+MD_MakeCmdLineFromOptions(MD_String8List options)
 {
-    MD_CommandLine cmdln = MD_ZERO_STRUCT;
-    cmdln.arguments = options;
+    MD_CmdLine cmdln = MD_ZERO_STRUCT;
     
     for(MD_String8Node *n = options.first, *next = 0;
         n; n = next)
@@ -2383,27 +2397,27 @@ MD_CommandLineFromOptions(MD_String8List options)
         //- rjf: figure out whether or not this is an option by checking for `-` or `--`
         // from the beginning of the string
         MD_String8 option_name = MD_ZERO_STRUCT;
-        if(MD_StringMatch(MD_StringPrefix(n->string, 2), MD_S8Lit("--"), 0))
+        if(MD_S8Match(MD_S8Prefix(n->string, 2), MD_S8Lit("--"), 0))
         {
-            option_name = MD_StringSkip(n->string, 2);
+            option_name = MD_S8Skip(n->string, 2);
         }
-        else if(MD_StringMatch(MD_StringPrefix(n->string, 1), MD_S8Lit("-"), 0))
+        else if(MD_S8Match(MD_S8Prefix(n->string, 1), MD_S8Lit("-"), 0))
         {
-            option_name = MD_StringSkip(n->string, 1);
+            option_name = MD_S8Skip(n->string, 1);
         }
         //- rjf: trim off anything after a `:` or `=`, use that as the first value string
         MD_String8 first_value = MD_ZERO_STRUCT;
         MD_b32 has_many_values = 0;
         if(option_name.size != 0)
         {
-            MD_u64 colon_signifier_pos = MD_FindSubstring(option_name, MD_S8Lit(":"), 0, 0);
-            MD_u64 equal_signifier_pos = MD_FindSubstring(option_name, MD_S8Lit("="), 0, 0);
+            MD_u64 colon_signifier_pos = MD_S8FindSubstring(option_name, MD_S8Lit(":"), 0, 0);
+            MD_u64 equal_signifier_pos = MD_S8FindSubstring(option_name, MD_S8Lit("="), 0, 0);
             MD_u64 signifier_pos = colon_signifier_pos > equal_signifier_pos ? equal_signifier_pos : colon_signifier_pos;
             if(signifier_pos < option_name.size)
             {
-                first_value = MD_StringSkip(option_name, signifier_pos+1);
-                option_name = MD_StringPrefix(option_name, signifier_pos);
-                if(MD_StringMatch(MD_StringSuffix(first_value, 1), MD_S8Lit(","), 0))
+                first_value = MD_S8Skip(option_name, signifier_pos+1);
+                option_name = MD_S8Prefix(option_name, signifier_pos);
+                if(MD_S8Match(MD_S8Suffix(first_value, 1), MD_S8Lit(","), 0))
                 {
                     has_many_values = 1;
                 }
@@ -2418,7 +2432,7 @@ MD_CommandLineFromOptions(MD_String8List options)
             //- rjf: push first value
             if(first_value.size != 0)
             {
-                MD_PushStringToList(&option_values, first_value);
+                MD_S8ListPush(&option_values, first_value);
             }
             
             //- rjf: scan next string values, add them to option values until we hit a lack
@@ -2428,7 +2442,7 @@ MD_CommandLineFromOptions(MD_String8List options)
                 for(MD_String8Node *v = next; v; v = v->next, next = v)
                 {
                     MD_String8 value_str = v->string;
-                    MD_b32 next_has_arguments = MD_StringMatch(MD_StringSuffix(value_str, 1), MD_S8Lit(","), 0);
+                    MD_b32 next_has_arguments = MD_S8Match(MD_S8Suffix(value_str, 1), MD_S8Lit(","), 0);
                     MD_b32 in_quotes = 0;
                     MD_u64 start = 0;
                     for(MD_u64 i = 0; i <= value_str.size; i += 1)
@@ -2437,7 +2451,7 @@ MD_CommandLineFromOptions(MD_String8List options)
                         {
                             if(start != i)
                             {
-                                MD_PushStringToList(&option_values, MD_StringSubstring(value_str, start, i));
+                                MD_S8ListPush(&option_values, MD_S8Substring(value_str, start, i));
                             }
                             start = i+1;
                         }
@@ -2455,7 +2469,7 @@ MD_CommandLineFromOptions(MD_String8List options)
             
             //- rjf: insert the fully parsed option
             {
-                MD_CommandLineOption *opt = MD_PushArray(MD_CommandLineOption, 1);
+                MD_CmdLineOption *opt = MD_PushArray(MD_CmdLineOption, 1);
                 MD_MemoryZero(opt, sizeof(*opt));
                 opt->name = option_name;
                 opt->values = option_values;
@@ -2474,7 +2488,7 @@ MD_CommandLineFromOptions(MD_String8List options)
         //- rjf: this argument is not an option, push it to regular inputs list.
         else
         {
-            MD_PushStringToList(&cmdln.inputs, n->string);
+            MD_S8ListPush(&cmdln.inputs, n->string);
         }
     }
     
@@ -2482,12 +2496,12 @@ MD_CommandLineFromOptions(MD_String8List options)
 }
 
 MD_FUNCTION MD_String8List
-MD_CommandLineOptionValues(MD_CommandLine cmdln, MD_String8 name)
+MD_CmdLineValuesFromString(MD_CmdLine cmdln, MD_String8 name)
 {
     MD_String8List values = MD_ZERO_STRUCT;
-    for(MD_CommandLineOption *opt = cmdln.first_option; opt; opt = opt->next)
+    for(MD_CmdLineOption *opt = cmdln.first_option; opt; opt = opt->next)
     {
-        if(MD_StringMatch(opt->name, name, 0))
+        if(MD_S8Match(opt->name, name, 0))
         {
             values = opt->values;
             break;
@@ -2497,12 +2511,12 @@ MD_CommandLineOptionValues(MD_CommandLine cmdln, MD_String8 name)
 }
 
 MD_FUNCTION MD_b32
-MD_CommandLineOptionPassed(MD_CommandLine cmdln, MD_String8 name)
+MD_CmdLineB32FromString(MD_CmdLine cmdln, MD_String8 name)
 {
     MD_b32 result = 0;
-    for(MD_CommandLineOption *opt = cmdln.first_option; opt; opt = opt->next)
+    for(MD_CmdLineOption *opt = cmdln.first_option; opt; opt = opt->next)
     {
-        if(MD_StringMatch(opt->name, name, 0))
+        if(MD_S8Match(opt->name, name, 0))
         {
             result = 1;
             break;
@@ -2512,11 +2526,11 @@ MD_CommandLineOptionPassed(MD_CommandLine cmdln, MD_String8 name)
 }
 
 MD_FUNCTION MD_i64
-MD_CommandLineOptionI64(MD_CommandLine cmdln, MD_String8 name)
+MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name)
 {
     MD_i64 v = 0;
-    MD_String8List values = MD_CommandLineOptionValues(cmdln, name);
-    MD_String8 value_str = MD_JoinStringList(values, MD_S8Lit(""));
+    MD_String8List values = MD_CmdLineValuesFromString(cmdln, name);
+    MD_String8 value_str = MD_S8ListJoin(values, MD_S8Lit(""));
     v = MD_CStyleIntFromString(value_str);
     return v;
 }
@@ -2527,7 +2541,7 @@ MD_FUNCTION_IMPL MD_String8
 MD_LoadEntireFile(MD_String8 filename)
 {
     MD_String8 file_contents = MD_ZERO_STRUCT;
-    FILE *file = fopen((char*)MD_PushStringCopy(filename).str, "rb");
+    FILE *file = fopen((char*)MD_S8Copy(filename).str, "rb");
     if(file)
     {
         fseek(file, 0, SEEK_END);

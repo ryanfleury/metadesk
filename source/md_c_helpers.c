@@ -89,13 +89,13 @@ MD_C_PostUnaryExprKindFromNode(MD_Node *node)
     MD_C_ExprKind kind = MD_C_ExprKind_Nil;
     if(!MD_NodeIsNil(node->first_child))
     {
-        if(node->flags & MD_NodeFlag_ParenLeft &&
-           node->flags & MD_NodeFlag_ParenRight)
+        if(node->flags & MD_NodeFlag_HasParenLeft &&
+           node->flags & MD_NodeFlag_HasParenRight)
         {
             kind = MD_C_ExprKind_Call;
         }
-        else if(node->flags & MD_NodeFlag_BracketLeft &&
-                node->flags & MD_NodeFlag_BracketRight)
+        else if(node->flags & MD_NodeFlag_HasBracketLeft &&
+                node->flags & MD_NodeFlag_HasBracketRight)
         {
             kind = MD_C_ExprKind_Subscript;
         }
@@ -110,13 +110,13 @@ MD_C_PreUnaryExprKindFromNode(MD_Node *node)
     // NOTE(rjf): Special-cases for calls/subscripts.
     if(!MD_NodeIsNil(node->first_child))
     {
-        if(node->flags & MD_NodeFlag_ParenLeft &&
-           node->flags & MD_NodeFlag_ParenRight)
+        if(node->flags & MD_NodeFlag_HasParenLeft &&
+           node->flags & MD_NodeFlag_HasParenRight)
         {
             kind = MD_C_ExprKind_Call;
         }
-        else if(node->flags & MD_NodeFlag_BracketLeft &&
-                node->flags & MD_NodeFlag_BracketRight)
+        else if(node->flags & MD_NodeFlag_HasBracketLeft &&
+                node->flags & MD_NodeFlag_HasBracketRight)
         {
             kind = MD_C_ExprKind_Subscript;
         }
@@ -129,7 +129,7 @@ MD_C_PreUnaryExprKindFromNode(MD_Node *node)
             _MD_C_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(kind_it);
             if(metadata->group == MD_C_ExprKindGroup_PreUnary)
             {
-                if(MD_StringMatch(node->string, MD_S8CString(metadata->pre_symbol), 0))
+                if(MD_S8Match(node->string, MD_S8CString(metadata->pre_symbol), 0))
                 {
                     kind = kind_it;
                     break;
@@ -144,7 +144,7 @@ MD_FUNCTION_IMPL MD_C_ExprKind
 MD_C_BinaryExprKindFromNode(MD_Node *node)
 {
     MD_C_ExprKind kind = MD_C_ExprKind_Nil;
-    if(node->kind == MD_NodeKind_Label && MD_NodeIsNil(node->first_child))
+    if(node->kind == MD_NodeKind_Main && MD_NodeIsNil(node->first_child))
     {
         for(MD_C_ExprKind kind_it = (MD_C_ExprKind)0; kind_it < MD_C_ExprKind_MAX;
             kind_it = (MD_C_ExprKind)((int)kind_it + 1))
@@ -152,7 +152,7 @@ MD_C_BinaryExprKindFromNode(MD_Node *node)
             _MD_C_ExprKindMetadata *metadata = _MD_MetadataFromExprKind(kind_it);
             if(metadata->group == MD_C_ExprKindGroup_Binary)
             {
-                if(MD_StringMatch(node->string, MD_S8CString(metadata->symbol), 0))
+                if(MD_S8Match(node->string, MD_S8CString(metadata->symbol), 0))
                 {
                     kind = kind_it;
                     break;
@@ -195,7 +195,7 @@ MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_NodeParse_ConsumeAtom(_MD_NodeParseCtx *ctx, MD_Node **out)
 {
     MD_b32 result = 0;
-    if(ctx->at->kind == MD_NodeKind_Label &&
+    if(ctx->at->kind == MD_NodeKind_Main &&
        MD_NodeIsNil(ctx->at->first_child))
     {
         result = 1;
@@ -213,12 +213,12 @@ _MD_NodeParse_ConsumeSet(_MD_NodeParseCtx *ctx, MD_Node **out)
 {
     MD_b32 result = 0;
     if(!MD_NodeIsNil(ctx->at->first_child) ||
-       ctx->at->flags & MD_NodeFlag_ParenLeft ||
-       ctx->at->flags & MD_NodeFlag_ParenRight ||
-       ctx->at->flags & MD_NodeFlag_BracketLeft ||
-       ctx->at->flags & MD_NodeFlag_BracketRight ||
-       ctx->at->flags & MD_NodeFlag_BraceLeft ||
-       ctx->at->flags & MD_NodeFlag_BraceRight)
+       ctx->at->flags & MD_NodeFlag_HasParenLeft ||
+       ctx->at->flags & MD_NodeFlag_HasParenRight ||
+       ctx->at->flags & MD_NodeFlag_HasBracketLeft ||
+       ctx->at->flags & MD_NodeFlag_HasBracketRight ||
+       ctx->at->flags & MD_NodeFlag_HasBraceLeft ||
+       ctx->at->flags & MD_NodeFlag_HasBraceRight)
     {
         if(out)
         {
@@ -251,7 +251,7 @@ MD_PRIVATE_FUNCTION_IMPL MD_b32
 _MD_NodeParse_Consume(_MD_NodeParseCtx *ctx, MD_String8 string, MD_Node **out)
 {
     MD_b32 result = 0;
-    if(MD_StringMatch(ctx->at->string, string, 0))
+    if(MD_S8Match(ctx->at->string, string, 0))
     {
         result = 1;
         if(out)
@@ -321,11 +321,11 @@ _MD_ParseUnaryExpr(_MD_NodeParseCtx *ctx)
     // NOTE(rjf): Post-Unary Sets (calls and subscripts)
     if(_MD_NodeParse_ConsumeSet(ctx, &set))
     {
-        if(set->flags & MD_NodeFlag_ParenLeft && set->flags & MD_NodeFlag_ParenRight)
+        if(set->flags & MD_NodeFlag_HasParenLeft && set->flags & MD_NodeFlag_HasParenRight)
         {
             result = MD_C_MakeExpr(set, MD_C_ExprKind_Call, result, 0);
         }
-        else if(set->flags & MD_NodeFlag_BracketLeft && set->flags & MD_NodeFlag_BracketRight)
+        else if(set->flags & MD_NodeFlag_HasBracketLeft && set->flags & MD_NodeFlag_HasBracketRight)
         {
             result = MD_C_MakeExpr(set, MD_C_ExprKind_Subscript, result, MD_C_ParseAsExpr(set->first_child, set->last_child));
         }
@@ -497,7 +497,7 @@ MD_C_ExprMatch(MD_C_Expr *a, MD_C_Expr *b, MD_MatchFlags flags)
         result = 1;
         if(a->kind == MD_C_ExprKind_Atom)
         {
-            result = MD_StringMatch(a->node->string, b->node->string, flags);
+            result = MD_S8Match(a->node->string, b->node->string, flags);
         }
     }
     return result;
@@ -546,9 +546,9 @@ MD_C_Generate_Struct(FILE *file, MD_Node *node)
     if(node)
     {
         fprintf(file, "typedef struct %.*s %.*s;\n",
-                MD_StringExpand(node->string),
-                MD_StringExpand(node->string));
-        fprintf(file, "struct %.*s\n{\n", MD_StringExpand(node->string));
+                MD_S8VArg(node->string),
+                MD_S8VArg(node->string));
+        fprintf(file, "struct %.*s\n{\n", MD_S8VArg(node->string));
         for(MD_Node *child = node->first_child; !MD_NodeIsNil(child); child = child->next)
         {
             MD_C_Generate_Decl(file, child);
@@ -568,7 +568,7 @@ MD_C_Generate_Expr(FILE *file, MD_C_Expr *expr)
         {
             case MD_C_ExprKindGroup_Atom:
             {
-                fprintf(file, "%.*s", MD_StringExpand(expr->node->string));
+                fprintf(file, "%.*s", MD_S8VArg(expr->node->string));
             }break;
             
             case MD_C_ExprKindGroup_Binary:
@@ -621,7 +621,7 @@ MD_C_Generate_TypeLHS(FILE *file, MD_C_Expr *type)
         case MD_C_ExprKind_Atom:
         {
             MD_Node *node = type->node;
-            fprintf(file, "%.*s", MD_StringExpand(node->whole_string));
+            fprintf(file, "%.*s", MD_S8VArg(node->raw_string));
         }break;
         
         case MD_C_ExprKind_Pointer:
@@ -650,7 +650,7 @@ MD_C_Generate_TypeLHS(FILE *file, MD_C_Expr *type)
         {
             fprintf(file, "{ unexpected MD_C_ExprKind (%i) in type info for node \"%.*s\" }",
                     type->kind,
-                    MD_StringExpand(type->node->whole_string));
+                    MD_S8VArg(type->node->raw_string));
         }break;
     }
 }
@@ -696,7 +696,7 @@ MD_FUNCTION_IMPL void
 MD_C_Generate_DeclByNameAndType(FILE *file, MD_String8 name, MD_C_Expr *type)
 {
     MD_C_Generate_TypeLHS(file, type);
-    fprintf(file, " %.*s", MD_StringExpand(name));
+    fprintf(file, " %.*s", MD_S8VArg(name));
     MD_C_Generate_TypeRHS(file, type);
 }
 

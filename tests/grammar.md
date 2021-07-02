@@ -95,10 +95,10 @@ unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | ':'
 /* Comments
  * Comments around nodes are accessible to the user. Here's how they behave:
  * - The text inside a comment immediatly following a node is stored as the 
- *   comment_after member of that node. No newlines can happen between a 
+ *   next_comment member of that node. No newlines can happen between a 
  *   node and its after_comment.
  * - The text inside a comment preceding a node is stored as the 
- *   comment_before of that node _unless_ it is already the comment_after 
+ *   prev_comment of that node _unless_ it is already the next_comment 
  *   of another node. One newline between the comment and the node is 
  *   obviously necessary in the case of C++-style comments and it's also
  *   allowed for C-style comments.
@@ -108,9 +108,9 @@ unscoped_set_tail   : {':' @child unscoped_set | ' ' @sibling unscoped_set | ':'
  * The semantically annotated Backus-Naur form that we're using is not a 
  * good fit to describe the grammar of comments.
  * To prevent the comment in "a /* comment */ b" from being interpreted as 
- * a comment_before of "b", instead of what it is (a comment_after of "a"),
- * we would have to complicate the grammar by introducing several extra 
- * productions with this specific purpose in mind.
- * The sensitivity of whitespace in the attachment of comments to nodes is
- * also cumbersome to express in BNF.
- */
+* a prev_comment of "b", instead of what it is (a next_comment of "a"),
+* we would have to complicate the grammar by introducing several extra 
+* productions with this specific purpose in mind.
+* The sensitivity of whitespace in the attachment of comments to nodes is
+* also cumbersome to express in BNF.
+*/

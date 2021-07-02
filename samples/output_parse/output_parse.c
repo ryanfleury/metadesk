@@ -16,7 +16,7 @@ static void Print(FILE* file, int indent_count, char* fmt, ...) {
 
 static void PrintNode(MD_Node* node, FILE* file, int indent_count) {
     Print(file, indent_count, "Node {\n");
-    Print(file, indent_count+1, "Kind: %.*s,\n", MD_StringExpand(MD_StringFromNodeKind(node->kind)));
+    Print(file, indent_count+1, "Kind: %.*s,\n", MD_S8VArg(MD_StringFromNodeKind(node->kind)));
     
     int flags_bits = sizeof(node->flags)*8;
     char binary_flags[sizeof(node->flags)*8+1];
@@ -32,14 +32,14 @@ static void PrintNode(MD_Node* node, FILE* file, int indent_count) {
     Print(file, indent_count+1, "Flags: %s,\n", binary_flags);
     Print(file, indent_count+1, "Flag Names: ", binary_flags);
     MD_String8List flags_list = MD_StringListFromNodeFlags(node->flags);
-    MD_String8 flag_names = MD_JoinStringList(flags_list, MD_S8CString(", "));
-    fprintf(file, "%.*s,\n", MD_StringExpand(flag_names));
+    MD_String8 flag_names = MD_S8ListJoin(flags_list, MD_S8CString(", "));
+    fprintf(file, "%.*s,\n", MD_S8VArg(flag_names));
     
-    if(node->string.size > 0) Print(file, indent_count+1, "String: %.*s,\n", MD_StringExpand(node->string));
-    if(node->whole_string.size > 0) Print(file, indent_count+1, "Whole String: %.*s,\n", MD_StringExpand(node->whole_string));
+    if(node->string.size > 0) Print(file, indent_count+1, "String: %.*s,\n", MD_S8VArg(node->string));
+    if(node->raw_string.size > 0) Print(file, indent_count+1, "Whole String: %.*s,\n", MD_S8VArg(node->raw_string));
     if (node->first_tag->kind != MD_NodeKind_Nil) {
         for (MD_EachNode(tag, node->first_tag)) {
-            Print(file, indent_count+1, "Tag: @%.*s\n", MD_StringExpand(tag->string));
+            Print(file, indent_count+1, "Tag: @%.*s\n", MD_S8VArg(tag->string));
             if (tag->first_child->kind != MD_NodeKind_Nil) {
                 Print(file, indent_count+2, "Tag Children{\n");
                 for (MD_EachNode(arg, tag->first_child)) {
@@ -63,15 +63,15 @@ int main(int argument_count, char **arguments)
     for(int i = 1; i < argument_count; i += 1)
     {
         MD_Node *root = MD_ParseWholeFile(MD_S8CString(arguments[i])).node;
-        MD_PushReference(list, root);
+        MD_PushNewReference(list, root);
     }
     
     for(MD_EachNode(ref, list->first_child))
     {
-        MD_Node *root = MD_Deref(ref);
-        MD_String8 code_filename = MD_ChopExtension(MD_SkipFolder(root->string));
-        MD_String8 info_filename = MD_PushStringF("parsed_%.*s.txt", MD_StringExpand(code_filename));
-        printf("Parse Input -> Output: %.*s -> %.*s\n", MD_StringExpand(code_filename), MD_StringExpand(info_filename));
+        MD_Node *root = MD_NodeFromReference(ref);
+        MD_String8 code_filename = MD_PathChopLastPeriod(MD_PathSkipLastSlash(root->string));
+        MD_String8 info_filename = MD_S8Fmt("parsed_%.*s.txt", MD_S8VArg(code_filename));
+        printf("Parse Input -> Output: %.*s -> %.*s\n", MD_S8VArg(code_filename), MD_S8VArg(info_filename));
         
         FILE* file = fopen((char *)info_filename.str, "wb");
         for(MD_EachNode(node, root->first_child))

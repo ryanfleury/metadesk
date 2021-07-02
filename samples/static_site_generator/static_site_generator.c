@@ -34,23 +34,23 @@ int main(int argument_count, char **arguments)
 {
     
     //~ NOTE(rjf): Parse command line arguments.
-    MD_CommandLine cmdln = MD_CommandLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
-    MD_String8 site_info_path = MD_JoinStringList(MD_CommandLineOptionValues(cmdln, MD_S8Lit("siteinfo")), MD_S8Lit(""));
-    MD_String8 page_dir_path = MD_JoinStringList(MD_CommandLineOptionValues(cmdln, MD_S8Lit("pagedir")), MD_S8Lit(""));
-    if(!MD_CommandLineOptionPassed(cmdln, MD_S8Lit("siteinfo")) ||
-       !MD_CommandLineOptionPassed(cmdln, MD_S8Lit("pagedir")))
+    MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
+    MD_String8 site_info_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("siteinfo")), MD_S8Lit(""));
+    MD_String8 page_dir_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("pagedir")), MD_S8Lit(""));
+    if(!MD_CmdLineB32FromString(cmdln, MD_S8Lit("siteinfo")) ||
+       !MD_CmdLineB32FromString(cmdln, MD_S8Lit("pagedir")))
     {
         fprintf(stderr, "USAGE: %s --siteinfo <path to site info file> --pagedir <path to directory with pages> ...\n", arguments[0]);
         goto end;
     }
     
     //~ NOTE(rjf): Load JS.
-    MD_String8 js_string = MD_LoadEntireFile(MD_PushStringF("%.*s/site.js", MD_StringExpand(page_dir_path)));
+    MD_String8 js_string = MD_LoadEntireFile(MD_S8Fmt("%.*s/site.js", MD_S8VArg(page_dir_path)));
     
     //~ NOTE(rjf): Parse site info.
     SiteInfo site_info = {0};
     {
-        printf("Parsing site metadata at \"%.*s\"...\n", MD_StringExpand(site_info_path));
+        printf("Parsing site metadata at \"%.*s\"...\n", MD_S8VArg(site_info_path));
         MD_Node *site_info_file = MD_ParseWholeFile(site_info_path).node;
         site_info = ParseSiteInfo(site_info_file);
     }
@@ -58,23 +58,23 @@ int main(int argument_count, char **arguments)
     //~ NOTE(rjf): Parse pages.
     MD_Node *root_list = MD_MakeList();
     {
-        printf("Searching for site pages at \"%.*s\"...\n", MD_StringExpand(page_dir_path));
+        printf("Searching for site pages at \"%.*s\"...\n", MD_S8VArg(page_dir_path));
         MD_FileInfo file_info = {0};
         for(MD_FileIter it = {0}; MD_FileIterIncrement(&it, page_dir_path, &file_info);)
         {
-            if(MD_StringMatch(MD_ExtensionFromPath(file_info.filename), MD_S8Lit("md"), MD_MatchFlag_CaseInsensitive) &&
-               !MD_StringMatch(MD_SkipFolder(MD_ChopExtension(file_info.filename)),
-                               MD_SkipFolder(MD_ChopExtension(site_info_path)),
-                               MD_MatchFlag_CaseInsensitive |
-                               MD_MatchFlag_SlashInsensitive))
+            if(MD_S8Match(MD_PathSkipLastPeriod(file_info.filename), MD_S8Lit("md"), MD_StringMatchFlag_CaseInsensitive) &&
+               !MD_S8Match(MD_PathSkipLastSlash(MD_PathChopLastPeriod(file_info.filename)),
+                           MD_PathSkipLastSlash(MD_PathChopLastPeriod(site_info_path)),
+                           MD_StringMatchFlag_CaseInsensitive |
+                           MD_StringMatchFlag_SlashInsensitive))
             {
-                printf("Processing site page at \"%.*s\"...\n", MD_StringExpand(file_info.filename));
-                MD_String8 folder = MD_FolderFromPath(page_dir_path);
-                MD_String8 path = MD_PushStringF("%.*s/%.*s",
-                                                 MD_StringExpand(folder),
-                                                 MD_StringExpand(file_info.filename));
+                printf("Processing site page at \"%.*s\"...\n", MD_S8VArg(file_info.filename));
+                MD_String8 folder = MD_PathChopLastSlash(page_dir_path);
+                MD_String8 path = MD_S8Fmt("%.*s/%.*s",
+                                           MD_S8VArg(folder),
+                                           MD_S8VArg(file_info.filename));
                 MD_Node *node = MD_ParseWholeFile(path).node;
-                MD_PushReference(root_list, node);
+                MD_PushNewReference(root_list, node);
             }
         }
     }
@@ -84,10 +84,10 @@ int main(int argument_count, char **arguments)
     {
         for(MD_EachNode(ref, root_list->first_child))
         {
-            MD_Node *root = MD_Deref(ref);
+            MD_Node *root = MD_NodeFromReference(ref);
             for(MD_EachNode(node, root->first_child))
             {
-                if(!MD_NodeIsNil(node->first_child) && MD_StringMatch(node->string, MD_S8Lit("index"), MD_MatchFlag_CaseInsensitive))
+                if(!MD_NodeIsNil(node->first_child) && MD_S8Match(node->string, MD_S8Lit("index"), MD_StringMatchFlag_CaseInsensitive))
                 {
                     for(MD_EachNode(index_string, node->first_child))
                     {
@@ -106,7 +106,7 @@ int main(int argument_count, char **arguments)
         FILE *file = fopen("style.css", "wb");
         if(file)
         {
-            fprintf(file, "%.*s", MD_StringExpand(site_info.style->string));
+            fprintf(file, "%.*s", MD_S8VArg(site_info.style->string));
             fclose(file);
         }
     }
@@ -116,7 +116,7 @@ int main(int argument_count, char **arguments)
         FILE *file = fopen("site.js", "wb");
         if(file)
         {
-            fprintf(file, "%.*s", MD_StringExpand(js_string));
+            fprintf(file, "%.*s", MD_S8VArg(js_string));
             fclose(file);
         }
     }
@@ -124,11 +124,11 @@ int main(int argument_count, char **arguments)
     //~ NOTE(rjf): Generate files for all roots.
     for(MD_EachNode(ref, root_list->first_child))
     {
-        MD_Node *root = MD_Deref(ref);
+        MD_Node *root = MD_NodeFromReference(ref);
         PageInfo page_info = ParsePageInfo(root);
         
-        MD_String8 name_without_extension = MD_SkipFolder(MD_ChopExtension(root->string));
-        FILE *file = fopen(MD_PushStringF("%.*s.html", MD_StringExpand(name_without_extension)).str, "wb");
+        MD_String8 name_without_extension = MD_PathSkipLastSlash(MD_PathChopLastPeriod(root->string));
+        FILE *file = fopen(MD_S8Fmt("%.*s.html", MD_S8VArg(name_without_extension)).str, "wb");
         if(file)
         {
             fprintf(file, "<!DOCTYPE html>\n");
@@ -144,31 +144,31 @@ int main(int argument_count, char **arguments)
             {
                 fprintf(file, "<head>\n");
                 fprintf(file, "<meta charset=\"utf-8\">\n");
-                fprintf(file, "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"author\" content=\"%.*s\">\n", MD_StringExpand(author));
-                fprintf(file, "<meta property=\"og:title\" content=\"%.*s\">\n", MD_StringExpand(title));
-                fprintf(file, "<meta name=\"twitter:title\" content=\"%.*s\">\n", MD_StringExpand(title));
-                fprintf(file, "<link rel=\"canonical\" href=\"%.*s\">\n", MD_StringExpand(url));
+                fprintf(file, "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"author\" content=\"%.*s\">\n", MD_S8VArg(author));
+                fprintf(file, "<meta property=\"og:title\" content=\"%.*s\">\n", MD_S8VArg(title));
+                fprintf(file, "<meta name=\"twitter:title\" content=\"%.*s\">\n", MD_S8VArg(title));
+                fprintf(file, "<link rel=\"canonical\" href=\"%.*s\">\n", MD_S8VArg(url));
                 fprintf(file, "<meta property=\"og:type\" content=\"website\">\n");
-                fprintf(file, "<meta property=\"og:url\" content=\"%.*s\">\n", MD_StringExpand(url));
-                fprintf(file, "<meta property=\"og:site_name\" content=\"%.*s\">\n", MD_StringExpand(site_title));
+                fprintf(file, "<meta property=\"og:url\" content=\"%.*s\">\n", MD_S8VArg(url));
+                fprintf(file, "<meta property=\"og:site_name\" content=\"%.*s\">\n", MD_S8VArg(site_title));
                 fprintf(file, "<meta name=\"twitter:card\" content=\"summary\">\n");
-                fprintf(file, "<meta name=\"twitter:site\" content=\"%.*s\">\n", MD_StringExpand(twitter_handle));
+                fprintf(file, "<meta name=\"twitter:site\" content=\"%.*s\">\n", MD_S8VArg(twitter_handle));
                 fprintf(file, "<link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\">\n");
                 fprintf(file, "<script src=\"site.js\"></script>\n");
                 if(title.size > 0)
                 {
                     if(site_title.size > 0)
                     {
-                        fprintf(file, "<title>%.*s | %.*s</title>\n", MD_StringExpand(title), MD_StringExpand(site_title));
+                        fprintf(file, "<title>%.*s | %.*s</title>\n", MD_S8VArg(title), MD_S8VArg(site_title));
                     }
                     else
                     {
-                        fprintf(file, "<title>%.*s</title>\n", MD_StringExpand(title));
+                        fprintf(file, "<title>%.*s</title>\n", MD_S8VArg(title));
                     }
                 }
                 else if(site_title.size > 0)
                 {
-                    fprintf(file, "<title>%.*s</title>\n", MD_StringExpand(site_title));
+                    fprintf(file, "<title>%.*s</title>\n", MD_S8VArg(site_title));
                 }
                 fprintf(file, "</head>\n");
             }
@@ -180,7 +180,7 @@ int main(int argument_count, char **arguments)
                 // NOTE(rjf): Generate header.
                 if(site_info.header)
                 {
-                    fprintf(file, "%.*s", MD_StringExpand(site_info.header->string));
+                    fprintf(file, "%.*s", MD_S8VArg(site_info.header->string));
                 }
                 
                 fprintf(file, "<div class=\"page_content\">\n");
@@ -188,26 +188,26 @@ int main(int argument_count, char **arguments)
                 // NOTE(rjf): Parent page back button.
                 if(page_info.parent)
                 {
-                    fprintf(file, "<div class=\"standalone_link_container\"><a class=\"link\" href=\"%.*s.html\">← Back</a></div>", MD_StringExpand(page_info.parent->string));
+                    fprintf(file, "<div class=\"standalone_link_container\"><a class=\"link\" href=\"%.*s.html\">← Back</a></div>", MD_S8VArg(page_info.parent->string));
                 }
                 
                 // NOTE(rjf): Banner.
                 if(page_info.header_image)
                 {
                     fprintf(file, "<div class=\"page_banner\" style=\"background-image: url('%.*s');\"></div>",
-                            MD_StringExpand(page_info.header_image->string));
+                            MD_S8VArg(page_info.header_image->string));
                 }
                 
                 // NOTE(rjf): Title.
                 if(title.size > 0)
                 {
-                    fprintf(file, "<h1 class=\"title\">%.*s</h1>", MD_StringExpand(title));
+                    fprintf(file, "<h1 class=\"title\">%.*s</h1>", MD_S8VArg(title));
                 }
                 
                 // NOTE(rjf): Main description/subtitle.
                 if(page_info.desc)
                 {
-                    fprintf(file, "<h2 class=\"subtitle\">%.*s</h2>", MD_StringExpand(page_info.desc->string));
+                    fprintf(file, "<h2 class=\"subtitle\">%.*s</h2>", MD_S8VArg(page_info.desc->string));
                 }
                 
                 // NOTE(rjf): Date.
@@ -216,7 +216,7 @@ int main(int argument_count, char **arguments)
                     MD_String8 date_string = MakeDateString(page_info.date);
                     if(date_string.size > 0)
                     {
-                        fprintf(file, "<h3 class=\"date\">%.*s</h3>", MD_StringExpand(date_string));
+                        fprintf(file, "<h3 class=\"date\">%.*s</h3>", MD_S8VArg(date_string));
                     }
                 }
                 
@@ -231,7 +231,7 @@ int main(int argument_count, char **arguments)
                 // NOTE(rjf): Generate footer.
                 if(site_info.footer)
                 {
-                    fprintf(file, "%.*s", MD_StringExpand(site_info.footer->string));
+                    fprintf(file, "%.*s", MD_S8VArg(site_info.footer->string));
                 }
                 
                 fprintf(file, "</body>\n");
@@ -254,23 +254,23 @@ ParsePageInfo(MD_Node *page)
     {
         if(!MD_NodeIsNil(node->first_child))
         {
-            if(MD_StringMatch(node->string, MD_S8Lit("title"), MD_MatchFlag_CaseInsensitive))
+            if(MD_S8Match(node->string, MD_S8Lit("title"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.title = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("desc"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("desc"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.desc = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("date"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("date"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.date = node;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("parent"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("parent"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.parent = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("header_image"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("header_image"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.header_image = node->first_child;
             }
@@ -287,39 +287,39 @@ ParseSiteInfo(MD_Node *site)
     {
         if(!MD_NodeIsNil(node->first_child))
         {
-            if(MD_StringMatch(node->string, MD_S8Lit("title"), MD_MatchFlag_CaseInsensitive))
+            if(MD_S8Match(node->string, MD_S8Lit("title"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.title = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("desc"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("desc"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.desc = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("canonical_url"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("canonical_url"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.canonical_url = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("author"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("author"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.author = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("twitter_handle"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("twitter_handle"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.twitter_handle = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("link_dictionary"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("link_dictionary"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.link_dictionary = node;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("header"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("header"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.header = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("footer"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("footer"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.footer = node->first_child;
             }
-            else if(MD_StringMatch(node->string, MD_S8Lit("style"), MD_MatchFlag_CaseInsensitive))
+            else if(MD_S8Match(node->string, MD_S8Lit("style"), MD_StringMatchFlag_CaseInsensitive))
             {
                 info.style = node->first_child;
             }
@@ -362,10 +362,10 @@ MakeDateString(MD_Node *date)
             MD_u64 month_idx = MD_U64FromString(month->string, 10) - 1;
             if(month_idx >= 0 && month_idx < sizeof(month_names)/sizeof(month_names[0]))
             {
-                result = MD_PushStringF("%.*s %s %.*s",
-                                        MD_StringExpand(day->string),
-                                        month_names[month_idx],
-                                        MD_StringExpand(year->string));
+                result = MD_S8Fmt("%.*s %s %.*s",
+                                  MD_S8VArg(day->string),
+                                  month_names[month_idx],
+                                  MD_S8VArg(year->string));
             }
         }
     }
@@ -402,7 +402,7 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
         {
             MD_S8Lit("\n\n"),
         };
-        MD_String8List strlist = MD_SplitString(node->string, sizeof(splits)/sizeof(splits[0]), splits);
+        MD_String8List strlist = MD_S8Split(node->string, sizeof(splits)/sizeof(splits[0]), splits);
         
         for(MD_String8Node *strnode = strlist.first; strnode; strnode = strnode->next)
         {
@@ -411,31 +411,31 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
             {
                 if(strnode->string.str[i] == '@')
                 {
-                    MD_ParseResult parse =  MD_ParseOneNode(MD_StringSubstring(strnode->string, i, strnode->string.size), 0);
+                    MD_ParseResult parse =  MD_ParseOneNode(MD_S8Substring(strnode->string, i, strnode->string.size), 0);
                     if(!MD_NodeIsNil(parse.node))
                     {
                         if(MD_NodeHasTag(node, MD_S8Lit("i"), 0))
                         {
-                            fprintf(file, "<i>%.*s</i>", MD_StringExpand(parse.node->string));
+                            fprintf(file, "<i>%.*s</i>", MD_S8VArg(parse.node->string));
                         }
                         else if(MD_NodeHasTag(node, MD_S8Lit("b"), 0))
                         {
-                            fprintf(file, "<strong>%.*s</strong>", MD_StringExpand(parse.node->string));
+                            fprintf(file, "<strong>%.*s</strong>", MD_S8VArg(parse.node->string));
                         }
                         else if(MD_NodeHasTag(node, MD_S8Lit("code"), 0))
                         {
-                            fprintf(file, "<span class=\"inline_code\">%.*s</span>", MD_StringExpand(parse.node->string));
+                            fprintf(file, "<span class=\"inline_code\">%.*s</span>", MD_S8VArg(parse.node->string));
                         }
                         else if(MD_NodeHasTag(node, MD_S8Lit("link"), 0))
                         {
                             MD_Node *text = MD_ChildFromIndex(parse.node, 0);
                             MD_Node *link = MD_ChildFromIndex(parse.node, 1);
                             fprintf(file, "<a class=\"link\" href=\"%.*s\">%.*s</a>",
-                                    MD_StringExpand(link->string),
-                                    MD_StringExpand(text->string));
+                                    MD_S8VArg(link->string),
+                                    MD_S8VArg(text->string));
                         }
                     }
-                    i += parse.bytes_parsed - 1;
+                    i += parse.string_advance - 1;
                 }
                 else
                 {
@@ -449,12 +449,12 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
                         {
                             text = MD_ChildFromIndex(dict_link, 0);
                             link = MD_ChildFromIndex(dict_link, 1);
-                            MD_String8 substring = MD_StringSubstring(strnode->string, i, i+text->string.size);
-                            if(MD_StringMatch(substring, text->string, 0))
+                            MD_String8 substring = MD_S8Substring(strnode->string, i, i+text->string.size);
+                            if(MD_S8Match(substring, text->string, 0))
                             {
                                 fprintf(file, "<a class=\"link\" href=\"%.*s\">%.*s</a>",
-                                        MD_StringExpand(link->string),
-                                        MD_StringExpand(text->string));
+                                        MD_S8VArg(link->string),
+                                        MD_S8VArg(text->string));
                                 dict_word = 1;
                                 i += text->string.size-1;
                                 break;
@@ -495,13 +495,13 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
         {
             MD_Node *src = MD_ChildFromIndex(node, 0);
             MD_Node *alt = MD_ChildFromIndex(node, 1);
-            fprintf(file, "<div class=\"img_container\"><img class=\"img\" src=\"%.*s\"></img></div>\n", MD_StringExpand(src->string));
+            fprintf(file, "<div class=\"img_container\"><img class=\"img\" src=\"%.*s\"></img></div>\n", MD_S8VArg(src->string));
         }
         else if(MD_NodeHasTag(node, MD_S8Lit("youtube"), 0))
         {
             MD_Node *id = MD_ChildFromIndex(node, 0);
             fprintf(file, "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/%.*s\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>\n",
-                    MD_StringExpand(id->string));
+                    MD_S8VArg(id->string));
         }
         else if(MD_NodeHasTag(node, MD_S8Lit("lister"), 0))
         {
@@ -523,36 +523,36 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
                         PageInfo info = ParsePageInfo(node);
                         
                         MD_String8 filename = root->string;
-                        MD_String8 filename_no_ext = MD_ChopExtension(MD_SkipFolder(filename));
-                        MD_String8 link = MD_PushStringF("%.*s.html", MD_StringExpand(filename_no_ext));
+                        MD_String8 filename_no_ext = MD_PathChopLastPeriod(MD_PathSkipLastSlash(filename));
+                        MD_String8 link = MD_S8Fmt("%.*s.html", MD_S8VArg(filename_no_ext));
                         MD_String8 name = info.title->string;
                         MD_String8 date = MakeDateString(info.date);
                         
-                        fprintf(file, "<a class=\"lister_item_link\" href=\"%.*s\">\n", MD_StringExpand(link));
+                        fprintf(file, "<a class=\"lister_item_link\" href=\"%.*s\">\n", MD_S8VArg(link));
                         fprintf(file, "<li class=\"lister_item\">\n");
                         
                         if(info.header_image)
                         {
                             fprintf(file, "<div class=\"lister_item_img\" style=\"background-image:url('%.*s');\">",
-                                    MD_StringExpand(info.header_image->string));
+                                    MD_S8VArg(info.header_image->string));
                         }
                         
                         fprintf(file, "<div class=\"lister_item_text\">\n");
                         fprintf(file, "<div class=\"lister_item_title\">\n");
-                        fprintf(file, "%.*s\n", MD_StringExpand(name));
+                        fprintf(file, "%.*s\n", MD_S8VArg(name));
                         fprintf(file, "</div>\n");
                         
                         if(date.size > 0)
                         {
                             fprintf(file, "<div class=\"lister_item_date\">\n");
-                            fprintf(file, "%.*s\n", MD_StringExpand(date));
+                            fprintf(file, "%.*s\n", MD_S8VArg(date));
                             fprintf(file, "</div>\n");
                         }
                         
                         if(info.desc)
                         {
                             fprintf(file, "<div class=\"lister_item_desc\">\n");
-                            fprintf(file, "%.*s\n", MD_StringExpand(info.desc->string));
+                            fprintf(file, "%.*s\n", MD_S8VArg(info.desc->string));
                             fprintf(file, "</div>\n");
                         }
                         if(info.header_image)

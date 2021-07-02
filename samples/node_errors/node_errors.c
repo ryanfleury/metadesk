@@ -10,16 +10,16 @@ int main(int argument_count, char **arguments)
     for(int i = 1; i < argument_count; i += 1)
     {
         MD_Node *root = MD_ParseWholeFile(MD_S8CString(arguments[i])).node;
-        MD_PushReference(list, root);
+        MD_PushNewReference(list, root);
     }
     
     // NOTE(rjf): Print errors on every single node.
     for(MD_EachNode(ref, list->first_child))
     {
-        MD_Node *root = MD_Deref(ref);
+        MD_Node *root = MD_NodeFromReference(ref);
         for(MD_EachNode(node, root->first_child))
         {
-            MD_NodeMessageF(stderr, node, MD_MessageKind_Error, "This node has an error!");
+            MD_PrintNodeMessageFmt(stderr, node, MD_MessageKind_Error, "This node has an error!");
         }
     }
     
