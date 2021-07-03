@@ -187,7 +187,6 @@ typedef struct _MD_NodeParseCtx _MD_NodeParseCtx;
 struct _MD_NodeParseCtx
 {
     MD_Node *at;
-    MD_Node *last;
     MD_Node *one_past_last;
 };
 
@@ -394,19 +393,19 @@ _MD_ParseExpr(_MD_NodeParseCtx *ctx)
 }
 
 MD_FUNCTION_IMPL MD_C_Expr *
-MD_C_ParseAsExpr(MD_Node *first, MD_Node *last)
+MD_C_ParseAsExpr(MD_Node *first, MD_Node *opl)
 {
-    _MD_NodeParseCtx ctx_ = { first, last, last->next };
+    _MD_NodeParseCtx ctx_ = { first, opl  };
     _MD_NodeParseCtx *ctx = &ctx_;
     return _MD_ParseExpr(ctx);
 }
 
 MD_FUNCTION_IMPL MD_C_Expr *
-MD_C_ParseAsType(MD_Node *first, MD_Node *last)
+MD_C_ParseAsType(MD_Node *first, MD_Node *opl)
 {
     MD_C_Expr *expr = MD_C_NilExpr();
     MD_C_Expr *last_expr = expr;
-    _MD_NodeParseCtx ctx_ = { first, last, last->next };
+    _MD_NodeParseCtx ctx_ = { first, opl };
     _MD_NodeParseCtx *ctx = &ctx_;
 #define _MD_PushType(x) if(MD_C_ExprIsNil(last_expr)) { expr = last_expr = x; } else { last_expr = last_expr->sub[0] = x; }
     MD_Node *set = 0;

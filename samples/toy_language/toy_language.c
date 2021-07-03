@@ -156,7 +156,7 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
         MD_Node *opl = MD_NodeFromFlags(first->next, MD_NilNode(), MD_NodeFlag_IsAfterSemicolon|MD_NodeFlag_IsAfterComma);
         
         //- rjf: declaration
-        if(first == last && first->string.size != 0 && !MD_NodeIsNil(first->first_child))
+        if(first->next == opl && first->string.size != 0 && !MD_NodeIsNil(first->first_child))
         {
             MD_C_Expr *expr = MD_C_ParseAsExpr(first->first_child, first->last_child);
             InsertValueToNamespace(&local_namespace, first->string, EvaluateExpr(&local_namespace, expr));
@@ -164,7 +164,7 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
         //- rjf: expr
         else
         {
-            MD_C_Expr *expr = MD_C_ParseAsExpr(first, last);
+            MD_C_Expr *expr = MD_C_ParseAsExpr(first, opl);
             if(!MD_C_ExprIsNil(expr))
             {
                 result = EvaluateExpr(&local_namespace, expr);
@@ -172,7 +172,7 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
         }
         
         //- rjf: bump
-        first = last->next;
+        first = opl;
     }
     
     return result;

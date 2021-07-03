@@ -646,7 +646,7 @@ int main(void)
             TestResult(group_opl == group_first->next->next->next);
             
             group_first = group_opl;
-            group_opl = MD_NodeFromFlags(group_first, MD_NilNode(), MD_NodeFlag_IsAfterSemicolon);
+            group_opl = MD_NodeFromFlags(group_first->next, MD_NilNode(), MD_NodeFlag_IsAfterSemicolon);
             
             TestResult(MD_S8Match(group_first->string,                    MD_S8Lit("a"), 0));
             TestResult(MD_S8Match(group_first->next->string,              MD_S8Lit("b"), 0));
@@ -661,21 +661,21 @@ int main(void)
             MD_Node *group_opl = 0;
             
             group_first = node->first_child;
-            group_opl = MD_NodeFromFlags(group_first, MD_NilNode(), MD_NodeFlag_IsAfterComma);
+            group_opl = MD_NodeFromFlags(group_first->next, MD_NilNode(), MD_NodeFlag_IsAfterComma);
             TestResult(MD_S8Match(group_first->string,                    MD_S8Lit("a"), 0));
             TestResult(MD_S8Match(group_first->next->string,              MD_S8Lit("b"), 0));
             TestResult(MD_S8Match(group_first->next->next->string,        MD_S8Lit("c"), 0));
             TestResult(group_opl == group_first->next->next->next);
             
             group_first = group_opl;
-            group_opl = MD_NodeFromFlags(group_first, MD_NilNode(), MD_NodeFlag_IsAfterComma);
+            group_opl = MD_NodeFromFlags(group_first->next, MD_NilNode(), MD_NodeFlag_IsAfterComma);
             TestResult(MD_S8Match(group_first->string,                    MD_S8Lit("d"), 0));
             TestResult(MD_S8Match(group_first->next->string,              MD_S8Lit("e"), 0));
             TestResult(MD_S8Match(group_first->next->next->string,        MD_S8Lit("f"), 0));
             TestResult(group_opl == group_first->next->next->next);
             
             group_first = group_opl;
-            group_opl = MD_NodeFromFlags(group_first, MD_NilNode(), MD_NodeFlag_IsAfterComma);
+            group_opl = MD_NodeFromFlags(group_first->next, MD_NilNode(), MD_NodeFlag_IsAfterComma);
             TestResult(MD_S8Match(group_first->string,                    MD_S8Lit("g"), 0));
             TestResult(MD_S8Match(group_first->next->string,              MD_S8Lit("h"), 0));
             TestResult(MD_S8Match(group_first->next->next->string,        MD_S8Lit("i"), 0));

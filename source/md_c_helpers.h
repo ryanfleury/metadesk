@@ -86,20 +86,22 @@ struct MD_C_Expr
 };
 
 //~ C_Expression and Type-C_Expression Helper
+
 MD_FUNCTION MD_C_Expr *   MD_C_NilExpr(void);
 MD_FUNCTION MD_b32        MD_C_ExprIsNil(MD_C_Expr *expr);
 MD_FUNCTION MD_C_ExprKind MD_C_PreUnaryExprKindFromNode(MD_Node *node);
 MD_FUNCTION MD_C_ExprKind MD_C_BinaryExprKindFromNode(MD_Node *node);
 MD_FUNCTION MD_C_ExprPrec MD_C_ExprPrecFromExprKind(MD_C_ExprKind kind);
 MD_FUNCTION MD_C_Expr *   MD_C_MakeExpr(MD_Node *node, MD_C_ExprKind kind, MD_C_Expr *left, MD_C_Expr *right);
-MD_FUNCTION MD_C_Expr *   MD_C_ParseAsExpr(MD_Node *first, MD_Node *last);
-MD_FUNCTION MD_C_Expr *   MD_C_ParseAsType(MD_Node *first, MD_Node *last);
+MD_FUNCTION MD_C_Expr *   MD_C_ParseAsExpr(MD_Node *first, MD_Node *opl);
+MD_FUNCTION MD_C_Expr *   MD_C_ParseAsType(MD_Node *first, MD_Node *opl);
 MD_FUNCTION MD_i64        MD_C_EvaluateExpr_I64(MD_C_Expr *expr);
 MD_FUNCTION MD_f64        MD_C_EvaluateExpr_F64(MD_C_Expr *expr);
 MD_FUNCTION MD_b32        MD_C_ExprMatch(MD_C_Expr *a, MD_C_Expr *b, MD_MatchFlags flags);
 MD_FUNCTION MD_b32        MD_C_ExprDeepMatch(MD_C_Expr *a, MD_C_Expr *b, MD_MatchFlags flags);
 
 //~ C Language Generation
+
 MD_FUNCTION void MD_C_Generate_String(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_C_Generate_Struct(FILE *file, MD_Node *node);
 
