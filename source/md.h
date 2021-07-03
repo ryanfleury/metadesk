@@ -132,18 +132,52 @@
 #if defined(__cplusplus)
 # define MD_LANG_CPP 1
 
-# if __cplusplus <= 199711L
-#  define MD_CPP_VERSION 98
-# elif __cplusplus <= 201103L
-#  define MD_CPP_VERSION 11
-# elif __cplusplus <= 201402L
-#  define MD_CPP_VERSION 14
-# elif __cplusplus <= 201703L
-#  define MD_CPP_VERSION 17
-# elif __cplusplus <= 202002L
-#  define MD_CPP_VERSION 20
-# else
-#  define MD_CPP_VERSION 23
+// We can't get this 100% correct thanks to Microsoft's compiler.
+// So this check lets us pre-define MD_CPP_VERSION if we have to.
+# if !defined(MD_CPP_VERSION)
+#  if defined(MD_COMPILER_CL)
+// CL is annoying and didn't update __cplusplus over time
+// If it is available _MSVC_LANG serves the same role
+#   if defined(_MSVC_LANG)
+#    if _MSVC_LANG <= 199711L
+#     define MD_CPP_VERSION 98
+#    elif _MSVC_LANG <= 201103L
+#     define MD_CPP_VERSION 11
+#    elif _MSVC_LANG <= 201402L
+#     define MD_CPP_VERSION 14
+#    elif _MSVC_LANG <= 201703L
+#     define MD_CPP_VERSION 17
+#    elif _MSVC_LANG <= 202002L
+#     define MD_CPP_VERSION 20
+#    else
+#     define MD_CPP_VERSION 23
+#    endif
+// If we don't have _MSVC_LANG we can guess from the compiler version
+#   else
+#    if MD_COMPILER_CL_YEAR <= 2010
+#     define MD_CPP_VERSION 98
+#    elif MD_COMPILER_CL_YEAR <= 2015
+#     define MD_CPP_VERSION 11
+#    else
+#     define MD_CPP_VERSION 17
+#    endif
+#   endif
+#  else
+// Other compilers use __cplusplus correctly
+#   if __cplusplus <= 199711L
+#    define MD_CPP_VERSION 98
+#   elif __cplusplus <= 201103L
+#    define MD_CPP_VERSION 11
+#   elif __cplusplus <= 201402L
+#    define MD_CPP_VERSION 14
+#   elif __cplusplus <= 201703L
+#    define MD_CPP_VERSION 17
+#   elif __cplusplus <= 202002L
+#    define MD_CPP_VERSION 20
+#   else
+#    define MD_CPP_VERSION 23
+#   endif
+#  endif
 # endif
 
 #else
@@ -193,6 +227,9 @@
 #endif
 #if !defined(MD_LANG_CPP)
 # define MD_LANG_CPP 0
+#endif
+#if !defined(MD_CPP_VERSION)
+# define MD_CPP_VERSION 0
 #endif
 
 #if MD_LANG_CPP
