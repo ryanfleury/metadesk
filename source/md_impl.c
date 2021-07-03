@@ -893,6 +893,45 @@ MD_F64FromString(MD_String8 string)
     return(atof(str));
 }
 
+
+MD_FUNCTION_IMPL MD_String8
+MD_CStyleHexStringFromU64(MD_u64 x, MD_b32 caps)
+{
+    static char md_int_value_to_char[] = "0123456789abcdef";
+    MD_u8 buffer[10];
+    MD_u8 *opl = buffer + 10;
+    MD_u8 *ptr = opl;
+    if (x == 0){
+        ptr -= 1;
+        *ptr = '0';
+    }
+    else{
+        for (;;){
+            MD_u32 val = x%16;
+            x /= 16;
+            MD_u8 c = (MD_u8)md_int_value_to_char[val];
+            if (caps){
+                c = MD_CharToUpper(c);
+            }
+            ptr -= 1;
+            *ptr = c;
+            if (x == 0){
+                break;
+            }
+        }
+    }
+    ptr -= 1;
+    *ptr = 'x';
+    ptr -= 1;
+    *ptr = '0';
+    
+    MD_String8 result = MD_ZERO_STRUCT;
+    result.size = (MD_u64)(ptr - buffer);
+    result.str = MD_PushArray(MD_u8, result.size);
+    MD_MemoryCopy(result.str, buffer, result.size);
+    return(result);
+}
+
 //~ Enum/Flag Strings
 
 MD_FUNCTION_IMPL MD_String8
@@ -1861,11 +1900,11 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             switch (bad_token.kind){
                 case MD_TokenKind_BadCharacter:
                 {
-                    // TODO(allen): tighten up with good integer <-> string helpers
                     MD_String8List bytes = {0};
                     for(int i_byte = 0; i_byte < bad_token.raw_string.size; ++i_byte)
                     {
-                        MD_S8ListPush(&bytes, MD_S8Fmt("0x%02X", bad_token.raw_string.str[i_byte]));
+                        MD_u8 b = bad_token.raw_string.str[i_byte];
+                        MD_S8ListPush(&bytes, MD_CStyleHexStringFromU64(b, 1));
                     }
                     
                     MD_StringJoin join = MD_ZERO_STRUCT;

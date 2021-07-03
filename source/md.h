@@ -774,9 +774,11 @@ MD_FUNCTION MD_String8 MD_PathChopLastSlash(MD_String8 string);
 
 //~ Numeric Strings
 
-MD_FUNCTION MD_u64         MD_U64FromString(MD_String8 string, MD_u32 radix);
-MD_FUNCTION MD_i64         MD_CStyleIntFromString(MD_String8 string);
-MD_FUNCTION MD_f64         MD_F64FromString(MD_String8 string);
+MD_FUNCTION MD_u64     MD_U64FromString(MD_String8 string, MD_u32 radix);
+MD_FUNCTION MD_i64     MD_CStyleIntFromString(MD_String8 string);
+MD_FUNCTION MD_f64     MD_F64FromString(MD_String8 string);
+
+MD_FUNCTION MD_String8 MD_CStyleHexStringFromU64(MD_u64 x, MD_b32 caps);
 
 //~ Enum/Flag Strings
 
