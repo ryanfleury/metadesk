@@ -3,6 +3,8 @@
 
 int main(void)
 {
+    printf("%d\n", MD_CPP_VERSION);
+    
     MD_String8 foo = "foo"_md;
     MD_String8 bar = "bar"_md;
     MD_String8 str = MD_S8Fmt("%S%S", foo, bar);

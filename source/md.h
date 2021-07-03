@@ -10,11 +10,11 @@
 // [x] tests for legal tag syntaxes
 // [x] tests that ensure we don't accept labels when expecting symbols e.g. foo ":" b; foo: "(" )
 // [x] pass all tests
-// [ ] simplify error sorting and catastrophic error handling
+// [x] simplify error sorting and catastrophic error handling
 // [ ] integer -> string helpers
 // [x] {rjf} remove symbol digraphs (maybe a test for this or something) and remove from comments
 // [x] stb_snprintf included and modified for %S ~ MD_String8
-// [ ] naming pass
+// [x] naming pass
 // [ ] {rjf} get the branches/labels setup on Git for beta 0.1 and dev
 // [ ] {rjf} announcement
 
@@ -29,7 +29,33 @@
 
 // NOTE(rjf): Compiler cracking from the 4th dimension
 
-#if defined(_MSC_VER)
+#if defined(__clang__)
+
+# define MD_COMPILER_CLANG 1
+
+# if defined(__APPLE__) && defined(__MACH__)
+#  define MD_OS_MAC 1
+# elif defined(__gnu_linux__)
+#  define MD_OS_LINUX 1
+# elif defined(_WIN32)
+#  define MD_OS_WINDOWS 1
+# else
+#  error This compiler/platform combo is not supported yet
+# endif
+
+# if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
+#  define MD_ARCH_X64 1
+# elif defined(i386) || defined(__i386) || defined(__i386__)
+#  define MD_ARCH_X86 1
+# elif defined(__aarch64__)
+#  define MD_ARCH_ARM64 1
+# elif defined(__arm__)
+#  define MD_ARCH_ARM32 1
+# else
+#  error architecture not supported yet
+# endif
+
+#elif defined(_MSC_VER)
 
 # define MD_COMPILER_CL 1
 
@@ -71,30 +97,6 @@
 #  define MD_COMPILER_CL_YEAR 0
 # endif
 
-#elif defined(__clang__)
-
-# define MD_COMPILER_CLANG 1
-
-# if defined(__APPLE__) && defined(__MACH__)
-#  define MD_OS_MAC 1
-# elif defined(__gnu_linux__)
-#  define MD_OS_LINUX 1
-# else
-#  error This compiler/platform combo is not supported yet
-# endif
-
-# if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64)
-#  define MD_ARCH_X64 1
-# elif defined(i386) || defined(__i386) || defined(__i386__)
-#  define MD_ARCH_X86 1
-# elif defined(__aarch64__)
-#  define MD_ARCH_ARM64 1
-# elif defined(__arm__)
-#  define MD_ARCH_ARM32 1
-# else
-#  error architecture not supported yet
-# endif
-
 #elif defined(__GNUC__) || defined(__GNUG__)
 
 # define MD_COMPILER_GCC 1
@@ -129,6 +131,21 @@
 
 #if defined(__cplusplus)
 # define MD_LANG_CPP 1
+
+# if __cplusplus <= 199711L
+#  define MD_CPP_VERSION 98
+# elif __cplusplus <= 201103L
+#  define MD_CPP_VERSION 11
+# elif __cplusplus <= 201402L
+#  define MD_CPP_VERSION 14
+# elif __cplusplus <= 201703L
+#  define MD_CPP_VERSION 17
+# elif __cplusplus <= 202002L
+#  define MD_CPP_VERSION 20
+# else
+#  define MD_CPP_VERSION 23
+# endif
+
 #else
 # define MD_LANG_C 1
 #endif

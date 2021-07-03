@@ -69,3 +69,9 @@ pushd build
 node_errors.exe %~dp0\samples\node_errors\node_errors.md
 popd
 
+echo.
+echo ~~~ Running C++ Sample ~~~
+pushd build
+cpp_build_test.exe
+popd
+

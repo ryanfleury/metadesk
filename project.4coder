@@ -39,6 +39,18 @@ command_list =
 			{ "build.bat", .os = "win" },
 		},
 	},
+	{
+		.name = "build_with_clang",
+		.out = "*compilation*",
+		.footer_panel = true,
+		.save_dirty_files = true,
+		.cursor_at_end = false,
+		.cmd =
+		{
+			{ "build_with_clang.bat", .os = "win" },
+		},
+	},
 };
 
 fkey_command[1] = "build";
+fkey_command[2] = "build_with_clang";
