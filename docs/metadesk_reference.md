@@ -992,7 +992,7 @@ main:
 @see(MD_S8Split)
 @func MD_S8ListJoin: {
     list: MD_String8List,
-    separator: MD_String8,
+    join: *MD_StringJoin,
     return: MD_String8,
 };
 

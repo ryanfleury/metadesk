@@ -362,26 +362,41 @@ MD_S8Split(MD_String8 string, int split_count, MD_String8 *splits)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_S8ListJoin(MD_String8List list, MD_String8 separator)
+MD_S8ListJoin(MD_String8List list, MD_StringJoin *join_ptr)
 {
-    if (list.node_count == 0)
-    {
-        return MD_S8Lit("");
+    // setup join parameters
+    MD_StringJoin join = MD_ZERO_STRUCT;
+    if (join_ptr != 0){
+        MD_MemoryCopy(&join, join_ptr, sizeof(join));
     }
-    MD_String8 string = MD_ZERO_STRUCT;
-    string.size = list.total_size + (list.node_count - 1)*separator.size;
-    string.str = MD_PushArray(MD_u8, string.size);
-    MD_u64 write_pos = 0;
+    
+    // calculate size & allocate
+    MD_u64 sep_count = 0;
+    if (list.node_count > 1){
+        sep_count = list.node_count - 1;
+    }
+    MD_String8 result = MD_ZERO_STRUCT;
+    result.size = (list.total_size + join.pre.size +
+                   sep_count*join.mid.size + join.post.size);
+    result.str = MD_PushArray(MD_u8, result.size);
+    
+    // fill
+    MD_u8 *ptr = result.str;
+    MD_MemoryCopy(ptr, join.pre.str, join.pre.size);
+    ptr += join.pre.size;
     for(MD_String8Node *node = list.first; node; node = node->next)
     {
-        MD_MemoryCopy(string.str + write_pos, node->string.str, node->string.size);
-        write_pos += node->string.size;
+        MD_MemoryCopy(ptr, node->string.str, node->string.size);
+        ptr += node->string.size;
         if (node != list.last){
-            MD_MemoryCopy(string.str + write_pos, separator.str, separator.size);
-            write_pos += separator.size;
+            MD_MemoryCopy(ptr, join.mid.str, join.mid.size);
+            ptr += join.mid.size;
         }
     }
-    return string;
+    MD_MemoryCopy(ptr, join.pre.str, join.pre.size);
+    ptr += join.pre.size;
+    
+    return(result);
 }
 
 MD_FUNCTION_IMPL MD_String8
@@ -1852,7 +1867,10 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                     {
                         MD_S8ListPush(&bytes, MD_S8Fmt("0x%02X", bad_token.raw_string.str[i_byte]));
                     }
-                    MD_String8 byte_string = MD_S8ListJoin(bytes, MD_S8Lit(" "));
+                    
+                    MD_StringJoin join = MD_ZERO_STRUCT;
+                    join.mid = MD_S8Lit(" ");
+                    MD_String8 byte_string = MD_S8ListJoin(bytes, &join);
                     
                     // NOTE(rjf): @error Bad character
                     MD_Message *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
@@ -2530,7 +2548,7 @@ MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name)
 {
     MD_i64 v = 0;
     MD_String8List values = MD_CmdLineValuesFromString(cmdln, name);
-    MD_String8 value_str = MD_S8ListJoin(values, MD_S8Lit(""));
+    MD_String8 value_str = MD_S8ListJoin(values, 0);
     v = MD_CStyleIntFromString(value_str);
     return v;
 }

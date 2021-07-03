@@ -732,7 +732,7 @@ int main(int argument_count, char **arguments)
         MD_String8List string_list = {0};
         // NOTE(mal): Generate a random MD file
         ExpandProduction(file_production_node, &string_list, test.expected_output, 0, depth_map, max_production_depth, 0);
-        test.input = MD_S8ListJoin(string_list, MD_S8Lit(""));
+        test.input = MD_S8ListJoin(string_list, 0);
         
         Test *prev = 0;
         for(Test *cur = first_test; cur; cur = cur->next)

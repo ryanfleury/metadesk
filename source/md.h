@@ -313,6 +313,12 @@ struct MD_String8List
     MD_String8Node *last;
 };
 
+typedef struct MD_StringJoin{
+    MD_String8 pre;
+    MD_String8 mid;
+    MD_String8 post;
+} MD_StringJoin;
+
 // NOTE(rjf): @maintenance These three enums must not overlap, and must share a flag space.
 typedef MD_u32 MD_MatchFlags;
 typedef MD_u32 MD_StringMatchFlags;
@@ -706,9 +712,7 @@ MD_FUNCTION MD_String8     MD_S8(MD_u8 *str, MD_u64 size);
 #endif
 #define MD_S8LitComp(s)     {(MD_u8 *)(s), sizeof(s)-1}
 
-#if MD_LANG_CPP
-// TODO(rjf): @allen this is only supported in C++11 I think, we need a check
-// for that in the context cracking
+#if MD_CPP_VERSION >= 11
 static inline MD_String8
 operator "" _md(const char *s, size_t size)
 {
@@ -739,7 +743,7 @@ MD_FUNCTION MD_String8     MD_S8Fmt(char *fmt, ...);
 MD_FUNCTION void           MD_S8ListPush(MD_String8List *list, MD_String8 string);
 MD_FUNCTION void           MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push);
 MD_FUNCTION MD_String8List MD_S8Split(MD_String8 string, int split_count, MD_String8 *splits);
-MD_FUNCTION MD_String8     MD_S8ListJoin(MD_String8List list, MD_String8 separator);
+MD_FUNCTION MD_String8     MD_S8ListJoin(MD_String8List list, MD_StringJoin *join);
 
 MD_FUNCTION MD_String8     MD_S8Stylize(MD_String8 string, MD_IdentifierStyle word_style, MD_String8 separator);
 

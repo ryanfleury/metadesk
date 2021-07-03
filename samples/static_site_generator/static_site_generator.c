@@ -35,8 +35,8 @@ int main(int argument_count, char **arguments)
     
     //~ NOTE(rjf): Parse command line arguments.
     MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
-    MD_String8 site_info_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("siteinfo")), MD_S8Lit(""));
-    MD_String8 page_dir_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("pagedir")), MD_S8Lit(""));
+    MD_String8 site_info_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("siteinfo")), 0);
+    MD_String8 page_dir_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("pagedir")), 0);
     if(!MD_CmdLineB32FromString(cmdln, MD_S8Lit("siteinfo")) ||
        !MD_CmdLineB32FromString(cmdln, MD_S8Lit("pagedir")))
     {
