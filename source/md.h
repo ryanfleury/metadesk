@@ -11,11 +11,11 @@
 // [x] tests that ensure we don't accept labels when expecting symbols e.g. foo ":" b; foo: "(" )
 // [x] pass all tests
 // [x] simplify error sorting and catastrophic error handling
-// [ ] integer -> string helpers
+// [x] integer -> string helpers
 // [x] {rjf} remove symbol digraphs (maybe a test for this or something) and remove from comments
 // [x] stb_snprintf included and modified for %S ~ MD_String8
 // [x] naming pass
-// [ ] {rjf} get the branches/labels setup on Git for beta 0.1 and dev
+// [x] {rjf} get the branches/labels setup on Git for beta 0.1 and dev
 // [ ] {rjf} announcement
 
 // NOTE(allen): "Plugin" functionality
