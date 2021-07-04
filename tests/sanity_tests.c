@@ -293,18 +293,39 @@ int main(void)
                    MD_NodeFlag_Numeric);
         TestResult(MD_ParseOneNode(MD_S8Lit("abc"), 0).node->flags &
                    MD_NodeFlag_Identifier);
-        TestResult(MD_ParseOneNode(MD_S8Lit("\"foo\""), 0).node->flags &
-                   (MD_NodeFlag_StringLiteral | MD_NodeFlag_StringDoubleQuote));
-        TestResult(MD_ParseOneNode(MD_S8Lit("'foo'"), 0).node->flags &
-                   (MD_NodeFlag_StringLiteral | MD_NodeFlag_StringSingleQuote));
-        TestResult(MD_ParseOneNode(MD_S8Lit("`foo`"), 0).node->flags &
-                   (MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTick));
-        TestResult(MD_ParseOneNode(MD_S8Lit("\"\"\"foo\"\"\""), 0).node->flags &
-                   (MD_NodeFlag_StringLiteral | MD_NodeFlag_StringDoubleQuote | MD_NodeFlag_StringTriplet));
-        TestResult(MD_ParseOneNode(MD_S8Lit("'''foo'''"), 0).node->flags &
-                   (MD_NodeFlag_StringLiteral | MD_NodeFlag_StringSingleQuote | MD_NodeFlag_StringTriplet));
-        TestResult(MD_ParseOneNode(MD_S8Lit("```foo```"), 0).node->flags &
-                   (MD_NodeFlag_StringLiteral | MD_NodeFlag_StringTick | MD_NodeFlag_StringTriplet));
+          {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("\"foo\""), 0);
+            TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
+                       parse.node->flags & MD_NodeFlag_StringDoubleQuote);
+          }
+          {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("'foo'"), 0);
+            TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
+                       parse.node->flags & MD_NodeFlag_StringSingleQuote);
+          }
+          {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("`foo`"), 0);
+            TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
+                       parse.node->flags & MD_NodeFlag_StringTick);
+          }
+          {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("\"\"\"foo\"\"\""), 0);
+            TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
+                       parse.node->flags & MD_NodeFlag_StringDoubleQuote &&
+                       parse.node->flags & MD_NodeFlag_StringTriplet);
+          }
+          {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("'''foo'''"), 0);
+            TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
+                       parse.node->flags & MD_NodeFlag_StringSingleQuote &&
+                       parse.node->flags & MD_NodeFlag_StringTriplet);
+          }
+          {
+            MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("```foo```"), 0);
+            TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
+                       parse.node->flags & MD_NodeFlag_StringTick &&
+                       parse.node->flags & MD_NodeFlag_StringTriplet);
+          }
     }
     
     Test("Expression Evaluation")
