@@ -29,7 +29,6 @@ echo ~~~ Build All Tests ~~~
 $CC $compile_flags ../tests/sanity_tests.c -o sanity_tests
 $CC $compile_flags ../tests/unicode_test.c -o unicode_test
 clang++ $compile_flags ../tests/cpp_build_test.cpp
-$CC $compile_flags ../tests/grammar.c -o grammar
 popd
 
 echo

@@ -21,7 +21,6 @@ echo ~~~ Build All Tests ~~~
 clang %compile_flags% %src%\tests\sanity_tests.c -o sanity_tests.exe
 clang %compile_flags% %src%\tests\unicode_test.c -o unicode_test.exe
 clang++ %compile_flags% %src%\tests\cpp_build_test.cpp -o cpp_build_test.exe
-clang %compile_flags% %src%\tests\grammar.c -o grammar.exe
 popd
 
 echo.

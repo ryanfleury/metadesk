@@ -19,7 +19,6 @@ echo ~~~ Build All Tests ~~~
 cl %compile_flags% ..\tests\sanity_tests.c
 cl %compile_flags% ..\tests\unicode_test.c
 cl %compile_flags% ..\tests\cpp_build_test.cpp
-cl %compile_flags% ..\tests\grammar.c
 popd
 
 rem Stop wasting time getting hung on broken parser
