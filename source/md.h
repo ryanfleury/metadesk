@@ -1,23 +1,6 @@
 //~ Metadesk Library
 // LICENSE AT END OF FILE (MIT).
 
-// TODO List
-//
-// [x] unify string literal token kinds
-// [x] simplify string literal flags (triple as a single flag)
-// [x] lexer detects broken comments
-// [x] lexer detects broken strings
-// [x] tests for legal tag syntaxes
-// [x] tests that ensure we don't accept labels when expecting symbols e.g. foo ":" b; foo: "(" )
-// [x] pass all tests
-// [x] simplify error sorting and catastrophic error handling
-// [x] integer -> string helpers
-// [x] {rjf} remove symbol digraphs (maybe a test for this or something) and remove from comments
-// [x] stb_snprintf included and modified for %S ~ MD_String8
-// [x] naming pass
-// [x] {rjf} get the branches/labels setup on Git for beta 0.1 and dev
-// [ ] {rjf} announcement
-
 // NOTE(allen): "Plugin" functionality
 //
 // MD_b32     MD_IMPL_FileIterIncrement(MD_FileIter*, MD_String8, MD_FileInfo*) - optional
