@@ -293,39 +293,39 @@ int main(void)
                    MD_NodeFlag_Numeric);
         TestResult(MD_ParseOneNode(MD_S8Lit("abc"), 0).node->flags &
                    MD_NodeFlag_Identifier);
-          {
+        {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("\"foo\""), 0);
             TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
                        parse.node->flags & MD_NodeFlag_StringDoubleQuote);
-          }
-          {
+        }
+        {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("'foo'"), 0);
             TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
                        parse.node->flags & MD_NodeFlag_StringSingleQuote);
-          }
-          {
+        }
+        {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("`foo`"), 0);
             TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
                        parse.node->flags & MD_NodeFlag_StringTick);
-          }
-          {
+        }
+        {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("\"\"\"foo\"\"\""), 0);
             TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
                        parse.node->flags & MD_NodeFlag_StringDoubleQuote &&
                        parse.node->flags & MD_NodeFlag_StringTriplet);
-          }
-          {
+        }
+        {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("'''foo'''"), 0);
             TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
                        parse.node->flags & MD_NodeFlag_StringSingleQuote &&
                        parse.node->flags & MD_NodeFlag_StringTriplet);
-          }
-          {
+        }
+        {
             MD_ParseResult parse = MD_ParseOneNode(MD_S8Lit("```foo```"), 0);
             TestResult(parse.node->flags & MD_NodeFlag_StringLiteral &&
                        parse.node->flags & MD_NodeFlag_StringTick &&
                        parse.node->flags & MD_NodeFlag_StringTriplet);
-          }
+        }
     }
     
     Test("Expression Evaluation")
@@ -512,7 +512,7 @@ int main(void)
         
         for(int i_test = 0; i_test < MD_ArrayCount(tests); ++i_test)
         {
-            MD_ParseResult parse = MD_ParseWholeString(MD_S8Lit("test.md"), MD_S8CString(tests[i_test].s));
+            MD_ParseResult parse = MD_ParseWholeString(MD_S8Lit("test.mdesk"), MD_S8CString(tests[i_test].s));
             
             MD_b32 columns_match = 1;
             {
@@ -536,7 +536,7 @@ int main(void)
         }
         
         {
-            MD_ParseResult parse = MD_ParseWholeFile(MD_S8Lit("__does_not_exist.md"));
+            MD_ParseResult parse = MD_ParseWholeFile(MD_S8Lit("__does_not_exist.mdesk"));
             TestResult(parse.node->kind == MD_NodeKind_File && parse.errors.first != 0);
         }
         

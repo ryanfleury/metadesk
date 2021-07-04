@@ -36,7 +36,7 @@ pushd static_site_generator
 pushd example_site
 if not exist generated mkdir generated
 pushd generated
-..\..\..\..\build\static_site_generator.exe --siteinfo ..\site_info.md --pagedir ..\
+..\..\..\..\build\static_site_generator.exe --siteinfo ..\site_info.mdesk --pagedir ..\
 popd
 popd
 popd
@@ -49,7 +49,7 @@ pushd output_parse
 pushd examples
 if not exist output mkdir output
 pushd output
-..\..\..\..\build\output_parse.exe ..\example.md ..\example2.md
+..\..\..\..\build\output_parse.exe ..\example.mdesk ..\example2.mdesk
 popd
 popd
 popd
@@ -64,7 +64,7 @@ popd
 echo.
 echo ~~~ Running Error Generation Sample ~~~
 pushd build
-node_errors.exe %~dp0\samples\node_errors\node_errors.md
+node_errors.exe %~dp0\samples\node_errors\node_errors.mdesk
 popd
 
 

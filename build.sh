@@ -41,14 +41,14 @@ echo
 echo ~~~ Running Static Site Generator Sample ~~~
 mkdir -p samples/static_site_generator/example_site/generated
 pushd samples/static_site_generator/example_site/generated
-../../../../build/static_site_generator --siteinfo ../site_info.md --pagedir ../
+../../../../build/static_site_generator --siteinfo ../site_info.mdesk --pagedir ../
 popd
 
 echo
 echo ~~~ Running Output Parse Sample ~~~
 mkdir -p samples/output_parse/examples/output
 pushd samples/output_parse/examples/output
-../../../../build/output_parse ../example.md ../example2.md
+../../../../build/output_parse ../example.mdesk ../example2.mdesk
 popd
 
 echo
@@ -60,6 +60,6 @@ popd
 echo
 echo ~~~ Running Error Generation Sample ~~~
 pushd build
-./node_errors ../samples/node_errors/node_errors.md
+./node_errors ../samples/node_errors/node_errors.mdesk
 popd
 
