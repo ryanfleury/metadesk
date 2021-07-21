@@ -73,20 +73,20 @@ MakeTestNode(MD_NodeKind kind, MD_String8 string)
 static MD_C_Expr *
 AtomExpr(char *str)
 {
-    return MD_C_MakeExpr(MakeTestNode(MD_NodeKind_Main, MD_S8CString(str)),
+    return MD_C_MakeExpr(arena, MakeTestNode(MD_NodeKind_Main, MD_S8CString(str)),
                          MD_C_ExprKind_Atom, MD_C_NilExpr(), MD_C_NilExpr());
 }
 
 static MD_C_Expr *
 BinOpExpr(MD_C_ExprKind kind, MD_C_Expr *left, MD_C_Expr *right)
 {
-    return MD_C_MakeExpr(MD_NilNode(), kind, left, right);
+    return MD_C_MakeExpr(arena, MD_NilNode(), kind, left, right);
 }
 
 static MD_C_Expr *
 TypeExpr(MD_C_ExprKind kind, MD_C_Expr *sub)
 {
-    return MD_C_MakeExpr(MD_NilNode(), kind, sub, MD_C_NilExpr());
+    return MD_C_MakeExpr(arena, MD_NilNode(), kind, sub, MD_C_NilExpr());
 }
 
 static MD_b32
@@ -100,7 +100,7 @@ static MD_b32
 MatchParsedWithExpr(MD_String8 string, MD_C_Expr *expr)
 {
     MD_ParseResult parse = MD_ParseOneNode(arena, string, 0);
-    MD_C_Expr *parse_expr = MD_C_ParseAsExpr(parse.node->first_child, parse.node->last_child);
+    MD_C_Expr *parse_expr = MD_C_ParseAsExpr(arena, parse.node->first_child, parse.node->last_child);
     return MD_C_ExprDeepMatch(expr, parse_expr, 0);
 }
 
@@ -108,7 +108,7 @@ static MD_b32
 MatchParsedWithType(MD_String8 string, MD_C_Expr *expr)
 {
     MD_ParseResult parse = MD_ParseOneNode(arena, string, 0);
-    MD_C_Expr *parse_expr = MD_C_ParseAsType(parse.node->first_child, parse.node->last_child);
+    MD_C_Expr *parse_expr = MD_C_ParseAsType(arena, parse.node->first_child, parse.node->last_child);
     return MD_C_ExprDeepMatch(expr, parse_expr, 0);
 }
 

@@ -160,13 +160,13 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
         //- rjf: declaration
         if(first->next == opl && first->string.size != 0 && !MD_NodeIsNil(first->first_child))
         {
-            MD_C_Expr *expr = MD_C_ParseAsExpr(first->first_child, first->last_child);
+            MD_C_Expr *expr = MD_C_ParseAsExpr(arena, first->first_child, first->last_child);
             InsertValueToNamespace(&local_namespace, first->string, EvaluateExpr(&local_namespace, expr));
         }
         //- rjf: expr
         else
         {
-            MD_C_Expr *expr = MD_C_ParseAsExpr(first, opl);
+            MD_C_Expr *expr = MD_C_ParseAsExpr(arena, first, opl);
             if(!MD_C_ExprIsNil(expr))
             {
                 result = EvaluateExpr(&local_namespace, expr);

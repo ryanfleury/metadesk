@@ -3,7 +3,6 @@
 // NOTE(allen): Notes on overrides/macro options:
 // Individual Overridables:
 //  #define MD_IMPL_FileIterIncrement
-//  #define MD_IMPL_Alloc
 //  #define MD_IMPL_Reserve
 //  #define MD_IMPL_Commit
 //  #define MD_IMPL_Decommit
@@ -19,24 +18,6 @@
 
 // TODO(allen): not real! Don't put into API
 MD_FUNCTION MD_Arena* MD_Scratch(void);
-
-//~/////////////////////////////////////////////////////////////////////////////
-///////////////////////// Default Implementation ///////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-#if !MD_NO_DEFAULT_IMPL
-
-#if !defined(MD_IMPL_Alloc)
-# define MD_IMPL_Alloc(size) MD_MALLOC_Alloc(size)
-#endif
-
-static void*
-MD_MALLOC_Alloc(MD_u64 size)
-{
-    return(malloc(size));
-}
-
-#endif
 
 //~/////////////////////////////////////////////////////////////////////////////
 ////////////////////////// Win32 Implementation ////////////////////////////////
@@ -319,9 +300,6 @@ MD_ArenaDefaultRelease(MD_Arena *arena_opq){
 //////////////////////// MD Library Implementation /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(MD_IMPL_Alloc)
-# error Missing implementation for MD_IMPL_Alloc
-#endif
 #if !defined(MD_IMPL_ArenaNew)
 # error Missing implementation for MD_IMPL_ArenaNew
 #endif
@@ -330,7 +308,6 @@ MD_ArenaDefaultRelease(MD_Arena *arena_opq){
 #endif
 
 #define MD_FUNCTION_IMPL MD_FUNCTION
-#define MD_PRIVATE_FUNCTION_IMPL MD_FUNCTION_IMPL
 #define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
 #define STB_SPRINTF_IMPLEMENTATION
@@ -374,18 +351,6 @@ MD_MemoryCopy(void *dest, void *src, MD_u64 size)
 {
     memcpy(dest, src, size);
     return(dest);
-}
-
-MD_FUNCTION_IMPL void *
-MD_AllocZero(MD_u64 size)
-{
-#if !defined(MD_IMPL_Alloc)
-# error Missing implementation detail MD_IMPL_Alloc
-#else
-    void *result = MD_IMPL_Alloc(size);
-    MD_MemoryZero(result, size);
-    return(result);
-#endif
 }
 
 //~ Arena Functions
@@ -2936,7 +2901,7 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
             
             //- rjf: insert the fully parsed option
             {
-                MD_CmdLineOption *opt = MD_PushArray(MD_CmdLineOption, 1);
+                MD_CmdLineOption *opt = MD_PushArrayAr(arena, MD_CmdLineOption, 1);
                 MD_MemoryZero(opt, sizeof(*opt));
                 opt->name = option_name;
                 opt->values = option_values;
@@ -3007,13 +2972,14 @@ MD_FUNCTION_IMPL MD_String8
 MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
 {
     MD_String8 file_contents = MD_ZERO_STRUCT;
-    FILE *file = fopen((char*)MD_S8Copy(arena, filename).str, "rb");
+    MD_String8 filename_copy = MD_S8Copy(arena, filename);
+    FILE *file = fopen((char*)filename_copy.str, "rb");
     if(file)
     {
         fseek(file, 0, SEEK_END);
         MD_u64 file_size = ftell(file);
         fseek(file, 0, SEEK_SET);
-        file_contents.str = MD_PushArray(MD_u8, file_size+1);
+        file_contents.str = MD_PushArrayAr(arena, MD_u8, file_size+1);
         if(file_contents.str)
         {
             file_contents.size = file_size;

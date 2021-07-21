@@ -663,13 +663,6 @@ main:
     size: MD_u64,
 }
 
-@send(MemoryOperations)
-@doc("Allocates @code 'size' bytes. This memory cannot be freed.")
-@func MD_AllocZero:
-{
-    size: MD_u64,
-}
-
 ////////////////////////////////
 //~ Characters
 
@@ -1888,6 +1881,7 @@ MD_ParseWholeFile:
 
 @send(ExpressionParsingHelper)
 @func MD_C_MakeExpr: {
+    arena: *MD_Arena,
     node: *MD_Node,
     kind: MD_ExprKind,
     left: *MD_C_Expr,
@@ -1897,6 +1891,7 @@ MD_ParseWholeFile:
 
 @send(ExpressionParsingHelper)
 @func MD_C_ParseAsExpr: {
+    arena: *MD_Arena,
     first: *MD_Node,
     last: *MD_Node,
     return: *MD_C_Expr,
@@ -1904,6 +1899,7 @@ MD_ParseWholeFile:
 
 @send(ExpressionParsingHelper)
 @func MD_C_ParseAsType: {
+    arena: *MD_Arena,
     first: *MD_Node,
     last: *MD_Node,
     return: *MD_C_Expr,

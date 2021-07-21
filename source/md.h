@@ -687,9 +687,6 @@ struct MD_FileIter
 MD_FUNCTION void* MD_MemoryZero(void *memory, MD_u64 size);
 MD_FUNCTION void* MD_MemoryCopy(void *dst, void *src, MD_u64 size);
 
-MD_FUNCTION void* MD_AllocZero(MD_u64 size);
-#define MD_PushArray(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
-
 //~ Arena Functions
 
 MD_FUNCTION void*        MD_ArenaPush(MD_Arena *arena, MD_u64 v);

@@ -171,9 +171,10 @@ MD_C_ExprPrecFromExprKind(MD_C_ExprKind kind)
 }
 
 MD_FUNCTION_IMPL MD_C_Expr *
-MD_C_MakeExpr(MD_Node *node, MD_C_ExprKind kind, MD_C_Expr *left, MD_C_Expr *right)
+MD_C_MakeExpr(MD_Arena *arena, MD_Node *node, MD_C_ExprKind kind, MD_C_Expr *left,
+              MD_C_Expr *right)
 {
-    MD_C_Expr *expr = MD_PushArray(MD_C_Expr, 1);
+    MD_C_Expr *expr = MD_PushArrayAr(arena, MD_C_Expr, 1);
     if(left == 0)  left  = MD_C_NilExpr();
     if(right == 0) right = MD_C_NilExpr();
     expr->node = node;
@@ -190,7 +191,7 @@ struct _MD_NodeParseCtx
     MD_Node *one_past_last;
 };
 
-MD_PRIVATE_FUNCTION_IMPL MD_b32
+MD_FUNCTION_IMPL MD_b32
 _MD_NodeParse_ConsumeAtom(_MD_NodeParseCtx *ctx, MD_Node **out)
 {
     MD_b32 result = 0;
@@ -207,7 +208,7 @@ _MD_NodeParse_ConsumeAtom(_MD_NodeParseCtx *ctx, MD_Node **out)
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_b32
+MD_FUNCTION_IMPL MD_b32
 _MD_NodeParse_ConsumeSet(_MD_NodeParseCtx *ctx, MD_Node **out)
 {
     MD_b32 result = 0;
@@ -229,7 +230,7 @@ _MD_NodeParse_ConsumeSet(_MD_NodeParseCtx *ctx, MD_Node **out)
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_b32
+MD_FUNCTION_IMPL MD_b32
 _MD_NodeParse_ConsumeLiteral(_MD_NodeParseCtx *ctx, MD_Node **out)
 {
     MD_b32 result = 0;
@@ -246,7 +247,7 @@ _MD_NodeParse_ConsumeLiteral(_MD_NodeParseCtx *ctx, MD_Node **out)
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_b32
+MD_FUNCTION_IMPL MD_b32
 _MD_NodeParse_Consume(_MD_NodeParseCtx *ctx, MD_String8 string, MD_Node **out)
 {
     MD_b32 result = 0;
@@ -262,20 +263,18 @@ _MD_NodeParse_Consume(_MD_NodeParseCtx *ctx, MD_String8 string, MD_Node **out)
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL void
+MD_FUNCTION_IMPL void
 _MD_NodeParse_Next(_MD_NodeParseCtx *ctx)
 {
     ctx->at = ctx->at->next;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_C_Expr *
-_MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in);
+MD_FUNCTION MD_C_Expr * _MD_ParseExpr_(MD_Arena *arena, _MD_NodeParseCtx *ctx,
+                                       int precedence_in);
+MD_FUNCTION MD_C_Expr * _MD_ParseExpr(MD_Arena *arena, _MD_NodeParseCtx *ctx);
 
-MD_PRIVATE_FUNCTION_IMPL MD_C_Expr *
-_MD_ParseExpr(_MD_NodeParseCtx *ctx);
-
-MD_PRIVATE_FUNCTION_IMPL MD_C_Expr *
-_MD_ParseUnaryExpr(_MD_NodeParseCtx *ctx)
+MD_FUNCTION_IMPL MD_C_Expr *
+_MD_ParseUnaryExpr(MD_Arena *arena, _MD_NodeParseCtx *ctx)
 {
     MD_C_Expr *result = MD_C_NilExpr();
     MD_Node *set = 0;
@@ -284,37 +283,37 @@ _MD_ParseUnaryExpr(_MD_NodeParseCtx *ctx)
     // NOTE(rjf): Sub-expression
     if(_MD_NodeParse_ConsumeSet(ctx, &set))
     {
-        result = MD_C_ParseAsExpr(set->first_child, set->last_child);
+        result = MD_C_ParseAsExpr(arena, set->first_child, set->last_child);
     }
     
     // NOTE(rjf): Literal
     else if(_MD_NodeParse_ConsumeLiteral(ctx, &node))
     {
-        result = MD_C_MakeExpr(node, MD_C_ExprKind_Atom, 0, 0);
+        result = MD_C_MakeExpr(arena, node, MD_C_ExprKind_Atom, 0, 0);
     }
     
     // NOTE(rjf): Literal
     else if(_MD_NodeParse_ConsumeAtom(ctx, &node))
     {
-        result = MD_C_MakeExpr(node, MD_C_ExprKind_Atom, 0, 0);
+        result = MD_C_MakeExpr(arena, node, MD_C_ExprKind_Atom, 0, 0);
     }
     
     // NOTE(rjf): Negative
     else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("-"), &node))
     {
-        result = MD_C_MakeExpr(node, MD_C_ExprKind_Negative, 0, _MD_ParseExpr(ctx));
+        result = MD_C_MakeExpr(arena, node, MD_C_ExprKind_Negative, 0, _MD_ParseExpr(arena, ctx));
     }
     
     // NOTE(rjf): Bitwise Negate
     else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("~"), &node))
     {
-        result = MD_C_MakeExpr(node, MD_C_ExprKind_BitNot, 0, _MD_ParseExpr(ctx));
+        result = MD_C_MakeExpr(arena, node, MD_C_ExprKind_BitNot, 0, _MD_ParseExpr(arena, ctx));
     }
     
     // NOTE(rjf): Boolean Negate
     else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("!"), &node))
     {
-        result = MD_C_MakeExpr(node, MD_C_ExprKind_BoolNot, 0, _MD_ParseExpr(ctx));
+        result = MD_C_MakeExpr(arena, node, MD_C_ExprKind_BoolNot, 0, _MD_ParseExpr(arena, ctx));
     }
     
     // NOTE(rjf): Post-Unary Sets (calls and subscripts)
@@ -322,21 +321,21 @@ _MD_ParseUnaryExpr(_MD_NodeParseCtx *ctx)
     {
         if(set->flags & MD_NodeFlag_HasParenLeft && set->flags & MD_NodeFlag_HasParenRight)
         {
-            result = MD_C_MakeExpr(set, MD_C_ExprKind_Call, result, 0);
+            result = MD_C_MakeExpr(arena, set, MD_C_ExprKind_Call, result, 0);
         }
         else if(set->flags & MD_NodeFlag_HasBracketLeft && set->flags & MD_NodeFlag_HasBracketRight)
         {
-            result = MD_C_MakeExpr(set, MD_C_ExprKind_Subscript, result, MD_C_ParseAsExpr(set->first_child, set->last_child));
+            result = MD_C_MakeExpr(arena, set, MD_C_ExprKind_Subscript, result, MD_C_ParseAsExpr(arena, set->first_child, set->last_child));
         }
     }
     
     return result;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_C_Expr *
-_MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
+MD_FUNCTION_IMPL MD_C_Expr *
+_MD_ParseExpr_(MD_Arena *arena, _MD_NodeParseCtx *ctx, int precedence_in)
 {
-    MD_C_Expr *expr = _MD_ParseUnaryExpr(ctx);
+    MD_C_Expr *expr = _MD_ParseUnaryExpr(arena, ctx);
     MD_C_ExprKind expr_kind;
     if(MD_C_ExprIsNil(expr))
     {
@@ -367,7 +366,7 @@ _MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
                 
                 _MD_NodeParse_Next(ctx);
                 
-                MD_C_Expr *right = _MD_ParseExpr_(ctx, precedence+1);
+                MD_C_Expr *right = _MD_ParseExpr_(arena, ctx, precedence+1);
                 if(MD_C_ExprIsNil(right))
                 {
                     // TODO(rjf): Error: "Expected right-hand-side of binary expression."
@@ -375,7 +374,7 @@ _MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
                 }
                 
                 MD_C_Expr *left = expr;
-                expr = MD_C_MakeExpr(op_node, expr_kind, left, right);
+                expr = MD_C_MakeExpr(arena, op_node, expr_kind, left, right);
                 expr->sub[0] = left;
                 expr->sub[1] = right;
             }
@@ -386,22 +385,22 @@ _MD_ParseExpr_(_MD_NodeParseCtx *ctx, int precedence_in)
     return expr;
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_C_Expr *
-_MD_ParseExpr(_MD_NodeParseCtx *ctx)
+MD_FUNCTION_IMPL MD_C_Expr *
+_MD_ParseExpr(MD_Arena *arena, _MD_NodeParseCtx *ctx)
 {
-    return _MD_ParseExpr_(ctx, 1);
+    return _MD_ParseExpr_(arena, ctx, 1);
 }
 
 MD_FUNCTION_IMPL MD_C_Expr *
-MD_C_ParseAsExpr(MD_Node *first, MD_Node *opl)
+MD_C_ParseAsExpr(MD_Arena *arena, MD_Node *first, MD_Node *opl)
 {
     _MD_NodeParseCtx ctx_ = { first, opl  };
     _MD_NodeParseCtx *ctx = &ctx_;
-    return _MD_ParseExpr(ctx);
+    return _MD_ParseExpr(arena, ctx);
 }
 
 MD_FUNCTION_IMPL MD_C_Expr *
-MD_C_ParseAsType(MD_Node *first, MD_Node *opl)
+MD_C_ParseAsType(MD_Arena *arena, MD_Node *first, MD_Node *opl)
 {
     MD_C_Expr *expr = MD_C_NilExpr();
     MD_C_Expr *last_expr = expr;
@@ -416,28 +415,29 @@ MD_C_ParseAsType(MD_Node *first, MD_Node *opl)
     {
         if(_MD_NodeParse_Consume(ctx, MD_S8Lit("*"), &ptr))
         {
-            MD_C_Expr *t = MD_C_MakeExpr(ptr, MD_C_ExprKind_Pointer, MD_C_NilExpr(), MD_C_NilExpr());
+            MD_C_Expr *t = MD_C_MakeExpr(arena, ptr, MD_C_ExprKind_Pointer,
+                                         MD_C_NilExpr(), MD_C_NilExpr());
             _MD_PushType(t);
         }
         else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("volatile"), &node))
         {
-            MD_C_Expr *t = MD_C_MakeExpr(node, MD_C_ExprKind_Volatile, MD_C_NilExpr(), MD_C_NilExpr());
+            MD_C_Expr *t = MD_C_MakeExpr(arena, node, MD_C_ExprKind_Volatile, MD_C_NilExpr(), MD_C_NilExpr());
             _MD_PushType(t);
         }
         else if(_MD_NodeParse_Consume(ctx, MD_S8Lit("const"), &node))
         {
-            MD_C_Expr *t = MD_C_MakeExpr(node, MD_C_ExprKind_Const, MD_C_NilExpr(), MD_C_NilExpr());
+            MD_C_Expr *t = MD_C_MakeExpr(arena, node, MD_C_ExprKind_Const, MD_C_NilExpr(), MD_C_NilExpr());
             _MD_PushType(t);
         }
         else if(_MD_NodeParse_ConsumeSet(ctx, &set))
         {
-            MD_C_Expr *t = MD_C_MakeExpr(set, MD_C_ExprKind_Array, MD_C_NilExpr(), MD_C_NilExpr());
-            t->sub[1] = MD_C_ParseAsExpr(set->first_child, set->last_child);
+            MD_C_Expr *t = MD_C_MakeExpr(arena, set, MD_C_ExprKind_Array, MD_C_NilExpr(), MD_C_NilExpr());
+            t->sub[1] = MD_C_ParseAsExpr(arena, set->first_child, set->last_child);
             _MD_PushType(t);
         }
         else if(_MD_NodeParse_ConsumeAtom(ctx, &base_type))
         {
-            MD_C_Expr *t = MD_C_MakeExpr(base_type, MD_C_ExprKind_Atom, MD_C_NilExpr(), MD_C_NilExpr());
+            MD_C_Expr *t = MD_C_MakeExpr(arena, base_type, MD_C_ExprKind_Atom, MD_C_NilExpr(), MD_C_NilExpr());
             _MD_PushType(t);
         }
         else
@@ -600,7 +600,7 @@ MD_C_Generate_Expr(FILE *file, MD_C_Expr *expr)
     }
 }
 
-MD_PRIVATE_FUNCTION_IMPL MD_b32
+MD_FUNCTION_IMPL MD_b32
 _MD_OutputType_C_NeedsParens(MD_C_Expr *type)
 {
     MD_b32 result = 0;
@@ -704,7 +704,7 @@ MD_C_Generate_Decl(FILE *file, MD_Node *node)
 {
     if(node)
     {
-        MD_C_Expr *type = MD_C_ParseAsType(node->first_child, node->last_child);
+        MD_C_Expr *type = MD_C_ParseAsType(MD_Scratch(), node->first_child, node->last_child);
         MD_C_Generate_DeclByNameAndType(file, node->string, type);
     }
 }

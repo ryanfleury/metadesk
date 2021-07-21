@@ -92,9 +92,10 @@ MD_FUNCTION MD_b32        MD_C_ExprIsNil(MD_C_Expr *expr);
 MD_FUNCTION MD_C_ExprKind MD_C_PreUnaryExprKindFromNode(MD_Node *node);
 MD_FUNCTION MD_C_ExprKind MD_C_BinaryExprKindFromNode(MD_Node *node);
 MD_FUNCTION MD_C_ExprPrec MD_C_ExprPrecFromExprKind(MD_C_ExprKind kind);
-MD_FUNCTION MD_C_Expr *   MD_C_MakeExpr(MD_Node *node, MD_C_ExprKind kind, MD_C_Expr *left, MD_C_Expr *right);
-MD_FUNCTION MD_C_Expr *   MD_C_ParseAsExpr(MD_Node *first, MD_Node *opl);
-MD_FUNCTION MD_C_Expr *   MD_C_ParseAsType(MD_Node *first, MD_Node *opl);
+MD_FUNCTION MD_C_Expr *   MD_C_MakeExpr(MD_Arena *arena, MD_Node *node, MD_C_ExprKind kind,
+                                        MD_C_Expr *left, MD_C_Expr *right);
+MD_FUNCTION MD_C_Expr *   MD_C_ParseAsExpr(MD_Arena *arena, MD_Node *first, MD_Node *opl);
+MD_FUNCTION MD_C_Expr *   MD_C_ParseAsType(MD_Arena *arena, MD_Node *first, MD_Node *opl);
 MD_FUNCTION MD_i64        MD_C_EvaluateExpr_I64(MD_C_Expr *expr);
 MD_FUNCTION MD_f64        MD_C_EvaluateExpr_F64(MD_C_Expr *expr);
 MD_FUNCTION MD_b32        MD_C_ExprMatch(MD_C_Expr *a, MD_C_Expr *b, MD_MatchFlags flags);
