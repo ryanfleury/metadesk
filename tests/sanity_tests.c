@@ -571,16 +571,16 @@ int main(void)
         }
         
         {
-            MD_Map map = MD_MapMake();
+            MD_Map map = MD_MapMake(arena);
             for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1){
-                MD_MapInsert(&map, keys[i], (void *)i);
+                MD_MapInsert(arena, &map, keys[i], (void *)i);
             }
             for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1){
                 MD_MapSlot *slot = MD_MapLookup(&map, keys[i]);
                 TestResult(slot && slot->val == (void *)i);
             }
             for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1){
-                MD_MapOverwrite(&map, keys[i], (void *)(i + 10));
+                MD_MapOverwrite(arena, &map, keys[i], (void *)(i + 10));
             }
             for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1){
                 MD_MapSlot *slot = MD_MapLookup(&map, keys[i]);

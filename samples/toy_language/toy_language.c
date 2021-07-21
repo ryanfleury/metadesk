@@ -26,6 +26,8 @@ struct Value
     MD_Node *node;
 };
 
+static MD_Arena *arena = 0;
+
 static Value
 MakeValue_Number(MD_f64 v)
 {
@@ -49,7 +51,7 @@ InsertValueToNamespace(NamespaceNode *ns, MD_String8 string, Value v)
 {
     Value *v_store = malloc(sizeof(*v_store));
     *v_store = v;
-    MD_MapInsert(&ns->symbol_map, MD_MapKeyStr(string), v_store);
+    MD_MapInsert(arena, &ns->symbol_map, MD_MapKeyStr(string), v_store);
 }
 
 static Value
@@ -180,7 +182,7 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
 
 int main(int argument_count, char **arguments)
 {
-    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    arena = MD_ArenaNew(1ull << 40);
     
     //- rjf: parse command line
     MD_String8List arg_list = MD_StringListFromArgCV(arena, argument_count, arguments);

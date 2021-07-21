@@ -100,7 +100,7 @@ int main(int argument_count, char **arguments)
                 {
                     for(MD_EachNode(index_string, node->first_child))
                     {
-                        MD_MapInsert(&index_table, MD_MapKeyStr(index_string->string), root);
+                        MD_MapInsert(arena, &index_table, MD_MapKeyStr(index_string->string), root);
                     }
                     goto end_index_build;
                 }

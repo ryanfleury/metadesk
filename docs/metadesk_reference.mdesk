@@ -1125,12 +1125,14 @@ main:
 
 @send(Map)
 MD_MapMakeBucketCount: {
+    arena: *MD_Arena,
     bucket_count: MD_u64,
     return: MD_Map,
 };
 
 @send(Map)
 MD_MapMake: {
+    arena: *MD_Arena,
     return: MD_Map,
 };
 
@@ -1162,6 +1164,7 @@ MD_MapScan: {
 
 @send(Map)
 MD_MapInsert: {
+    arena: *MD_Arena,
     map: *MD_Map,
     key: MD_MapKey,
     val: *void,

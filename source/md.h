@@ -803,7 +803,7 @@ MD_FUNCTION MD_u64     MD_U64FromString(MD_String8 string, MD_u32 radix);
 MD_FUNCTION MD_i64     MD_CStyleIntFromString(MD_String8 string);
 MD_FUNCTION MD_f64     MD_F64FromString(MD_String8 string);
 
-MD_FUNCTION MD_String8 MD_CStyleHexStringFromU64(MD_u64 x, MD_b32 caps);
+MD_FUNCTION MD_String8 MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps);
 
 //~ Enum/Flag Strings
 
@@ -815,14 +815,15 @@ MD_FUNCTION MD_String8List MD_StringListFromNodeFlags(MD_Arena *arena, MD_NodeFl
 MD_FUNCTION MD_u64 MD_HashStr(MD_String8 string);
 MD_FUNCTION MD_u64 MD_HashPtr(void *p);
 
-MD_FUNCTION MD_Map      MD_MapMakeBucketCount(MD_u64 bucket_count);
-MD_FUNCTION MD_Map      MD_MapMake(void);
+MD_FUNCTION MD_Map      MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count);
+MD_FUNCTION MD_Map      MD_MapMake(MD_Arena *arena);
 MD_FUNCTION MD_MapKey   MD_MapKeyStr(MD_String8 string);
 MD_FUNCTION MD_MapKey   MD_MapKeyPtr(void *ptr);
 MD_FUNCTION MD_MapSlot* MD_MapLookup(MD_Map *map, MD_MapKey key);
 MD_FUNCTION MD_MapSlot* MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key);
-MD_FUNCTION MD_MapSlot* MD_MapInsert(MD_Map *map, MD_MapKey key, void *val);
-MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val);
+MD_FUNCTION MD_MapSlot* MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val);
+MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey key,
+                                        void *val);
 
 //~ Parsing
 

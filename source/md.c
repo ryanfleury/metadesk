@@ -1296,7 +1296,7 @@ MD_F64FromString(MD_String8 string)
 
 
 MD_FUNCTION_IMPL MD_String8
-MD_CStyleHexStringFromU64(MD_u64 x, MD_b32 caps)
+MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps)
 {
     static char md_int_value_to_char[] = "0123456789abcdef";
     MD_u8 buffer[10];
@@ -1328,7 +1328,7 @@ MD_CStyleHexStringFromU64(MD_u64 x, MD_b32 caps)
     
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (MD_u64)(ptr - buffer);
-    result.str = MD_PushArray(MD_u8, result.size);
+    result.str = MD_PushArrayAr(arena, MD_u8, result.size);
     MD_MemoryCopy(result.str, buffer, result.size);
     return(result);
 }
@@ -1423,18 +1423,17 @@ MD_HashPtr(void *p)
 }
 
 MD_FUNCTION_IMPL MD_Map
-MD_MapMakeBucketCount(MD_u64 bucket_count){
-    // TODO(allen): permanent arena? scratch arena? -- would really
-    // make most sense with a parameter
+MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count){
+    // TODO(allen): super arena?
     MD_Map result = {0};
     result.bucket_count = bucket_count;
-    result.buckets = MD_PushArray(MD_MapBucket, bucket_count); //zero
+    result.buckets = MD_PushArrayZeroAr(arena, MD_MapBucket, bucket_count);
     return(result);
 }
 
 MD_FUNCTION_IMPL MD_Map
-MD_MapMake(void){
-    MD_Map result = MD_MapMakeBucketCount(4093);
+MD_MapMake(MD_Arena *arena){
+    MD_Map result = MD_MapMakeBucketCount(arena, 4093);
     return(result);
 }
 
@@ -1502,13 +1501,11 @@ MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key){
 }
 
 MD_FUNCTION_IMPL MD_MapSlot*
-MD_MapInsert(MD_Map *map, MD_MapKey key, void *val){
+MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
     MD_MapSlot *result = 0;
     if (map->bucket_count > 0){
         MD_u64 index = key.hash%map->bucket_count;
-        // TODO(allen): again, memory? permanent arena? scratch arena?
-        // should definitely match the table's memory "object"
-        MD_MapSlot *slot = MD_PushArray(MD_MapSlot, 1);
+        MD_MapSlot *slot = MD_PushArrayAr(arena, MD_MapSlot, 1);
         MD_MapBucket *bucket = &map->buckets[index];
         MD_QueuePush(bucket->first, bucket->last, slot);
         slot->key = key;
@@ -1519,13 +1516,13 @@ MD_MapInsert(MD_Map *map, MD_MapKey key, void *val){
 }
 
 MD_FUNCTION_IMPL MD_MapSlot*
-MD_MapOverwrite(MD_Map *map, MD_MapKey key, void *val){
+MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
     MD_MapSlot *result = MD_MapLookup(map, key);
     if (result != 0){
         result->val = val;
     }
     else{
-        result = MD_MapInsert(map, key, val);
+        result = MD_MapInsert(arena, map, key, val);
     }
     return(result);
 }
@@ -2308,7 +2305,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
                     for(int i_byte = 0; i_byte < bad_token.raw_string.size; ++i_byte)
                     {
                         MD_u8 b = bad_token.raw_string.str[i_byte];
-                        MD_S8ListPush(arena, &bytes, MD_CStyleHexStringFromU64(b, 1));
+                        MD_S8ListPush(arena, &bytes, MD_CStyleHexStringFromU64(arena, b, 1));
                     }
                     
                     MD_StringJoin join = MD_ZERO_STRUCT;
