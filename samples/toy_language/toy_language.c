@@ -180,6 +180,8 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
 
 int main(int argument_count, char **arguments)
 {
+    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    
     //- rjf: parse command line
     MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
     
@@ -187,7 +189,7 @@ int main(int argument_count, char **arguments)
     MD_Node *file_list = MD_MakeList();
     for(MD_String8Node *n = cmdln.inputs.first; n; n = n->next)
     {
-        MD_ParseResult parse = MD_ParseWholeFile(n->string);
+        MD_ParseResult parse = MD_ParseWholeFile(arena, n->string);
         MD_PushNewReference(file_list, parse.node);
     }
     

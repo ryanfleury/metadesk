@@ -625,11 +625,11 @@ MD_S8FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_Ma
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_S8Copy(MD_String8 string)
+MD_S8Copy(MD_Arena *arena, MD_String8 string)
 {
     MD_String8 res;
     res.size = string.size;
-    res.str = MD_PushArray(MD_u8, string.size + 1);
+    res.str = MD_PushArrayAr(arena, MD_u8, string.size + 1);
     MD_MemoryCopy(res.str, string.str, string.size);
     return(res);
 }
@@ -1402,7 +1402,7 @@ MD_MapMakeBucketCount(MD_u64 bucket_count){
     // make most sense with a parameter
     MD_Map result = {0};
     result.bucket_count = bucket_count;
-    result.buckets = MD_PushArrayZero(MD_MapBucket, bucket_count);
+    result.buckets = MD_PushArray(MD_MapBucket, bucket_count); //zero
     return(result);
 }
 
@@ -1783,7 +1783,7 @@ MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds)
 MD_FUNCTION_IMPL MD_Message *
 MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str)
 {
-    MD_Message *error = MD_PushArrayZero(MD_Message, 1);
+    MD_Message *error = MD_PushArray(MD_Message, 1);  //zero
     error->node = node;
     error->kind = kind;
     error->string = str;
@@ -2376,9 +2376,9 @@ MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
 }
 
 MD_FUNCTION_IMPL MD_ParseResult
-MD_ParseWholeFile(MD_String8 filename)
+MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename)
 {
-    MD_String8 file_contents = MD_LoadEntireFile(filename);
+    MD_String8 file_contents = MD_LoadEntireFile(arena, filename);
     MD_ParseResult parse = MD_ParseWholeString(filename, file_contents);
     if(file_contents.str == 0)
     {
@@ -2970,10 +2970,10 @@ MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name)
 //~ File System
 
 MD_FUNCTION_IMPL MD_String8
-MD_LoadEntireFile(MD_String8 filename)
+MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
 {
     MD_String8 file_contents = MD_ZERO_STRUCT;
-    FILE *file = fopen((char*)MD_S8Copy(filename).str, "rb");
+    FILE *file = fopen((char*)MD_S8Copy(arena, filename).str, "rb");
     if(file)
     {
         fseek(file, 0, SEEK_END);

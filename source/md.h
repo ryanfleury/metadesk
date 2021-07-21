@@ -689,11 +689,6 @@ MD_FUNCTION void* MD_MemoryCopy(void *dst, void *src, MD_u64 size);
 
 MD_FUNCTION void* MD_AllocZero(MD_u64 size);
 #define MD_PushArray(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
-// NOTE(rjf): Right now, both calls just automatically zero their memory,
-// but I'm explicitly splitting this out to ensure that we don't accidentally
-// assume that we have zeroed memory incorrectly in the future (when our
-// allocation approach changes).
-#define MD_PushArrayZero(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
 
 //~ Arena Functions
 
@@ -759,7 +754,7 @@ MD_FUNCTION MD_b32         MD_S8Match(MD_String8 a, MD_String8 b, MD_MatchFlags 
 MD_FUNCTION MD_u64         MD_S8FindSubstring(MD_String8 str, MD_String8 substring,
                                               MD_u64 start_pos, MD_MatchFlags flags);
 
-MD_FUNCTION MD_String8     MD_S8Copy(MD_String8 string);
+MD_FUNCTION MD_String8     MD_S8Copy(MD_Arena *arena, MD_String8 string);
 MD_FUNCTION MD_String8     MD_S8FmtV(char *fmt, va_list args);
 
 MD_FUNCTION MD_String8     MD_S8Fmt(char *fmt, ...);
@@ -838,7 +833,7 @@ MD_FUNCTION MD_ParseResult MD_ParseResultZero(void);
 MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 string, MD_u64 offset);
 MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
 
-MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_String8 filename);
+MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename);
 
 //~ Location Conversion
 
@@ -909,7 +904,7 @@ MD_FUNCTION MD_i64 MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name);
 
 //~ File System
 
-MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_String8 filename);
+MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename);
 MD_FUNCTION MD_b32      MD_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info);
 
 #endif // MD_H

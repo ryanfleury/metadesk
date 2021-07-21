@@ -3,10 +3,12 @@
 
 int main(int argument_count, char **arguments)
 {
+    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    
     MD_Node *list = MD_MakeList();
     for(int i = 1; i < argument_count; i += 1)
     {
-        MD_Node *root = MD_ParseWholeFile(MD_S8CString(arguments[i])).node;
+        MD_Node *root = MD_ParseWholeFile(arena, MD_S8CString(arguments[i])).node;
         MD_PushNewReference(list, root);
     }
     

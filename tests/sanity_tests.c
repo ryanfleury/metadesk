@@ -118,6 +118,8 @@ TokenMatch(MD_Token token, MD_String8 string, MD_TokenKind kind)
 
 int main(void)
 {
+    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    
     Test("Lexer")
     {
         MD_String8 string = MD_S8Lit("abc def 123 456 123_456 abc123 123abc");
@@ -536,7 +538,7 @@ int main(void)
         }
         
         {
-            MD_ParseResult parse = MD_ParseWholeFile(MD_S8Lit("__does_not_exist.mdesk"));
+            MD_ParseResult parse = MD_ParseWholeFile(arena, MD_S8Lit("__does_not_exist.mdesk"));
             TestResult(parse.node->kind == MD_NodeKind_File && parse.errors.first != 0);
         }
         

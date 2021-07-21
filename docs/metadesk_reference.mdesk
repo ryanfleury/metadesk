@@ -670,12 +670,6 @@ main:
     size: MD_u64,
 }
 
-@send(MemoryOperations)
-@macro MD_PushArray: { T, c }
-
-@send(MemoryOperations)
-@macro MD_PushArrayZero: { T, c }
-
 ////////////////////////////////
 //~ Characters
 
@@ -917,6 +911,7 @@ main:
 @send(Strings)
 @doc("Copies @code 'string' by allocating an entirely new portion of memory and copying the passed string's memory to the newly allocated memory. Returns the copy of @code 'string' using the new memory.")
 @func MD_S8Copy: {
+    arena: *MD_Arena,
     string: MD_String8,
     return: MD_String8,
 };
@@ -1738,6 +1733,7 @@ MD_ParseWholeFile:
 @send(FileSystemHelper)
 @doc("Uses the C standard library to load the contents of the file with @code 'filename' into an MD_String8.")
 @func MD_LoadEntireFile: {
+    arena: *MD_Arena,
     filename: MD_String8,
     return: MD_String8,
 };

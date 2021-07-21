@@ -32,6 +32,7 @@ static void GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageIn
 
 int main(int argument_count, char **arguments)
 {
+    MD_Arena *arena = MD_ArenaNew(1ull << 40);
     
     //~ NOTE(rjf): Parse command line arguments.
     MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
@@ -45,13 +46,13 @@ int main(int argument_count, char **arguments)
     }
     
     //~ NOTE(rjf): Load JS.
-    MD_String8 js_string = MD_LoadEntireFile(MD_S8Fmt("%.*s/site.js", MD_S8VArg(page_dir_path)));
+    MD_String8 js_string = MD_LoadEntireFile(arena, MD_S8Fmt("%.*s/site.js", MD_S8VArg(page_dir_path)));
     
     //~ NOTE(rjf): Parse site info.
     SiteInfo site_info = {0};
     {
         printf("Parsing site metadata at \"%.*s\"...\n", MD_S8VArg(site_info_path));
-        MD_Node *site_info_file = MD_ParseWholeFile(site_info_path).node;
+        MD_Node *site_info_file = MD_ParseWholeFile(arena, site_info_path).node;
         site_info = ParseSiteInfo(site_info_file);
     }
     
@@ -73,7 +74,7 @@ int main(int argument_count, char **arguments)
                 MD_String8 path = MD_S8Fmt("%.*s/%.*s",
                                            MD_S8VArg(folder),
                                            MD_S8VArg(file_info.filename));
-                MD_Node *node = MD_ParseWholeFile(path).node;
+                MD_Node *node = MD_ParseWholeFile(arena, path).node;
                 MD_PushNewReference(root_list, node);
             }
         }
