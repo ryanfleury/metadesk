@@ -64,6 +64,9 @@ static void PrintNode(MD_Node* node, FILE* file, int indent_count) {
 
 int main(int argument_count, char **arguments)
 {
+    MD_ThreadContext tctx;
+    MD_ThreadInit(&tctx);
+    
     arena = MD_ArenaNew(1ull << 40);
     
     // NOTE(pmh): Parse all the files passed in via command line.

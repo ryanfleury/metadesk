@@ -7,9 +7,14 @@
 #include "md.c"
 #include "md_c_helpers.c"
 
+static MD_Arena *arena = 0;
+
 int main(int argument_count, char **arguments)
 {
-    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    MD_ThreadContext tctx;
+    MD_ThreadInit(&tctx);
+    
+    arena = MD_ArenaNew(1ull << 40);
     
     MD_String8 example_code = MD_S8Lit("@struct Foo:\n"
                                        "{\n"

@@ -9,15 +9,16 @@
 //  #define MD_IMPL_Release
 //  #define MD_IMPL_ArenaNew
 //  #define MD_IMPL_ArenaRelease
+//  #define MD_SCRATCH_SIZE
 // Default Implementation Controls
 //  #define MD_NO_DEFAULT_IMPL -> skip code for all default implementations
 
 #if !defined(MD_NO_DEFAULT_IMPL)
 # define MD_NO_DEFAULT_IMPL 0
 #endif
-
-// TODO(allen): not real! Don't put into API
-MD_FUNCTION MD_Arena* MD_Scratch(void);
+#if !defined(MD_SCRATCH_SIZE)
+# define MD_SCRATCH_SIZE (1 << 30)
+#endif
 
 //~/////////////////////////////////////////////////////////////////////////////
 ////////////////////////// Win32 Implementation ////////////////////////////////
@@ -38,6 +39,8 @@ MD_WIN32_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path,
 {
     MD_b32 result = 0;
     
+    MD_ArenaTemp scratch = MD_GetScratch(&arena, 1);
+    
     WIN32_FIND_DATAA find_data = MD_ZERO_STRUCT;
     HANDLE state = *(HANDLE *)(&it->state[0]);
     if(state == 0)
@@ -48,7 +51,7 @@ MD_WIN32_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path,
         {
             need_star = 1;
         }
-        MD_String8 cpath = need_star ? MD_S8Fmt(MD_Scratch(), "%.*s*", MD_S8VArg(path)) : path;
+        MD_String8 cpath = need_star ? MD_S8Fmt(scratch.arena, "%.*s*", MD_S8VArg(path)) : path;
         state = FindFirstFileA((char*)cpath.str, &find_data);
         result = !!state;
     }
@@ -69,6 +72,8 @@ MD_WIN32_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path,
         out_info->file_size = ((((MD_u64)find_data.nFileSizeHigh) << 32) |
                                ((MD_u64)find_data.nFileSizeLow));
     }
+    
+    MD_ReleaseScratch(scratch);
     
     return result;
 }
@@ -400,24 +405,39 @@ MD_ArenaRelease(MD_Arena *arena){
     MD_IMPL_ArenaRelease(arena);
 }
 
+//~ Thread Context Functions
 
-// TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): FIX FIX FIX FIX
-// TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): FIX FIX FIX FIX
-// TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): FIX FIX FIX FIX
-// TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): FIX FIX FIX FIX
-// This is a hack to ease the transition complexity, it defines "scratch" as
-// a single global arena that can be acquired anywhere without explicit pass
-// through -- but it is not a real scratch system because it has no free mechanism!
+MD_THREAD_LOCAL MD_ThreadContext *md_thread_ctx;
 
-MD_FUNCTION_IMPL MD_Arena*
-MD_Scratch(void){
-    static MD_Arena *scratch = 0;
-    if (scratch == 0){
-        scratch = MD_ArenaNew(1ull << 40);
+MD_FUNCTION_IMPL void
+MD_ThreadInit(MD_ThreadContext *tctx_mem){
+    md_thread_ctx = tctx_mem;
+    for (MD_u32 i = 0; i < MD_ArrayCount(md_thread_ctx->scratch_pool); i += 1){
+        tctx_mem->scratch_pool[i] = MD_ArenaNew(MD_SCRATCH_SIZE);
     }
-    return(scratch);
 }
 
+MD_FUNCTION_IMPL MD_ArenaTemp
+MD_GetScratch(MD_Arena **conflicts, MD_u32 count){
+    MD_ArenaTemp result = MD_ZERO_STRUCT;
+    MD_ThreadContext *tctx = md_thread_ctx;
+    MD_Arena **arena_ptr = tctx->scratch_pool;
+    for (MD_u32 i = 0; i < MD_ArrayCount(tctx->scratch_pool); i += 1, arena_ptr += 1){
+        MD_b32 has_conflict = 0;
+        MD_Arena **conflict_ptr = conflicts;
+        for (MD_u32 j = 0; j < count; j += 1, conflict_ptr += 1){
+            if (*arena_ptr == *conflict_ptr){
+                has_conflict = 1;
+                break;
+            }
+        }
+        if (!has_conflict){
+            result = MD_ArenaBeginTemp(*arena_ptr);
+            break;
+        }
+    }
+    return(result);
+}
 
 //~ Characters
 
@@ -2659,8 +2679,10 @@ MD_PrintMessageFmt(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ..
 {
     va_list args;
     va_start(args, fmt);
-    MD_String8 string = MD_S8FmtV(MD_Scratch(), fmt, args);
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+    MD_String8 string = MD_S8FmtV(scratch.arena, fmt, args);
     MD_PrintMessage(out, loc, kind, string);
+    MD_ReleaseScratch(scratch);
     va_end(args);
 }
 
@@ -2676,8 +2698,10 @@ MD_PrintNodeMessageFmt(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt,
 {
     va_list args;
     va_start(args, fmt);
-    MD_String8 string = MD_S8FmtV(MD_Scratch(), fmt, args);
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+    MD_String8 string = MD_S8FmtV(scratch.arena, fmt, args);
     MD_PrintNodeMessage(out, node, kind, string);
+    MD_ReleaseScratch(scratch);
     va_end(args);
 }
 
@@ -2961,8 +2985,10 @@ MD_FUNCTION MD_i64
 MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name)
 {
     MD_String8List values = MD_CmdLineValuesFromString(cmdln, name);
-    MD_String8 value_str = MD_S8ListJoin(MD_Scratch(), values, 0);
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+    MD_String8 value_str = MD_S8ListJoin(scratch.arena, values, 0);
     MD_i64 result = MD_CStyleIntFromString(value_str);
+    MD_ReleaseScratch(scratch);
     return(result);
 }
 

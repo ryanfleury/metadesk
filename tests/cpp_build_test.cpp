@@ -1,9 +1,14 @@
 #include "md.h"
 #include "md.c"
 
+static MD_Arena *arena = 0;
+
 int main(void)
 {
-    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    MD_ThreadContext tctx;
+    MD_ThreadInit(&tctx);
+    
+    arena = MD_ArenaNew(1ull << 40);
     
     printf("%d\n", MD_CPP_VERSION);
     

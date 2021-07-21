@@ -3,9 +3,14 @@
 #include "md.h"
 #include "md.c"
 
+static MD_Arena *arena = 0;
+
 int main(int argument_count, char **arguments)
 {
-    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    MD_ThreadContext tctx;
+    MD_ThreadInit(&tctx);
+    
+    arena = MD_ArenaNew(1ull << 40);
     
     // NOTE(rjf): Parse all the files passed in via command line.
     MD_Node *list = MD_MakeList(arena);

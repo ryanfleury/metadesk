@@ -704,8 +704,10 @@ MD_C_Generate_Decl(FILE *file, MD_Node *node)
 {
     if(node)
     {
-        MD_C_Expr *type = MD_C_ParseAsType(MD_Scratch(), node->first_child, node->last_child);
+        MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+        MD_C_Expr *type = MD_C_ParseAsType(scratch.arena, node->first_child, node->last_child);
         MD_C_Generate_DeclByNameAndType(file, node->string, type);
+        MD_ReleaseScratch(scratch);
     }
 }
 

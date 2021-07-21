@@ -1,9 +1,14 @@
 #include "md.h"
 #include "md.c"
 
+static MD_Arena *arena = 0;
+
 int main(int argument_count, char **arguments)
 {
-    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    MD_ThreadContext tctx;
+    MD_ThreadInit(&tctx);
+    
+    arena = MD_ArenaNew(1ull << 40);
     
     MD_Node *list = MD_MakeList(arena);
     for(int i = 1; i < argument_count; i += 1)

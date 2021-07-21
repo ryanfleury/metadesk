@@ -120,6 +120,9 @@ TokenMatch(MD_Token token, MD_String8 string, MD_TokenKind kind)
 
 int main(void)
 {
+    MD_ThreadContext tctx;
+    MD_ThreadInit(&tctx);
+    
     arena = MD_ArenaNew(1ull << 40);
     
     Test("Lexer")

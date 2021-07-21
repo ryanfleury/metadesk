@@ -224,6 +224,12 @@
 # define MD_C_LINKAGE_END }
 #endif
 
+#if MD_COMPILER_CL
+# define MD_THREAD_LOCAL __declspec(thread)
+#elif MD_COMPILER_GCC || MD_COMPILER_CLANG
+# define MD_THREAD_LOCAL __thread
+#endif
+
 //~ Common defines
 
 #define MD_FUNCTION
@@ -260,6 +266,8 @@ union MD_IntPtr{
     void *ptr;
 };
 
+typedef struct MD_Arena MD_Arena;
+
 typedef enum MD_ArenaOperation{
     MD_ArenaOperation_GetPos,
     MD_ArenaOperation_GetCap,
@@ -269,9 +277,8 @@ typedef enum MD_ArenaOperation{
     MD_ArenaOperation_SetAutoAlign,
 } MD_ArenaOperation;
 
-typedef MD_IntPtr MD_ArenaFunc(struct MD_Arena *arena, MD_ArenaOperation op, MD_u64 v);
+typedef MD_IntPtr MD_ArenaFunc(MD_Arena *arena, MD_ArenaOperation op, MD_u64 v);
 
-typedef struct MD_Arena MD_Arena;
 struct MD_Arena{
     MD_ArenaFunc *func;
 };
@@ -282,6 +289,13 @@ typedef struct MD_ArenaTemp MD_ArenaTemp;
 struct MD_ArenaTemp{
     MD_Arena *arena;
     MD_u64 pos;
+};
+
+//~ Thread Context
+
+typedef struct MD_ThreadContext MD_ThreadContext;
+struct MD_ThreadContext{
+    MD_Arena *scratch_pool[2];
 };
 
 //~ Basic Unicode string types.
@@ -702,6 +716,13 @@ sizeof(T)*(c)))
 
 MD_FUNCTION MD_Arena*    MD_ArenaNew(MD_u64 cap);
 MD_FUNCTION void         MD_ArenaRelease(MD_Arena *arena);
+
+//~ Thread Context Functions
+
+MD_FUNCTION void         MD_ThreadInit(MD_ThreadContext *tctx_mem);
+MD_FUNCTION MD_ArenaTemp MD_GetScratch(MD_Arena **conflicts, MD_u32 count);
+
+#define MD_ReleaseScratch(scratch) MD_ArenaEndTemp(scratch)
 
 //~ Characters
 
