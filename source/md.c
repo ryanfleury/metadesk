@@ -859,7 +859,7 @@ MD_S8Stylize(MD_Arena *arena, MD_String8 string, MD_IdentifierStyle word_style,
     {
         result.size += separator.size*(words.node_count-1);
     }
-    result.str = MD_PushArray(MD_u8, result.size);
+    result.str = MD_PushArrayAr(arena, MD_u8, result.size);
     
     {
         MD_u64 write_pos = 0;
@@ -1081,11 +1081,13 @@ MD_Utf16FromCodepoint(MD_u16 *out, MD_u32 codepoint)
     return(advance);
 }
 
+// TODO(allen): arena "put back" operation to optimize these a bit more
+
 MD_FUNCTION MD_String8
-MD_S8FromS16(MD_String16 in)
+MD_S8FromS16(MD_Arena *arena, MD_String16 in)
 {
     MD_u64 cap = in.size*3;
-    MD_u8 *str = MD_PushArray(MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArrayAr(arena, MD_u8, cap + 1);
     MD_u16 *ptr = in.str;
     MD_u16 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1101,10 +1103,10 @@ MD_S8FromS16(MD_String16 in)
 }
 
 MD_FUNCTION MD_String16
-MD_S16FromS8(MD_String8 in)
+MD_S16FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size*2;
-    MD_u16 *str = MD_PushArray(MD_u16, (cap + 1));
+    MD_u16 *str = MD_PushArrayAr(arena, MD_u16, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1121,10 +1123,10 @@ MD_S16FromS8(MD_String8 in)
 }
 
 MD_FUNCTION MD_String8
-MD_S8FromS32(MD_String32 in)
+MD_S8FromS32(MD_Arena *arena, MD_String32 in)
 {
     MD_u64 cap = in.size*4;
-    MD_u8 *str = MD_PushArray(MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArrayAr(arena, MD_u8, cap + 1);
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1138,10 +1140,10 @@ MD_S8FromS32(MD_String32 in)
 }
 
 MD_FUNCTION MD_String32
-MD_S32FromS8(MD_String8 in)
+MD_S32FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size;
-    MD_u32 *str = MD_PushArray(MD_u32, (cap + 1));
+    MD_u32 *str = MD_PushArrayAr(arena, MD_u32, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;

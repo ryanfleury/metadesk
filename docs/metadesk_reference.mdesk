@@ -1086,6 +1086,7 @@ main:
 
 @send(Strings)
 @func MD_S8FromS16: {
+    arena: *MD_Arena,
     str: MD_String16,
     return: MD_String8,
 };

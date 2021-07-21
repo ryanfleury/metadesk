@@ -1,19 +1,23 @@
 #include "md.h"
 #include "md.c"
 
+static MD_Arena *arena = 0;
+
 void run_test_on_string(MD_String8 string)
 {
-    MD_String16 s16 = MD_S16FromS8(string);
-    MD_String8  s8_ts16 = MD_S8FromS16(s16);
+    MD_String16 s16 = MD_S16FromS8(arena, string);
+    MD_String8  s8_ts16 = MD_S8FromS16(arena, s16);
     MD_Assert(MD_S8Match(s8_ts16, string, 0));
     
-    MD_String32 s32 = MD_S32FromS8(string);
-    MD_String8  s8_ts32 = MD_S8FromS32(s32);
+    MD_String32 s32 = MD_S32FromS8(arena, string);
+    MD_String8  s8_ts32 = MD_S8FromS32(arena, s32);
     MD_Assert(MD_S8Match(s8_ts32, string, 0));
 }
 
 int main(void)
 {
+    arena = MD_ArenaNew(1ull << 40);
+    
     // TODO(allen): throw more at this.
     
     char test_string_c[] = "Foo bar; test the unicode\n\t\0Etc";

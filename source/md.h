@@ -778,10 +778,10 @@ MD_FUNCTION MD_DecodedCodepoint MD_DecodeCodepointFromUtf8(MD_u8 *str, MD_u64 ma
 MD_FUNCTION MD_DecodedCodepoint MD_DecodeCodepointFromUtf16(MD_u16 *str, MD_u64 max);
 MD_FUNCTION MD_u32         MD_Utf8FromCodepoint(MD_u8 *out, MD_u32 codepoint);
 MD_FUNCTION MD_u32         MD_Utf16FromCodepoint(MD_u16 *out, MD_u32 codepoint);
-MD_FUNCTION MD_String8     MD_S8FromS16(MD_String16 str);
-MD_FUNCTION MD_String16    MD_S16FromS8(MD_String8 str);
-MD_FUNCTION MD_String8     MD_S8FromS32(MD_String32 str);
-MD_FUNCTION MD_String32    MD_S32FromS8(MD_String8 str);
+MD_FUNCTION MD_String8     MD_S8FromS16(MD_Arena *arena, MD_String16 str);
+MD_FUNCTION MD_String16    MD_S16FromS8(MD_Arena *arena, MD_String8 str);
+MD_FUNCTION MD_String8     MD_S8FromS32(MD_Arena *arena, MD_String32 str);
+MD_FUNCTION MD_String32    MD_S32FromS8(MD_Arena *arena, MD_String8 str);
 
 //~ File Name Strings
 
