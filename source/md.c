@@ -1,8 +1,17 @@
 // LICENSE AT END OF FILE (MIT).
 
 // NOTE(allen): Notes on overrides/macro options:
-// #define MD_IMPL_FileIterIncrement -> override default implementation
-// #define MD_NO_DEFAULT_IMPL -> skip OS specific code for implementation
+// Individual Overridables:
+//  #define MD_IMPL_FileIterIncrement
+//  #define MD_IMPL_Alloc
+//  #define MD_IMPL_Reserve
+//  #define MD_IMPL_Commit
+//  #define MD_IMPL_Decommit
+//  #define MD_IMPL_Release
+//  #define MD_IMPL_ArenaNew
+//  #define MD_IMPL_ArenaRelease
+// Default Implementation Controls
+//  #define MD_NO_DEFAULT_IMPL -> skip code for all default implementations
 
 #if !defined(MD_NO_DEFAULT_IMPL)
 # define MD_NO_DEFAULT_IMPL 0
@@ -77,6 +86,40 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
     }
     
     return result;
+}
+
+#if !defined(MD_IMPL_Reserve)
+# define MD_IMPL_Reserve MD_WIN32_Reserve
+#endif
+#if !defined(MD_IMPL_Commit)
+# define MD_IMPL_Commit MD_WIN32_Commit
+#endif
+#if !defined(MD_IMPL_Decommit)
+# define MD_IMPL_Decommit MD_WIN32_Decommit
+#endif
+#if !defined(MD_IMPL_Release)
+# define MD_IMPL_Release MD_WIN32_Release
+#endif
+
+static void*
+MD_WIN32_Reserve(MD_u64 size){
+    void *result = VirtualAlloc(0, size, MEM_RESERVE, PAGE_READWRITE);
+    return(result);
+}
+
+static void
+MD_WIN32_Commit(void *ptr, MD_u64 size){
+    VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+}
+
+static void
+MD_WIN32_Decommit(void *ptr, MD_u64 size){
+    VirtualFree(ptr, size, MEM_DECOMMIT);
+}
+
+static void
+MD_WIN32_Release(void *ptr, MD_u64 size){
+    VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
 #endif
@@ -164,13 +207,122 @@ MD_LINUX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo 
 #endif
 
 //~/////////////////////////////////////////////////////////////////////////////
+///////////// MD Arena From Reserve/Commit/Decommit/Release ////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+#define MD_ArenaDefault_HeaderSize 64
+#define MD_ArenaDefault_CommitSize (1 << 20)
+
+typedef struct MD_ArenaDefault MD_ArenaDefault;
+struct MD_ArenaDefault{
+    MD_ArenaFunc *func;
+    MD_u64 pos;
+    MD_u64 cmt;
+    MD_u64 cap;
+    MD_u64 align;
+};
+MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_ArenaDefault_HeaderSize, arena_def_size_check);
+
+#define MD_IMPL_ArenaNew MD_ArenaDefaultNew
+#define MD_IMPL_ArenaRelease MD_ArenaDefaultRelease
+
+static MD_IntPtr
+MD_ArenaDefaultImpl(MD_Arena *arena_opq, MD_ArenaOperation op, MD_u64 v){
+    MD_ArenaDefault *arena = (MD_ArenaDefault*)arena_opq;
+    MD_u8 *buf = (MD_u8*)arena_opq;
+    MD_IntPtr result = MD_ZERO_STRUCT;
+    switch (op){
+        case MD_ArenaOperation_GetPos:
+        {
+            result.u64 = arena->pos;
+        }break;
+        
+        case MD_ArenaOperation_GetCap:
+        {
+            result.u64 = arena->cap;
+        }break;
+        
+        case MD_ArenaOperation_Push:
+        {
+            if (arena->pos + v <= arena->cap){
+                MD_u64 pos = arena->pos;
+                MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
+                MD_u64 new_pos = pos_clamped + v;
+                MD_u64 align_m1 = arena->align - 1;
+                MD_u64 new_pos_aligned = (new_pos + align_m1)&(~align_m1);
+                MD_u64 new_pos_clamped = ((arena->cap < new_pos_aligned) ? arena->cap : new_pos_aligned);
+                result.ptr = buf + pos;
+                arena->pos = new_pos_aligned;
+                
+                if (new_pos_clamped > arena->cmt){
+                    MD_u64 cmt_amt_raw = new_pos_clamped - arena->cmt;
+                    MD_u64 cmt_align_m1 = MD_ArenaDefault_CommitSize - 1;
+                    MD_u64 cmt_amt = (cmt_amt_raw + cmt_align_m1)&(~cmt_align_m1);
+                    MD_IMPL_Commit(buf + arena->cmt, cmt_amt);
+                    arena->cmt += cmt_amt;
+                }
+            }
+        }break;
+        
+        case MD_ArenaOperation_PopTo:
+        {
+            MD_u64 pos_clamped = ((v > MD_ArenaDefault_HeaderSize) ? v : MD_ArenaDefault_HeaderSize);
+            arena->pos = pos_clamped;
+        }break;
+        
+        case MD_ArenaOperation_PushAlign:
+        {
+            MD_u64 pos = arena->pos;
+            MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
+            MD_u64 align_m1 = arena->align - 1;
+            MD_u64 new_pos_aligned = (pos_clamped + align_m1)&(~align_m1);
+            MD_u64 new_pos_clamped = ((arena->cap < new_pos_aligned) ? arena->cap : new_pos_aligned);
+            arena->pos = new_pos_clamped;
+        }break;
+        
+        case MD_ArenaOperation_SetAutoAlign:
+        {
+            arena->align = v;
+        }break;
+    }
+    return(result);
+}
+
+static MD_Arena*
+MD_ArenaDefaultNew(MD_u64 cap){
+    void *mem = MD_IMPL_Reserve(cap);
+    MD_u64 cmt = ((MD_ArenaDefault_CommitSize < cap) ? MD_ArenaDefault_CommitSize : cap);
+    MD_IMPL_Commit(mem, cmt);
+    
+    MD_ArenaDefault *arena = (MD_ArenaDefault*)mem;
+    arena->func = MD_ArenaDefaultImpl;
+    arena->pos  = MD_ArenaDefault_HeaderSize;
+    arena->cmt  = cmt;
+    arena->cap  = cap;
+    arena->align = sizeof(void*);
+    return((MD_Arena*)arena);
+}
+
+static void
+MD_ArenaDefaultRelease(MD_Arena *arena_opq){
+    MD_ArenaDefault *arena = (MD_ArenaDefault*)arena_opq;
+    MD_u64 cap = arena->cap;
+    MD_IMPL_Release(arena, cap);
+}
+
+//~/////////////////////////////////////////////////////////////////////////////
 //////////////////////// MD Library Implementation /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !defined(MD_IMPL_FileIterIncrement)
-# error Missing implementation for MD_IMPL_FileIterIncrement
+#if !defined(MD_IMPL_Alloc)
+# error Missing implementation for MD_IMPL_Alloc
 #endif
-
+#if !defined(MD_IMPL_ArenaNew)
+# error Missing implementation for MD_IMPL_ArenaNew
+#endif
+#if !defined(MD_IMPL_ArenaRelease)
+# error Missing implementation for MD_IMPL_ArenaRelease
+#endif
 
 #define MD_FUNCTION_IMPL MD_FUNCTION
 #define MD_PRIVATE_FUNCTION_IMPL MD_FUNCTION_IMPL
@@ -205,16 +357,18 @@ static MD_Node _md_nil_node =
 
 //~ Memory Operations
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION_IMPL void*
 MD_MemoryZero(void *memory, MD_u64 size)
 {
     memset(memory, 0, size);
+    return(memory);
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION_IMPL void*
 MD_MemoryCopy(void *dest, void *src, MD_u64 size)
 {
     memcpy(dest, src, size);
+    return(dest);
 }
 
 MD_FUNCTION_IMPL void *
@@ -232,15 +386,13 @@ MD_AllocZero(MD_u64 size)
 //~ Arena Functions
 
 MD_FUNCTION void*
-MD_ArenaPush(MD_Arena *arena, MD_u64 v)
-{
+MD_ArenaPush(MD_Arena *arena, MD_u64 v){
     MD_IntPtr result = arena->func(arena, MD_ArenaOperation_Push, v);
     return(result.ptr);
 }
 
 MD_FUNCTION MD_ArenaTemp
-MD_ArenaBeginTemp(MD_Arena *arena)
-{
+MD_ArenaBeginTemp(MD_Arena *arena){
     MD_IntPtr pos = arena->func(arena, MD_ArenaOperation_GetPos, 0);
     MD_ArenaTemp result = MD_ZERO_STRUCT;
     result.arena = arena;
@@ -249,8 +401,7 @@ MD_ArenaBeginTemp(MD_Arena *arena)
 }
 
 MD_FUNCTION void
-MD_ArenaEndTemp(MD_ArenaTemp temp)
-{
+MD_ArenaEndTemp(MD_ArenaTemp temp){
     temp.arena->func(temp.arena, MD_ArenaOperation_PopTo, temp.pos);
 }
 
@@ -262,6 +413,21 @@ MD_ArenaSetAlign(MD_Arena *arena, MD_u64 v){
 MD_FUNCTION void
 MD_ArenaPushAlign(MD_Arena *arena, MD_u64 v){
     arena->func(arena, MD_ArenaOperation_PushAlign, v);
+}
+
+MD_FUNCTION void
+MD_ArenaClear(MD_Arena *arena){
+    arena->func(arena, MD_ArenaOperation_PopTo, 0);
+}
+
+MD_FUNCTION MD_Arena*
+MD_ArenaNew(MD_u64 cap){
+    return(MD_IMPL_ArenaNew(cap));
+}
+
+MD_FUNCTION void
+MD_ArenaRelease(MD_Arena *arena){
+    MD_IMPL_ArenaRelease(arena);
 }
 
 

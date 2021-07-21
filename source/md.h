@@ -1,11 +1,6 @@
-//~ Metadesk Library
 // LICENSE AT END OF FILE (MIT).
 
-// NOTE(allen): "Plugin" functionality
-//
-// MD_b32     MD_IMPL_FileIterIncrement(MD_FileIter*, MD_String8, MD_FileInfo*) - optional
-// void*      MD_IMPL_Alloc(MD_u64)                                             - required
-//
+//~ Metadesk Library
 
 #ifndef MD_H
 #define MD_H
@@ -260,15 +255,14 @@ typedef double   MD_f64;
 //~ Abstract Arena
 
 typedef union MD_IntPtr MD_IntPtr;
-union MD_IntPtr
-{
+union MD_IntPtr{
     MD_u64 u64;
     void *ptr;
 };
 
-typedef enum MD_ArenaOperation
-{
+typedef enum MD_ArenaOperation{
     MD_ArenaOperation_GetPos,
+    MD_ArenaOperation_GetCap,
     MD_ArenaOperation_Push,
     MD_ArenaOperation_PopTo,
     MD_ArenaOperation_PushAlign,
@@ -278,16 +272,14 @@ typedef enum MD_ArenaOperation
 typedef MD_IntPtr MD_ArenaFunc(struct MD_Arena *arena, MD_ArenaOperation op, MD_u64 v);
 
 typedef struct MD_Arena MD_Arena;
-struct MD_Arena
-{
+struct MD_Arena{
     MD_ArenaFunc *func;
 };
 
 //~ Arena Helpers
 
 typedef struct MD_ArenaTemp MD_ArenaTemp;
-struct MD_ArenaTemp
-{
+struct MD_ArenaTemp{
     MD_Arena *arena;
     MD_u64 pos;
 };
@@ -692,8 +684,8 @@ struct MD_FileIter
 
 //~ Memory Operations
 
-MD_FUNCTION void MD_MemoryZero(void *memory, MD_u64 size);
-MD_FUNCTION void MD_MemoryCopy(void *dst, void *src, MD_u64 size);
+MD_FUNCTION void* MD_MemoryZero(void *memory, MD_u64 size);
+MD_FUNCTION void* MD_MemoryCopy(void *dst, void *src, MD_u64 size);
 
 MD_FUNCTION void* MD_AllocZero(MD_u64 size);
 #define MD_PushArray(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
@@ -710,8 +702,14 @@ MD_FUNCTION MD_ArenaTemp MD_ArenaBeginTemp(MD_Arena *arena);
 MD_FUNCTION void         MD_ArenaEndTemp(MD_ArenaTemp temp);
 MD_FUNCTION void         MD_ArenaSetAlign(MD_Arena *arena, MD_u64 v);
 MD_FUNCTION void         MD_ArenaPushAlign(MD_Arena *arena, MD_u64 v);
+MD_FUNCTION void         MD_ArenaClear(MD_Arena *arena);
 
 #define MD_PushArrayAr(a,T,c) (T*)(MD_ArenaPush((a), sizeof(T)*(c)))
+#define MD_PushArrayZeroAr(a,T,c) (T*)(MD_MemoryZero(MD_ArenaPush((a), sizeof(T)*(c)),\
+sizeof(T)*(c)))
+
+MD_FUNCTION MD_Arena*    MD_ArenaNew(MD_u64 cap);
+MD_FUNCTION void         MD_ArenaRelease(MD_Arena *arena);
 
 //~ Characters
 
