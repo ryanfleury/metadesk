@@ -416,19 +416,23 @@ int main(void)
     Test("Style Strings")
     {
         {
-            MD_String8 str = MD_S8Stylize(MD_S8Lit("THIS_IS_A_TEST"), MD_IdentifierStyle_UpperCamelCase, MD_S8Lit(" "));
+            MD_String8 str = MD_S8Stylize(arena, MD_S8Lit("THIS_IS_A_TEST"),
+                                          MD_IdentifierStyle_UpperCamelCase, MD_S8Lit(" "));
             TestResult(MD_S8Match(str, MD_S8Lit("This Is A Test"), 0));
         }
         {
-            MD_String8 str = MD_S8Stylize(MD_S8Lit("this_is_a_test"), MD_IdentifierStyle_UpperCamelCase, MD_S8Lit(" "));
+            MD_String8 str = MD_S8Stylize(arena, MD_S8Lit("this_is_a_test"),
+                                          MD_IdentifierStyle_UpperCamelCase, MD_S8Lit(" "));
             TestResult(MD_S8Match(str, MD_S8Lit("This Is A Test"), 0));
         }
         {
-            MD_String8 str = MD_S8Stylize(MD_S8Lit("ThisIsATest"), MD_IdentifierStyle_UpperCamelCase, MD_S8Lit(" "));
+            MD_String8 str = MD_S8Stylize(arena, MD_S8Lit("ThisIsATest"),
+                                          MD_IdentifierStyle_UpperCamelCase, MD_S8Lit(" "));
             TestResult(MD_S8Match(str, MD_S8Lit("This Is A Test"), 0));
         }
         {
-            MD_String8 str = MD_S8Stylize(MD_S8Lit("Here is another test."), MD_IdentifierStyle_UpperCamelCase, MD_S8Lit(""));
+            MD_String8 str = MD_S8Stylize(arena, MD_S8Lit("Here is another test."),
+                                          MD_IdentifierStyle_UpperCamelCase, MD_S8Lit(""));
             TestResult(MD_S8Match(str, MD_S8Lit("HereIsAnotherTest."), 0));
         }
     }
@@ -437,7 +441,10 @@ int main(void)
     {
         TestResult(MD_S8Match(MD_StringFromNodeKind(MD_NodeKind_Main), MD_S8Lit("Main"), 0));
         TestResult(MD_S8Match(MD_StringFromNodeKind(MD_NodeKind_Main), MD_S8Lit("Main"), 0));
-        MD_String8List list = MD_StringListFromNodeFlags(MD_NodeFlag_StringLiteral | MD_NodeFlag_HasParenLeft | MD_NodeFlag_IsBeforeSemicolon);
+        MD_String8List list = MD_StringListFromNodeFlags(arena, 
+                                                         MD_NodeFlag_StringLiteral |
+                                                         MD_NodeFlag_HasParenLeft |
+                                                         MD_NodeFlag_IsBeforeSemicolon);
         MD_b32 match = 1;
         for(MD_String8Node *node = list.first; node; node = node->next)
         {

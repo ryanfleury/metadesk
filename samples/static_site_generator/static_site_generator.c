@@ -37,7 +37,8 @@ int main(int argument_count, char **arguments)
     arena = MD_ArenaNew(1ull << 40);
     
     //~ NOTE(rjf): Parse command line arguments.
-    MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
+    MD_String8List arg_list = MD_StringListFromArgCV(arena, argument_count, arguments);
+    MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(arena, arg_list);
     MD_String8 site_info_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("siteinfo")), 0);
     MD_String8 page_dir_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("pagedir")), 0);
     if(!MD_CmdLineB32FromString(cmdln, MD_S8Lit("siteinfo")) ||
@@ -406,7 +407,8 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
         {
             MD_S8Lit("\n\n"),
         };
-        MD_String8List strlist = MD_S8Split(node->string, sizeof(splits)/sizeof(splits[0]), splits);
+        MD_String8List strlist = MD_S8Split(arena, node->string, sizeof(splits)/sizeof(splits[0]),
+                                            splits);
         
         for(MD_String8Node *strnode = strlist.first; strnode; strnode = strnode->next)
         {

@@ -2,6 +2,8 @@
 #include "md.h"
 #include "md.c"
 
+static MD_Arena *arena = 0;
+
 #define INDENT_SPACES 2
 static void Print(FILE* file, int indent_count, char* fmt, ...) {
     for(int i = 0; i < indent_count*INDENT_SPACES; i += 1)
@@ -31,7 +33,7 @@ static void PrintNode(MD_Node* node, FILE* file, int indent_count) {
     
     Print(file, indent_count+1, "Flags: %s,\n", binary_flags);
     Print(file, indent_count+1, "Flag Names: ", binary_flags);
-    MD_String8List flags_list = MD_StringListFromNodeFlags(node->flags);
+    MD_String8List flags_list = MD_StringListFromNodeFlags(arena, node->flags);
     
     MD_StringJoin join = MD_ZERO_STRUCT;
     join.mid = MD_S8CString(", ");
@@ -62,7 +64,7 @@ static void PrintNode(MD_Node* node, FILE* file, int indent_count) {
 
 int main(int argument_count, char **arguments)
 {
-    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    arena = MD_ArenaNew(1ull << 40);
     
     // NOTE(pmh): Parse all the files passed in via command line.
     MD_Node *list = MD_MakeList();

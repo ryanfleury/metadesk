@@ -183,7 +183,8 @@ int main(int argument_count, char **arguments)
     MD_Arena *arena = MD_ArenaNew(1ull << 40);
     
     //- rjf: parse command line
-    MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
+    MD_String8List arg_list = MD_StringListFromArgCV(arena, argument_count, arguments);
+    MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(arena, arg_list);
     
     //- rjf: parse all input files
     MD_Node *file_list = MD_MakeList();

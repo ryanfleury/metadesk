@@ -682,9 +682,9 @@ MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
 }
 
 MD_FUNCTION_IMPL void
-MD_S8ListPush(MD_String8List *list, MD_String8 string)
+MD_S8ListPush(MD_Arena *arena, MD_String8List *list, MD_String8 string)
 {
-    MD_String8Node *node = MD_PushArray(MD_String8Node, 1);
+    MD_String8Node *node = MD_PushArrayAr(arena, MD_String8Node, 1);
     node->string = string;
     
     MD_QueuePush(list->first, list->last, node);
@@ -714,7 +714,7 @@ MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push)
 }
 
 MD_FUNCTION_IMPL MD_String8List
-MD_S8Split(MD_String8 string, int split_count, MD_String8 *splits)
+MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count, MD_String8 *splits)
 {
     MD_String8List list = MD_ZERO_STRUCT;
     
@@ -740,7 +740,7 @@ MD_S8Split(MD_String8 string, int split_count, MD_String8 *splits)
             if(match)
             {
                 MD_String8 split_string = MD_S8(string.str + split_start, i - split_start);
-                MD_S8ListPush(&list, split_string);
+                MD_S8ListPush(arena, &list, split_string);
                 split_start = i + splits[split_idx].size;
                 i += splits[split_idx].size - 1;
                 was_split = 1;
@@ -751,7 +751,7 @@ MD_S8Split(MD_String8 string, int split_count, MD_String8 *splits)
         if(was_split == 0 && i == string.size - 1)
         {
             MD_String8 split_string = MD_S8(string.str + split_start, i+1 - split_start);
-            MD_S8ListPush(&list, split_string);
+            MD_S8ListPush(arena, &list, split_string);
             break;
         }
     }
@@ -798,7 +798,8 @@ MD_S8ListJoin(MD_String8List list, MD_StringJoin *join_ptr)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_S8Stylize(MD_String8 string, MD_IdentifierStyle word_style, MD_String8 separator)
+MD_S8Stylize(MD_Arena *arena, MD_String8 string, MD_IdentifierStyle word_style,
+             MD_String8 separator)
 {
     MD_String8 result = MD_ZERO_STRUCT;
     
@@ -833,7 +834,7 @@ MD_S8Stylize(MD_String8 string, MD_IdentifierStyle word_style, MD_String8 separa
                     word.size += 1;
                 }
                 making_word = 0;
-                MD_S8ListPush(&words, word);
+                MD_S8ListPush(arena, &words, word);
             }
             else
             {
@@ -1353,7 +1354,7 @@ MD_StringFromNodeKind(MD_NodeKind kind)
 }
 
 MD_FUNCTION_IMPL MD_String8List
-MD_StringListFromNodeFlags(MD_NodeFlags flags)
+MD_StringListFromNodeFlags(MD_Arena *arena, MD_NodeFlags flags)
 {
     // NOTE(rjf): @maintenance Must be kept in sync with MD_NodeFlags enum.
     static char *flag_cstrs[] =
@@ -1387,7 +1388,7 @@ MD_StringListFromNodeFlags(MD_NodeFlags flags)
     {
         if(flags & (1ull << i))
         {
-            MD_S8ListPush(&list, MD_S8CString(flag_cstrs[i]));
+            MD_S8ListPush(arena, &list, MD_S8CString(flag_cstrs[i]));
         }
     }
     return list;
@@ -2305,7 +2306,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
                     for(int i_byte = 0; i_byte < bad_token.raw_string.size; ++i_byte)
                     {
                         MD_u8 b = bad_token.raw_string.str[i_byte];
-                        MD_S8ListPush(&bytes, MD_CStyleHexStringFromU64(b, 1));
+                        MD_S8ListPush(arena, &bytes, MD_CStyleHexStringFromU64(b, 1));
                     }
                     
                     MD_StringJoin join = MD_ZERO_STRUCT;
@@ -2835,18 +2836,18 @@ MD_DebugOutputTree(FILE *file, MD_Node *node, int indent_spaces)
 //~ Command Line Argument Helper
 
 MD_FUNCTION MD_String8List
-MD_StringListFromArgCV(int argument_count, char **arguments)
+MD_StringListFromArgCV(MD_Arena *arena, int argument_count, char **arguments)
 {
     MD_String8List options = MD_ZERO_STRUCT;
     for(int i = 1; i < argument_count; i += 1)
     {
-        MD_S8ListPush(&options, MD_S8CString(arguments[i]));
+        MD_S8ListPush(arena, &options, MD_S8CString(arguments[i]));
     }
     return options;
 }
 
 MD_FUNCTION MD_CmdLine
-MD_MakeCmdLineFromOptions(MD_String8List options)
+MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
 {
     MD_CmdLine cmdln = MD_ZERO_STRUCT;
     
@@ -2893,7 +2894,7 @@ MD_MakeCmdLineFromOptions(MD_String8List options)
             //- rjf: push first value
             if(first_value.size != 0)
             {
-                MD_S8ListPush(&option_values, first_value);
+                MD_S8ListPush(arena, &option_values, first_value);
             }
             
             //- rjf: scan next string values, add them to option values until we hit a lack
@@ -2912,7 +2913,7 @@ MD_MakeCmdLineFromOptions(MD_String8List options)
                         {
                             if(start != i)
                             {
-                                MD_S8ListPush(&option_values, MD_S8Substring(value_str, start, i));
+                                MD_S8ListPush(arena, &option_values, MD_S8Substring(value_str, start, i));
                             }
                             start = i+1;
                         }
@@ -2949,7 +2950,7 @@ MD_MakeCmdLineFromOptions(MD_String8List options)
         //- rjf: this argument is not an option, push it to regular inputs list.
         else
         {
-            MD_S8ListPush(&cmdln.inputs, n->string);
+            MD_S8ListPush(arena, &cmdln.inputs, n->string);
         }
     }
     

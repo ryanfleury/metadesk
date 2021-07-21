@@ -949,6 +949,7 @@ main:
 @see(MD_String8Node)
 @see(MD_String8)
 @func MD_S8ListPush: {
+    arena: *MD_Arena,
     list: *MD_String8List,
     string: MD_String8,
 };
@@ -988,6 +989,7 @@ main:
 @see(MD_String8Node)
 @see(MD_S8Split)
 @func MD_S8ListJoin: {
+    arena: *MD_Arena,
     list: MD_String8List,
     join: *MD_StringJoin,
     return: MD_String8,
@@ -1001,6 +1003,7 @@ main:
 
 @send(Strings)
 @func MD_S8Stylize: {
+    arena: *MD_Arena,
     string: MD_String8,
     word_style: MD_IdentifierStyle,
     separator: MD_String8,
@@ -1045,6 +1048,7 @@ main:
 @send(Nodes)
 @doc("Builds a string list for all bits set in @code 'flags', with each string being the name of one of the flags that is set.")
 @func MD_StringListFromNodeFlags: {
+    arena: *MD_Arena,
     flags: MD_NodeFlags,
     return: MD_String8List,
 };
@@ -1692,6 +1696,7 @@ MD_ParseWholeFile:
 @see(MD_CmdLineB32FromString)
 @func MD_MakeCmdLineFromOptions:
 {
+    arena: *MD_Arena,
     options: MD_String8List;
     return: MD_CmdLine;
 }

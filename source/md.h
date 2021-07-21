@@ -761,12 +761,15 @@ MD_FUNCTION MD_String8     MD_S8Fmt(MD_Arena *arena, char *fmt, ...);
 
 #define MD_S8VArg(s) (int)(s).size, (s).str
 
-MD_FUNCTION void           MD_S8ListPush(MD_String8List *list, MD_String8 string);
+MD_FUNCTION void           MD_S8ListPush(MD_Arena *arena, MD_String8List *list,
+                                         MD_String8 string);
 MD_FUNCTION void           MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push);
-MD_FUNCTION MD_String8List MD_S8Split(MD_String8 string, int split_count, MD_String8 *splits);
+MD_FUNCTION MD_String8List MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count,
+                                      MD_String8 *splits);
 MD_FUNCTION MD_String8     MD_S8ListJoin(MD_String8List list, MD_StringJoin *join);
 
-MD_FUNCTION MD_String8     MD_S8Stylize(MD_String8 string, MD_IdentifierStyle word_style, MD_String8 separator);
+MD_FUNCTION MD_String8     MD_S8Stylize(MD_Arena *arena, MD_String8 string,
+                                        MD_IdentifierStyle style, MD_String8 separator);
 
 //~ Unicode Conversions
 
@@ -804,7 +807,7 @@ MD_FUNCTION MD_String8 MD_CStyleHexStringFromU64(MD_u64 x, MD_b32 caps);
 //~ Enum/Flag Strings
 
 MD_FUNCTION MD_String8     MD_StringFromNodeKind(MD_NodeKind kind);
-MD_FUNCTION MD_String8List MD_StringListFromNodeFlags(MD_NodeFlags flags);
+MD_FUNCTION MD_String8List MD_StringListFromNodeFlags(MD_Arena *arena, MD_NodeFlags flags);
 
 //~ Map Table Data Structure
 
@@ -896,8 +899,9 @@ MD_FUNCTION void MD_DebugOutputTree(FILE *file, MD_Node *node, int indent_spaces
 
 //~ Command Line Argument Helper
 
-MD_FUNCTION MD_String8List MD_StringListFromArgCV(int argument_count, char **arguments);
-MD_FUNCTION MD_CmdLine MD_MakeCmdLineFromOptions(MD_String8List options);
+MD_FUNCTION MD_String8List MD_StringListFromArgCV(MD_Arena *arena, int argument_count,
+                                                  char **arguments);
+MD_FUNCTION MD_CmdLine MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options);
 MD_FUNCTION MD_String8List MD_CmdLineValuesFromString(MD_CmdLine cmdln, MD_String8 name);
 MD_FUNCTION MD_b32 MD_CmdLineB32FromString(MD_CmdLine cmdln, MD_String8 name);
 MD_FUNCTION MD_i64 MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name);
