@@ -9,6 +9,8 @@
 
 int main(int argument_count, char **arguments)
 {
+    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    
     MD_String8 example_code = MD_S8Lit("@struct Foo:\n"
                                        "{\n"
                                        "  a: S32,\n"
@@ -19,7 +21,7 @@ int main(int argument_count, char **arguments)
                                        "  f: ([4 + 5]S32),\n"
                                        "  g: ([FOO + BAR]I32),\n"
                                        "}\n\n");
-    MD_Node *code = MD_ParseWholeString(MD_S8Lit("Generated Test Code"), example_code).node;
+    MD_Node *code = MD_ParseWholeString(arena, MD_S8Lit("Generated Test Code"), example_code).node;
     
     printf("Source Metadesk Code:\n");
     printf("%.*s\n\n", MD_S8VArg(example_code));

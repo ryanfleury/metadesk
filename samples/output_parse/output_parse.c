@@ -76,7 +76,7 @@ int main(int argument_count, char **arguments)
     {
         MD_Node *root = MD_NodeFromReference(ref);
         MD_String8 code_filename = MD_PathChopLastPeriod(MD_PathSkipLastSlash(root->string));
-        MD_String8 info_filename = MD_S8Fmt("parsed_%.*s.txt", MD_S8VArg(code_filename));
+        MD_String8 info_filename = MD_S8Fmt(arena, "parsed_%.*s.txt", MD_S8VArg(code_filename));
         printf("Parse Input -> Output: %.*s -> %.*s\n", MD_S8VArg(code_filename), MD_S8VArg(info_filename));
         
         FILE* file = fopen((char *)info_filename.str, "wb");

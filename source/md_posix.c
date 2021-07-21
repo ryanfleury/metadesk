@@ -27,7 +27,7 @@ MD_POSIX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo 
         struct dirent *dir_entry = readdir(it->dir);
         if(dir_entry)
         {
-            out_info->filename = MD_S8Fmt("%s", dir_entry->d_name);
+            out_info->filename = MD_S8Fmt(arena, "%s", dir_entry->d_name);
             out_info->flags = 0;
             
             if(path.size > 1 && path.str[path.size-1] == '/')
@@ -36,7 +36,7 @@ MD_POSIX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo 
             }
             
             struct stat st;
-            MD_String8 cfile_path = MD_S8Fmt("%.*s/%s", MD_S8VArg(path), dir_entry->d_name);
+            MD_String8 cfile_path = MD_S8Fmt(arena, "%.*s/%s", MD_S8VArg(path), dir_entry->d_name);
             if(stat((char *)cfile_path.str, &st) == 0)
             {
                 if((st.st_mode & S_IFMT) == S_IFDIR)

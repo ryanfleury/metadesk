@@ -17,6 +17,9 @@
 # define MD_NO_DEFAULT_IMPL 0
 #endif
 
+// TODO(allen): not real! Don't put into API
+MD_FUNCTION MD_Arena* MD_Scratch(void);
+
 //~/////////////////////////////////////////////////////////////////////////////
 ///////////////////////// Default Implementation ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +52,8 @@ MD_MALLOC_Alloc(MD_u64 size)
 #endif
 
 static MD_b32
-MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info)
+MD_WIN32_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path,
+                           MD_FileInfo *out_info)
 {
     MD_b32 result = 0;
     
@@ -63,7 +67,7 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
         {
             need_star = 1;
         }
-        MD_String8 cpath = need_star ? MD_S8Fmt("%.*s*", MD_S8VArg(path)) : path;
+        MD_String8 cpath = need_star ? MD_S8Fmt(MD_Scratch(), "%.*s*", MD_S8VArg(path)) : path;
         state = FindFirstFileA((char*)cpath.str, &find_data);
         result = !!state;
     }
@@ -80,7 +84,7 @@ MD_WIN32_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_in
         {
             out_info->flags |= MD_FileFlag_Directory;
         }
-        out_info->filename = MD_S8Fmt("%s", find_data.cFileName);
+        out_info->filename = MD_S8Fmt(arena, "%s", find_data.cFileName);
         out_info->file_size = ((((MD_u64)find_data.nFileSizeHigh) << 32) |
                                ((MD_u64)find_data.nFileSizeLow));
     }
@@ -155,7 +159,8 @@ struct MD_LINUX_FileIter
 MD_StaticAssert(sizeof(MD_LINUX_FileIter) <= sizeof(MD_FileIter), file_iter_size_check);
 
 static MD_b32
-MD_LINUX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo *out_info)
+MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 path,
+                           MD_FileInfo *out_info)
 {
     MD_b32 result = 0;
     
@@ -171,7 +176,7 @@ MD_LINUX_FileIterIncrement(MD_FileIter *opaque_it, MD_String8 path, MD_FileInfo 
         struct dirent *dir_entry = readdir(it->dir);
         if(dir_entry)
         {
-            out_info->filename = MD_S8Fmt("%s", dir_entry->d_name);
+            out_info->filename = MD_S8Fmt(arena, "%s", dir_entry->d_name);
             out_info->flags = 0;
             
             struct stat st; 
@@ -385,13 +390,13 @@ MD_AllocZero(MD_u64 size)
 
 //~ Arena Functions
 
-MD_FUNCTION void*
+MD_FUNCTION_IMPL void*
 MD_ArenaPush(MD_Arena *arena, MD_u64 v){
     MD_IntPtr result = arena->func(arena, MD_ArenaOperation_Push, v);
     return(result.ptr);
 }
 
-MD_FUNCTION MD_ArenaTemp
+MD_FUNCTION_IMPL MD_ArenaTemp
 MD_ArenaBeginTemp(MD_Arena *arena){
     MD_IntPtr pos = arena->func(arena, MD_ArenaOperation_GetPos, 0);
     MD_ArenaTemp result = MD_ZERO_STRUCT;
@@ -400,34 +405,52 @@ MD_ArenaBeginTemp(MD_Arena *arena){
     return(result);
 }
 
-MD_FUNCTION void
+MD_FUNCTION_IMPL void
 MD_ArenaEndTemp(MD_ArenaTemp temp){
     temp.arena->func(temp.arena, MD_ArenaOperation_PopTo, temp.pos);
 }
 
-MD_FUNCTION void
+MD_FUNCTION_IMPL void
 MD_ArenaSetAlign(MD_Arena *arena, MD_u64 v){
     arena->func(arena, MD_ArenaOperation_SetAutoAlign, v);
 }
 
-MD_FUNCTION void
+MD_FUNCTION_IMPL void
 MD_ArenaPushAlign(MD_Arena *arena, MD_u64 v){
     arena->func(arena, MD_ArenaOperation_PushAlign, v);
 }
 
-MD_FUNCTION void
+MD_FUNCTION_IMPL void
 MD_ArenaClear(MD_Arena *arena){
     arena->func(arena, MD_ArenaOperation_PopTo, 0);
 }
 
-MD_FUNCTION MD_Arena*
+MD_FUNCTION_IMPL MD_Arena*
 MD_ArenaNew(MD_u64 cap){
     return(MD_IMPL_ArenaNew(cap));
 }
 
-MD_FUNCTION void
+MD_FUNCTION_IMPL void
 MD_ArenaRelease(MD_Arena *arena){
     MD_IMPL_ArenaRelease(arena);
+}
+
+
+// TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): FIX FIX FIX FIX
+// TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): FIX FIX FIX FIX
+// TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): FIX FIX FIX FIX
+// TODO(allen): // TODO(allen): // TODO(allen): // TODO(allen): FIX FIX FIX FIX
+// This is a hack to ease the transition complexity, it defines "scratch" as
+// a single global arena that can be acquired anywhere without explicit pass
+// through -- but it is not a real scratch system because it has no free mechanism!
+
+MD_FUNCTION_IMPL MD_Arena*
+MD_Scratch(void){
+    static MD_Arena *scratch = 0;
+    if (scratch == 0){
+        scratch = MD_ArenaNew(1ull << 40);
+    }
+    return(scratch);
 }
 
 
@@ -635,25 +658,25 @@ MD_S8Copy(MD_Arena *arena, MD_String8 string)
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_S8FmtV(char *fmt, va_list args)
+MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
 {
     MD_String8 result = MD_ZERO_STRUCT;
     va_list args2;
     va_copy(args2, args);
     MD_u64 needed_bytes = md_stbsp_vsnprintf(0, 0, fmt, args)+1;
-    result.str = MD_PushArray(MD_u8, needed_bytes);
+    result.str = MD_PushArrayAr(arena, MD_u8, needed_bytes);
     result.size = needed_bytes - 1;
     md_stbsp_vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_S8Fmt(char *fmt, ...)
+MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
 {
     MD_String8 result = MD_ZERO_STRUCT;
     va_list args;
     va_start(args, fmt);
-    result = MD_S8FmtV(fmt, args);
+    result = MD_S8FmtV(arena, fmt, args);
     va_end(args);
     return result;
 }
@@ -1841,7 +1864,8 @@ MD_ParseResultZero(void)
 }
 
 MD_FUNCTION_IMPL MD_ParseResult
-MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRule rule)
+MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *parent,
+                MD_ParseSetRule rule)
 {
     MD_ParseResult result = MD_ParseResultZero();
     MD_u64 off = offset;
@@ -2011,7 +2035,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
             }
             
             //- rjf: parse next child
-            MD_ParseResult child_parse = MD_ParseOneNode(string, off);
+            MD_ParseResult child_parse = MD_ParseOneNode(arena, string, off);
             MD_MessageListConcat(&result.errors, &child_parse.errors);
             off += child_parse.string_advance;
             
@@ -2070,8 +2094,8 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
     if(set_opener != 0 && got_closer == 0)
     {
         // NOTE(rjf): @error We didn't get a closer for the set
-        MD_Message *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_CatastrophicError,
-                                              MD_S8Fmt("Unbalanced \"%c\"", set_opener));
+        MD_String8 error_str = MD_S8Fmt(arena, "Unbalanced \"%c\"", set_opener);
+        MD_Message *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_CatastrophicError, error_str);
         MD_MessageListPush(&result.errors, error);
     }
     
@@ -2094,7 +2118,7 @@ MD_ParseNodeSet(MD_String8 string, MD_u64 offset, MD_Node *parent, MD_ParseSetRu
 
 // TODO(rjf): Inline this in the only place it is called
 MD_FUNCTION_IMPL MD_ParseResult
-_MD_ParseTagList(MD_String8 string, MD_u64 offset)
+_MD_ParseTagList(MD_Arena *arena, MD_String8 string, MD_u64 offset)
 {
     MD_ParseResult result = MD_ParseResultZero();
     MD_u64 off = offset;
@@ -2117,9 +2141,9 @@ _MD_ParseTagList(MD_String8 string, MD_u64 offset)
         if((name.kind & MD_TokenGroup_Label) == 0)
         {
             // NOTE(rjf): @error Improper token for tag string
-            MD_Message *error = MD_MakeTokenError(string, name, MD_MessageKind_Error,
-                                                  MD_S8Fmt("\"%.*s\" is not a proper tag label",
-                                                           MD_S8VArg(name.raw_string)));
+            MD_String8 error_str = MD_S8Fmt(arena, "\"%.*s\" is not a proper tag label",
+                                            MD_S8VArg(name.raw_string));
+            MD_Message *error = MD_MakeTokenError(string, name, MD_MessageKind_Error, error_str);
             MD_MessageListPush(&result.errors, error);
             break;
         }
@@ -2134,7 +2158,7 @@ _MD_ParseTagList(MD_String8 string, MD_u64 offset)
         if(open_paren.kind == MD_TokenKind_Reserved &&
            open_paren.string.str[0] == '(')
         {
-            args_parse = MD_ParseNodeSet(string, off, tag, MD_ParseSetRule_EndOnDelimiter);
+            args_parse = MD_ParseNodeSet(arena, string, off, tag, MD_ParseSetRule_EndOnDelimiter);
             MD_MessageListConcat(&result.errors, &args_parse.errors);
         }
         off += args_parse.string_advance;
@@ -2150,7 +2174,7 @@ _MD_ParseTagList(MD_String8 string, MD_u64 offset)
 }
 
 MD_FUNCTION_IMPL MD_ParseResult
-MD_ParseOneNode(MD_String8 string, MD_u64 offset)
+MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
 {
     MD_ParseResult result = MD_ParseResultZero();
     MD_u64 off = offset;
@@ -2194,7 +2218,7 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
     }
     
     //- rjf: parse tag list
-    MD_ParseResult tags_parse = _MD_ParseTagList(string, off);
+    MD_ParseResult tags_parse = _MD_ParseTagList(arena, string, off);
     off += tags_parse.string_advance;
     MD_MessageListConcat(&result.errors, &tags_parse.errors);
     
@@ -2213,25 +2237,26 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
             {
                 parsed_node = MD_MakeNode(MD_NodeKind_Main, MD_S8Lit(""), MD_S8Lit(""),
                                           unnamed_set_opener.raw_string.str - string.str);
-                children_parse = MD_ParseNodeSet(string, off, parsed_node, MD_ParseSetRule_EndOnDelimiter);
+                children_parse = MD_ParseNodeSet(arena, string, off, parsed_node,
+                                                 MD_ParseSetRule_EndOnDelimiter);
                 off += children_parse.string_advance;
                 MD_MessageListConcat(&result.errors, &children_parse.errors);
             }
             else if (c == ')' || c == '}' || c == ']')
             {
                 // NOTE(rjf): @error Unexpected set closing symbol
+                MD_String8 error_str = MD_S8Fmt(arena, "Unbalanced \"%c\"", c);
                 MD_Message *error = MD_MakeTokenError(string, unnamed_set_opener,
-                                                      MD_MessageKind_CatastrophicError,
-                                                      MD_S8Fmt("Unbalanced \"%c\"", c));
+                                                      MD_MessageKind_CatastrophicError, error_str);
                 MD_MessageListPush(&result.errors, error);
                 off += unnamed_set_opener.raw_string.size;
             }
             else
             {
                 // NOTE(rjf): @error Unexpected reserved symbol
+                MD_String8 error_str = MD_S8Fmt(arena, "Unexpected reserved symbol \"%c\"", c);
                 MD_Message *error = MD_MakeTokenError(string, unnamed_set_opener,
-                                                      MD_MessageKind_Error, 
-                                                      MD_S8Fmt("Unexpected reserved symbol \"%c\"", c));
+                                                      MD_MessageKind_Error, error_str);
                 MD_MessageListPush(&result.errors, error);
                 off += unnamed_set_opener.raw_string.size;
             }
@@ -2259,7 +2284,8 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                 colon_check_off += colon.raw_string.size;
                 off = colon_check_off;
                 
-                children_parse = MD_ParseNodeSet(string, off, parsed_node, MD_ParseSetRule_EndOnDelimiter);
+                children_parse = MD_ParseNodeSet(arena, string, off, parsed_node,
+                                                 MD_ParseSetRule_EndOnDelimiter);
                 off += children_parse.string_advance;
                 MD_MessageListConcat(&result.errors, &children_parse.errors);
             }
@@ -2287,8 +2313,10 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
                     MD_String8 byte_string = MD_S8ListJoin(bytes, &join);
                     
                     // NOTE(rjf): @error Bad character
+                    MD_String8 error_str = MD_S8Fmt(arena, "Non-ASCII character \"%.*s\"",
+                                                    MD_S8VArg(byte_string));
                     MD_Message *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
-                                                          MD_S8Fmt("Non-ASCII character \"%.*s\"", MD_S8VArg(byte_string)));
+                                                          error_str);
                     MD_MessageListPush(&result.errors, error);
                 }break;
                 
@@ -2360,10 +2388,10 @@ MD_ParseOneNode(MD_String8 string, MD_u64 offset)
 }
 
 MD_FUNCTION_IMPL MD_ParseResult
-MD_ParseWholeString(MD_String8 filename, MD_String8 contents)
+MD_ParseWholeString(MD_Arena *arena, MD_String8 filename, MD_String8 contents)
 {
     MD_Node *root = MD_MakeNode(MD_NodeKind_File, filename, contents, 0);
-    MD_ParseResult result = MD_ParseNodeSet(contents, 0, root, MD_ParseSetRule_Global);
+    MD_ParseResult result = MD_ParseNodeSet(arena, contents, 0, root, MD_ParseSetRule_Global);
     result.node = result.last_node = root;
     for(MD_Message *error = result.errors.first; error != 0; error = error->next)
     {
@@ -2379,12 +2407,13 @@ MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename)
 {
     MD_String8 file_contents = MD_LoadEntireFile(arena, filename);
-    MD_ParseResult parse = MD_ParseWholeString(filename, file_contents);
+    MD_ParseResult parse = MD_ParseWholeString(arena, filename, file_contents);
     if(file_contents.str == 0)
     {
         // NOTE(rjf): @error File failing to load
+        MD_String8 error_str = MD_S8Fmt(arena, "Could not read file \"%.*s\"", MD_S8VArg(filename));
         MD_Message *error = MD_MakeNodeError(parse.node, MD_MessageKind_CatastrophicError,
-                                             MD_S8Fmt("Could not read file \"%.*s\"", MD_S8VArg(filename)));
+                                             error_str);
         MD_MessageListPush(&parse.errors, error);
     }
     return parse;
@@ -2657,10 +2686,10 @@ MD_PrintMessage(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
 MD_FUNCTION_IMPL void
 MD_PrintMessageFmt(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...)
 {
-    // TODO(allen): use scratch
     va_list args;
     va_start(args, fmt);
-    MD_PrintMessage(out, loc, kind, MD_S8FmtV(fmt, args));
+    MD_String8 string = MD_S8FmtV(MD_Scratch(), fmt, args);
+    MD_PrintMessage(out, loc, kind, string);
     va_end(args);
 }
 
@@ -2674,10 +2703,10 @@ MD_PrintNodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 st
 MD_FUNCTION_IMPL void
 MD_PrintNodeMessageFmt(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
 {
-    // TODO(allen): use scratch
     va_list args;
     va_start(args, fmt);
-    MD_PrintNodeMessage(out, node, kind, MD_S8FmtV(fmt, args));
+    MD_String8 string = MD_S8FmtV(MD_Scratch(), fmt, args);
+    MD_PrintNodeMessage(out, node, kind, string);
     va_end(args);
 }
 
@@ -2991,12 +3020,12 @@ MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info)
+MD_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info)
 {
 #if !defined(MD_IMPL_FileIterIncrement)
     return(0);
 #else
-    return(MD_IMPL_FileIterIncrement(it, path, out_info));
+    return(MD_IMPL_FileIterIncrement(arena, it, path, out_info));
 #endif
 }
 

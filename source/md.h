@@ -755,9 +755,9 @@ MD_FUNCTION MD_u64         MD_S8FindSubstring(MD_String8 str, MD_String8 substri
                                               MD_u64 start_pos, MD_MatchFlags flags);
 
 MD_FUNCTION MD_String8     MD_S8Copy(MD_Arena *arena, MD_String8 string);
-MD_FUNCTION MD_String8     MD_S8FmtV(char *fmt, va_list args);
+MD_FUNCTION MD_String8     MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args);
 
-MD_FUNCTION MD_String8     MD_S8Fmt(char *fmt, ...);
+MD_FUNCTION MD_String8     MD_S8Fmt(MD_Arena *arena, char *fmt, ...);
 
 #define MD_S8VArg(s) (int)(s).size, (s).str
 
@@ -830,8 +830,8 @@ MD_FUNCTION MD_Message *   MD_MakeTokenError(MD_String8 parse_contents, MD_Token
 MD_FUNCTION void           MD_MessageListPush(MD_MessageList *list, MD_Message *message);
 MD_FUNCTION void           MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push);
 MD_FUNCTION MD_ParseResult MD_ParseResultZero(void);
-MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_String8 string, MD_u64 offset);
-MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_String8 filename, MD_String8 contents);
+MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset);
+MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_Arena *arena, MD_String8 filename, MD_String8 contents);
 
 MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename);
 
@@ -905,7 +905,7 @@ MD_FUNCTION MD_i64 MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name);
 //~ File System
 
 MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename);
-MD_FUNCTION MD_b32      MD_FileIterIncrement(MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info);
+MD_FUNCTION MD_b32      MD_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info);
 
 #endif // MD_H
 

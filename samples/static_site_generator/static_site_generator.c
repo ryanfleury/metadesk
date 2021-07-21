@@ -30,9 +30,11 @@ static SiteInfo ParseSiteInfo(MD_Node *site);
 static MD_String8 MakeDateString(MD_Node *date);
 static void GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_info, FILE *file, MD_Node *node);
 
+static MD_Arena *arena = 0;
+
 int main(int argument_count, char **arguments)
 {
-    MD_Arena *arena = MD_ArenaNew(1ull << 40);
+    arena = MD_ArenaNew(1ull << 40);
     
     //~ NOTE(rjf): Parse command line arguments.
     MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(MD_StringListFromArgCV(argument_count, arguments));
@@ -46,7 +48,8 @@ int main(int argument_count, char **arguments)
     }
     
     //~ NOTE(rjf): Load JS.
-    MD_String8 js_string = MD_LoadEntireFile(arena, MD_S8Fmt("%.*s/site.js", MD_S8VArg(page_dir_path)));
+    MD_String8 js_path = MD_S8Fmt(arena, "%.*s/site.js", MD_S8VArg(page_dir_path));
+    MD_String8 js_string = MD_LoadEntireFile(arena, js_path);
     
     //~ NOTE(rjf): Parse site info.
     SiteInfo site_info = {0};
@@ -61,7 +64,7 @@ int main(int argument_count, char **arguments)
     {
         printf("Searching for site pages at \"%.*s\"...\n", MD_S8VArg(page_dir_path));
         MD_FileInfo file_info = {0};
-        for(MD_FileIter it = {0}; MD_FileIterIncrement(&it, page_dir_path, &file_info);)
+        for(MD_FileIter it = {0}; MD_FileIterIncrement(arena, &it, page_dir_path, &file_info);)
         {
             if(MD_S8Match(MD_PathSkipLastPeriod(file_info.filename), MD_S8Lit("md"), MD_StringMatchFlag_CaseInsensitive) &&
                !MD_S8Match(MD_PathSkipLastSlash(MD_PathChopLastPeriod(file_info.filename)),
@@ -71,9 +74,8 @@ int main(int argument_count, char **arguments)
             {
                 printf("Processing site page at \"%.*s\"...\n", MD_S8VArg(file_info.filename));
                 MD_String8 folder = MD_PathChopLastSlash(page_dir_path);
-                MD_String8 path = MD_S8Fmt("%.*s/%.*s",
-                                           MD_S8VArg(folder),
-                                           MD_S8VArg(file_info.filename));
+                MD_String8 path = MD_S8Fmt(arena, "%.*s/%.*s",
+                                           MD_S8VArg(folder), MD_S8VArg(file_info.filename));
                 MD_Node *node = MD_ParseWholeFile(arena, path).node;
                 MD_PushNewReference(root_list, node);
             }
@@ -129,7 +131,8 @@ int main(int argument_count, char **arguments)
         PageInfo page_info = ParsePageInfo(root);
         
         MD_String8 name_without_extension = MD_PathSkipLastSlash(MD_PathChopLastPeriod(root->string));
-        FILE *file = fopen(MD_S8Fmt("%.*s.html", MD_S8VArg(name_without_extension)).str, "wb");
+        MD_String8 file_name = MD_S8Fmt(arena, "%.*s.html", MD_S8VArg(name_without_extension));
+        FILE *file = fopen(file_name.str, "wb");
         if(file)
         {
             fprintf(file, "<!DOCTYPE html>\n");
@@ -363,7 +366,7 @@ MakeDateString(MD_Node *date)
             MD_u64 month_idx = MD_U64FromString(month->string, 10) - 1;
             if(month_idx >= 0 && month_idx < sizeof(month_names)/sizeof(month_names[0]))
             {
-                result = MD_S8Fmt("%.*s %s %.*s",
+                result = MD_S8Fmt(arena, "%.*s %s %.*s",
                                   MD_S8VArg(day->string),
                                   month_names[month_idx],
                                   MD_S8VArg(year->string));
@@ -412,7 +415,8 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
             {
                 if(strnode->string.str[i] == '@')
                 {
-                    MD_ParseResult parse =  MD_ParseOneNode(MD_S8Substring(strnode->string, i, strnode->string.size), 0);
+                    MD_String8 string_tail = MD_S8Skip(strnode->string, i);
+                    MD_ParseResult parse =  MD_ParseOneNode(arena, string_tail, 0);
                     if(!MD_NodeIsNil(parse.node))
                     {
                         if(MD_NodeHasTag(node, MD_S8Lit("i"), 0))
@@ -525,7 +529,7 @@ GeneratePageContent(MD_Map *index_table, SiteInfo *site_info, PageInfo *page_inf
                         
                         MD_String8 filename = root->string;
                         MD_String8 filename_no_ext = MD_PathChopLastPeriod(MD_PathSkipLastSlash(filename));
-                        MD_String8 link = MD_S8Fmt("%.*s.html", MD_S8VArg(filename_no_ext));
+                        MD_String8 link = MD_S8Fmt(arena, "%.*s.html", MD_S8VArg(filename_no_ext));
                         MD_String8 name = info.title->string;
                         MD_String8 date = MakeDateString(info.date);
                         

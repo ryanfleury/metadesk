@@ -921,6 +921,7 @@ main:
 @see(MD_S8Fmt)
 @see(MD_S8Copy)
 @func MD_S8FmtV: {
+    arena: *MD_Arena,
     fmt: *char,
     args: va_list,
     return: MD_String8,
@@ -931,6 +932,7 @@ main:
 @see(MD_S8FmtV)
 @see(MD_S8Copy)
 @func MD_S8Fmt: {
+    arena: *MD_Arena,
     fmt: *char,
     "...",
     return: MD_String8,
@@ -1256,6 +1258,7 @@ MD_ParseResultZero:
 @see(MD_ParseSetRule)
 MD_ParseNodeSet:
 {
+    arena: *MD_Arena,
     @doc("The string containing the source text to parse.")
         string: MD_String8;
     @doc("The offset into @code 'string' where this function should start parsing.")
@@ -1282,6 +1285,7 @@ MD_ParseTagList:
 @doc("Parses a single Metadesk subtree, starting at @code 'offset' bytes into @code 'string'.")
 MD_ParseOneNode:
 {
+    arena: *MD_Arena,
     @doc("The string containing the source text to parse.")
         string: MD_String8;
     @doc("The offset into @code 'string' where this function should start parsing.")
@@ -1294,6 +1298,7 @@ MD_ParseOneNode:
 @see(MD_NodeKind)
 MD_ParseWholeString:
 {
+    arena: *MD_Arena,
     @doc("The filename to associate with the parse.")
         filename: MD_String8;
     @doc("The string that contains the text to parse.")
@@ -1741,6 +1746,7 @@ MD_ParseWholeFile:
 @send(FileSystemHelper)
 @doc("Increments an MD_FileIter iterator, and returns the iterated-onto file metadata.")
 @func MD_FileIterIncrement: {
+    arena: *MD_Arena,
     @doc("The MD_FileIter to increment. To begin iterating and iterate to the first file, zero-initialize the iterator.")
         it: *MD_FileIter,
     @doc("The path to the folder that should be iterated.")
