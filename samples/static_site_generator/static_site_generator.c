@@ -66,7 +66,7 @@ int main(int argument_count, char **arguments)
     }
     
     //~ NOTE(rjf): Parse pages.
-    MD_Node *root_list = MD_MakeList();
+    MD_Node *root_list = MD_MakeList(arena);
     {
         printf("Searching for site pages at \"%.*s\"...\n", MD_S8VArg(page_dir_path));
         MD_FileInfo file_info = {0};
@@ -83,7 +83,7 @@ int main(int argument_count, char **arguments)
                 MD_String8 path = MD_S8Fmt(arena, "%.*s/%.*s",
                                            MD_S8VArg(folder), MD_S8VArg(file_info.filename));
                 MD_Node *node = MD_ParseWholeFile(arena, path).node;
-                MD_PushNewReference(root_list, node);
+                MD_PushNewReference(arena, root_list, node);
             }
         }
     }

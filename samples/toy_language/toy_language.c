@@ -189,11 +189,11 @@ int main(int argument_count, char **arguments)
     MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(arena, arg_list);
     
     //- rjf: parse all input files
-    MD_Node *file_list = MD_MakeList();
+    MD_Node *file_list = MD_MakeList(arena);
     for(MD_String8Node *n = cmdln.inputs.first; n; n = n->next)
     {
         MD_ParseResult parse = MD_ParseWholeFile(arena, n->string);
-        MD_PushNewReference(file_list, parse.node);
+        MD_PushNewReference(arena, file_list, parse.node);
     }
     
     //- rjf: gather top-level symbol map

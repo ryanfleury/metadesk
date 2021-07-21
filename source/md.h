@@ -830,8 +830,11 @@ MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey 
 MD_FUNCTION MD_b32         MD_TokenGroupContainsKind(MD_TokenGroups groups, MD_TokenKind kind);
 MD_FUNCTION MD_Token       MD_TokenFromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds);
-MD_FUNCTION MD_Message *   MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION MD_Message *   MD_MakeTokenError(MD_String8 parse_contents, MD_Token token, MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION MD_Message *   MD_MakeNodeError(MD_Arena *arena, MD_Node *node,
+                                            MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION MD_Message *   MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents,
+                                             MD_Token token, MD_MessageKind kind,
+                                             MD_String8 str);
 MD_FUNCTION void           MD_MessageListPush(MD_MessageList *list, MD_Message *message);
 MD_FUNCTION void           MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push);
 MD_FUNCTION MD_ParseResult MD_ParseResultZero(void);
@@ -849,12 +852,13 @@ MD_FUNCTION MD_CodeLoc MD_CodeLocFromNode(MD_Node *node);
 
 MD_FUNCTION MD_b32   MD_NodeIsNil(MD_Node *node);
 MD_FUNCTION MD_Node *MD_NilNode(void);
-MD_FUNCTION MD_Node *MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 raw_string, MD_u64 offset);
+MD_FUNCTION MD_Node *MD_MakeNode(MD_Arena *arena, MD_NodeKind kind, MD_String8 string,
+                                 MD_String8 raw_string, MD_u64 offset);
 MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 
-MD_FUNCTION MD_Node *MD_MakeList(void);
-MD_FUNCTION MD_Node *MD_PushNewReference(MD_Node *list, MD_Node *target);
+MD_FUNCTION MD_Node *MD_MakeList(MD_Arena *arena);
+MD_FUNCTION MD_Node *MD_PushNewReference(MD_Arena *arena, MD_Node *list, MD_Node *target);
 
 //~ Introspection Helpers
 

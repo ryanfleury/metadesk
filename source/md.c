@@ -1803,10 +1803,10 @@ MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_Message *
-MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str)
+MD_FUNCTION_IMPL MD_Message*
+MD_MakeNodeError(MD_Arena *arena, MD_Node *node, MD_MessageKind kind, MD_String8 str)
 {
-    MD_Message *error = MD_PushArray(MD_Message, 1);  //zero
+    MD_Message *error = MD_PushArrayZeroAr(arena, MD_Message, 1);
     error->node = node;
     error->kind = kind;
     error->string = str;
@@ -1814,11 +1814,12 @@ MD_MakeNodeError(MD_Node *node, MD_MessageKind kind, MD_String8 str)
 }
 
 MD_FUNCTION_IMPL MD_Message *
-MD_MakeTokenError(MD_String8 parse_contents, MD_Token token, MD_MessageKind kind, MD_String8 str)
+MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents, MD_Token token,
+                  MD_MessageKind kind, MD_String8 str)
 {
-    MD_Node *err_node = MD_MakeNode(MD_NodeKind_ErrorMarker, MD_S8Lit(""), parse_contents,
+    MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker, MD_S8Lit(""), parse_contents,
                                     token.raw_string.str - parse_contents.str);
-    return MD_MakeNodeError(err_node, kind, str);
+    return MD_MakeNodeError(arena, err_node, kind, str);
 }
 
 MD_FUNCTION_IMPL void
@@ -2052,7 +2053,9 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
                                               MD_NodeFlag_HasBraceLeft    |
                                               MD_NodeFlag_HasBraceRight   ))
                 {
-                    MD_Message *error = MD_MakeNodeError(child_parse.node, MD_MessageKind_Warning, MD_S8Lit("Unnamed set children of implicitly-delimited sets are not legal."));
+                    MD_String8 error_str = MD_S8Lit("Unnamed set children of implicitly-delimited sets are not legal.");
+                    MD_Message *error = MD_MakeNodeError(arena, child_parse.node, MD_MessageKind_Warning,
+                                                         error_str);
                     MD_MessageListPush(&result.errors, error);
                 }
                 
@@ -2095,7 +2098,8 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
     {
         // NOTE(rjf): @error We didn't get a closer for the set
         MD_String8 error_str = MD_S8Fmt(arena, "Unbalanced \"%c\"", set_opener);
-        MD_Message *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_CatastrophicError, error_str);
+        MD_Message *error = MD_MakeTokenError(arena, string, initial_token,
+                                              MD_MessageKind_CatastrophicError, error_str);
         MD_MessageListPush(&result.errors, error);
     }
     
@@ -2103,7 +2107,7 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
     if(close_with_separator && parsed_child_count == 0)
     {
         // NOTE(rjf): @error No empty implicitly-delimited sets
-        MD_Message *error = MD_MakeTokenError(string, initial_token, MD_MessageKind_Error,
+        MD_Message *error = MD_MakeTokenError(arena, string, initial_token, MD_MessageKind_Error,
                                               MD_S8Lit("Empty implicitly-delimited node list"));
         MD_MessageListPush(&result.errors, error);
     }
@@ -2143,14 +2147,14 @@ _MD_ParseTagList(MD_Arena *arena, MD_String8 string, MD_u64 offset)
             // NOTE(rjf): @error Improper token for tag string
             MD_String8 error_str = MD_S8Fmt(arena, "\"%.*s\" is not a proper tag label",
                                             MD_S8VArg(name.raw_string));
-            MD_Message *error = MD_MakeTokenError(string, name, MD_MessageKind_Error, error_str);
+            MD_Message *error = MD_MakeTokenError(arena, string, name, MD_MessageKind_Error, error_str);
             MD_MessageListPush(&result.errors, error);
             break;
         }
         off += name.raw_string.size;
         
         //- rjf: build tag
-        MD_Node *tag = MD_MakeNode(MD_NodeKind_Tag, name.string, name.raw_string, name_off);
+        MD_Node *tag = MD_MakeNode(arena, MD_NodeKind_Tag, name.string, name.raw_string, name_off);
         
         //- rjf: parse tag arguments
         MD_Token open_paren = MD_TokenFromString(MD_S8Skip(string, off));
@@ -2235,7 +2239,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
             MD_u8 c = unnamed_set_opener.string.str[0];
             if (c == '(' || c == '{' || c == '[')
             {
-                parsed_node = MD_MakeNode(MD_NodeKind_Main, MD_S8Lit(""), MD_S8Lit(""),
+                parsed_node = MD_MakeNode(arena, MD_NodeKind_Main, MD_S8Lit(""), MD_S8Lit(""),
                                           unnamed_set_opener.raw_string.str - string.str);
                 children_parse = MD_ParseNodeSet(arena, string, off, parsed_node,
                                                  MD_ParseSetRule_EndOnDelimiter);
@@ -2246,7 +2250,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
             {
                 // NOTE(rjf): @error Unexpected set closing symbol
                 MD_String8 error_str = MD_S8Fmt(arena, "Unbalanced \"%c\"", c);
-                MD_Message *error = MD_MakeTokenError(string, unnamed_set_opener,
+                MD_Message *error = MD_MakeTokenError(arena, string, unnamed_set_opener,
                                                       MD_MessageKind_CatastrophicError, error_str);
                 MD_MessageListPush(&result.errors, error);
                 off += unnamed_set_opener.raw_string.size;
@@ -2255,7 +2259,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
             {
                 // NOTE(rjf): @error Unexpected reserved symbol
                 MD_String8 error_str = MD_S8Fmt(arena, "Unexpected reserved symbol \"%c\"", c);
-                MD_Message *error = MD_MakeTokenError(string, unnamed_set_opener,
+                MD_Message *error = MD_MakeTokenError(arena, string, unnamed_set_opener,
                                                       MD_MessageKind_Error, error_str);
                 MD_MessageListPush(&result.errors, error);
                 off += unnamed_set_opener.raw_string.size;
@@ -2270,7 +2274,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
         if((label_name.kind & MD_TokenGroup_Label) != 0)
         {
             off += label_name.raw_string.size;
-            parsed_node = MD_MakeNode(MD_NodeKind_Main, label_name.string, label_name.raw_string,
+            parsed_node = MD_MakeNode(arena, MD_NodeKind_Main, label_name.string, label_name.raw_string,
                                       label_name.raw_string.str - string.str);
             parsed_node->flags |= label_name.node_flags;
             
@@ -2315,7 +2319,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
                     // NOTE(rjf): @error Bad character
                     MD_String8 error_str = MD_S8Fmt(arena, "Non-ASCII character \"%.*s\"",
                                                     MD_S8VArg(byte_string));
-                    MD_Message *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                    MD_Message *error = MD_MakeTokenError(arena, string, bad_token, MD_MessageKind_Error,
                                                           error_str);
                     MD_MessageListPush(&result.errors, error);
                 }break;
@@ -2323,7 +2327,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
                 case MD_TokenKind_BrokenComment:
                 {
                     // NOTE(rjf): @error Broken Comments
-                    MD_Message *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                    MD_Message *error = MD_MakeTokenError(arena, string, bad_token, MD_MessageKind_Error,
                                                           MD_S8Lit("Unterminated comment"));
                     MD_MessageListPush(&result.errors, error);
                 }break;
@@ -2331,7 +2335,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
                 case MD_TokenKind_BrokenStringLiteral:
                 {
                     // NOTE(rjf): @error Broken String Literals
-                    MD_Message *error = MD_MakeTokenError(string, bad_token, MD_MessageKind_Error,
+                    MD_Message *error = MD_MakeTokenError(arena, string, bad_token, MD_MessageKind_Error,
                                                           MD_S8Lit("Unterminated string literal"));
                     MD_MessageListPush(&result.errors, error);
                 }break;
@@ -2390,7 +2394,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
 MD_FUNCTION_IMPL MD_ParseResult
 MD_ParseWholeString(MD_Arena *arena, MD_String8 filename, MD_String8 contents)
 {
-    MD_Node *root = MD_MakeNode(MD_NodeKind_File, filename, contents, 0);
+    MD_Node *root = MD_MakeNode(arena, MD_NodeKind_File, filename, contents, 0);
     MD_ParseResult result = MD_ParseNodeSet(arena, contents, 0, root, MD_ParseSetRule_Global);
     result.node = result.last_node = root;
     for(MD_Message *error = result.errors.first; error != 0; error = error->next)
@@ -2412,7 +2416,7 @@ MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename)
     {
         // NOTE(rjf): @error File failing to load
         MD_String8 error_str = MD_S8Fmt(arena, "Could not read file \"%.*s\"", MD_S8VArg(filename));
-        MD_Message *error = MD_MakeNodeError(parse.node, MD_MessageKind_CatastrophicError,
+        MD_Message *error = MD_MakeNodeError(arena, parse.node, MD_MessageKind_CatastrophicError,
                                              error_str);
         MD_MessageListPush(&parse.errors, error);
     }
@@ -2467,9 +2471,10 @@ MD_FUNCTION_IMPL MD_Node *
 MD_NilNode(void) { return &_md_nil_node; }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_MakeNode(MD_NodeKind kind, MD_String8 string, MD_String8 raw_string, MD_u64 offset)
+MD_MakeNode(MD_Arena *arena, MD_NodeKind kind, MD_String8 string, MD_String8 raw_string,
+            MD_u64 offset)
 {
-    MD_Node *node = MD_PushArray(MD_Node, 1);
+    MD_Node *node = MD_PushArrayZeroAr(arena, MD_Node, 1);
     node->kind = kind;
     node->string = string;
     node->raw_string = raw_string;
@@ -2501,17 +2506,18 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
 }
 
 MD_FUNCTION_IMPL MD_Node*
-MD_MakeList(void)
+MD_MakeList(MD_Arena *arena)
 {
     MD_String8 empty = {0};
-    MD_Node *result = MD_MakeNode(MD_NodeKind_List, empty, empty, 0);
+    MD_Node *result = MD_MakeNode(arena, MD_NodeKind_List, empty, empty, 0);
     return(result);
 }
 
 MD_FUNCTION_IMPL MD_Node*
-MD_PushNewReference(MD_Node *list, MD_Node *target)
+MD_PushNewReference(MD_Arena *arena, MD_Node *list, MD_Node *target)
 {
-    MD_Node *n = MD_MakeNode(MD_NodeKind_Reference, target->string, target->raw_string, target->offset);
+    MD_Node *n = MD_MakeNode(arena, MD_NodeKind_Reference, target->string, target->raw_string,
+                             target->offset);
     n->ref_target = target;
     MD_PushChild(list, n);
     return(n);

@@ -26,11 +26,11 @@ int main(int argument_count, char **arguments)
     MD_Arena *arena = MD_ArenaNew(1ull << 40);
     
     // NOTE(rjf): Parse all the files passed in via command line.
-    MD_Node *list = MD_MakeList();
+    MD_Node *list = MD_MakeList(arena);
     for(int i = 1; i < argument_count; i += 1)
     {
         MD_Node *root = MD_ParseWholeFile(arena, MD_S8CString(arguments[i])).node;
-        MD_PushNewReference(list, root);
+        MD_PushNewReference(arena, list, root);
     }
     
     // NOTE(rjf): Call "custom layer" back.

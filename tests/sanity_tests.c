@@ -67,7 +67,7 @@ EndTest(void)
 static MD_Node *
 MakeTestNode(MD_NodeKind kind, MD_String8 string)
 {
-    return MD_MakeNode(kind, string, string, 0);
+    return MD_MakeNode(arena, kind, string, string, 0);
 }
 
 static MD_C_Expr *

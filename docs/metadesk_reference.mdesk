@@ -1222,6 +1222,7 @@ MD_MakeNodeError:
 @see(MD_Message)
 MD_MakeTokenError:
 {
+    arena: *MD_Arena,
     @doc("The entire string that is being parsed. The parser used a substring of this string to form @code 'token'.")
         parse_contents: MD_String8;
     @doc("The token associated with this message.")
