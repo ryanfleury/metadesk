@@ -38,7 +38,7 @@ static void PrintNode(MD_Node* node, FILE* file, int indent_count) {
     MD_StringJoin join = MD_ZERO_STRUCT;
     join.mid = MD_S8CString(", ");
     
-    MD_String8 flag_names = MD_S8ListJoin(flags_list, &join);
+    MD_String8 flag_names = MD_S8ListJoin(arena, flags_list, &join);
     fprintf(file, "%.*s,\n", MD_S8VArg(flag_names));
     
     if(node->string.size > 0) Print(file, indent_count+1, "String: %.*s,\n", MD_S8VArg(node->string));

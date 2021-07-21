@@ -39,8 +39,13 @@ int main(int argument_count, char **arguments)
     //~ NOTE(rjf): Parse command line arguments.
     MD_String8List arg_list = MD_StringListFromArgCV(arena, argument_count, arguments);
     MD_CmdLine cmdln = MD_MakeCmdLineFromOptions(arena, arg_list);
-    MD_String8 site_info_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("siteinfo")), 0);
-    MD_String8 page_dir_path = MD_S8ListJoin(MD_CmdLineValuesFromString(cmdln, MD_S8Lit("pagedir")), 0);
+    
+    MD_String8List siteinfo_values = MD_CmdLineValuesFromString(cmdln, MD_S8Lit("siteinfo"));
+    MD_String8 site_info_path = MD_S8ListJoin(arena, siteinfo_values, 0);
+    
+    MD_String8List pagedir_values = MD_CmdLineValuesFromString(cmdln, MD_S8Lit("pagedir"));
+    MD_String8 page_dir_path = MD_S8ListJoin(arena, pagedir_values, 0);
+    
     if(!MD_CmdLineB32FromString(cmdln, MD_S8Lit("siteinfo")) ||
        !MD_CmdLineB32FromString(cmdln, MD_S8Lit("pagedir")))
     {

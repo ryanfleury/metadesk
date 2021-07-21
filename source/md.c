@@ -760,7 +760,7 @@ MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count, MD_String8 *spli
 }
 
 MD_FUNCTION_IMPL MD_String8
-MD_S8ListJoin(MD_String8List list, MD_StringJoin *join_ptr)
+MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
 {
     // setup join parameters
     MD_StringJoin join = MD_ZERO_STRUCT;
@@ -776,7 +776,7 @@ MD_S8ListJoin(MD_String8List list, MD_StringJoin *join_ptr)
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (list.total_size + join.pre.size +
                    sep_count*join.mid.size + join.post.size);
-    result.str = MD_PushArray(MD_u8, result.size);
+    result.str = MD_PushArrayAr(arena, MD_u8, result.size);
     
     // fill
     MD_u8 *ptr = result.str;
@@ -2311,7 +2311,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
                     
                     MD_StringJoin join = MD_ZERO_STRUCT;
                     join.mid = MD_S8Lit(" ");
-                    MD_String8 byte_string = MD_S8ListJoin(bytes, &join);
+                    MD_String8 byte_string = MD_S8ListJoin(arena, bytes, &join);
                     
                     // NOTE(rjf): @error Bad character
                     MD_String8 error_str = MD_S8Fmt(arena, "Non-ASCII character \"%.*s\"",
@@ -2990,11 +2990,10 @@ MD_CmdLineB32FromString(MD_CmdLine cmdln, MD_String8 name)
 MD_FUNCTION MD_i64
 MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name)
 {
-    MD_i64 v = 0;
     MD_String8List values = MD_CmdLineValuesFromString(cmdln, name);
-    MD_String8 value_str = MD_S8ListJoin(values, 0);
-    v = MD_CStyleIntFromString(value_str);
-    return v;
+    MD_String8 value_str = MD_S8ListJoin(MD_Scratch(), values, 0);
+    MD_i64 result = MD_CStyleIntFromString(value_str);
+    return(result);
 }
 
 //~ File System

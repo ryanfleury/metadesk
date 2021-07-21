@@ -766,7 +766,8 @@ MD_FUNCTION void           MD_S8ListPush(MD_Arena *arena, MD_String8List *list,
 MD_FUNCTION void           MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push);
 MD_FUNCTION MD_String8List MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count,
                                       MD_String8 *splits);
-MD_FUNCTION MD_String8     MD_S8ListJoin(MD_String8List list, MD_StringJoin *join);
+MD_FUNCTION MD_String8     MD_S8ListJoin(MD_Arena *arena, MD_String8List list,
+                                         MD_StringJoin *join);
 
 MD_FUNCTION MD_String8     MD_S8Stylize(MD_Arena *arena, MD_String8 string,
                                         MD_IdentifierStyle style, MD_String8 separator);
