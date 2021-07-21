@@ -257,6 +257,41 @@ typedef int64_t  MD_b64;
 typedef float    MD_f32;
 typedef double   MD_f64;
 
+//~ Abstract Arena
+
+typedef union MD_IntPtr MD_IntPtr;
+union MD_IntPtr
+{
+    MD_u64 u64;
+    void *ptr;
+};
+
+typedef enum MD_ArenaOperation
+{
+    MD_ArenaOperation_GetPos,
+    MD_ArenaOperation_Push,
+    MD_ArenaOperation_PopTo,
+    MD_ArenaOperation_PushAlign,
+    MD_ArenaOperation_SetAutoAlign,
+} MD_ArenaOperation;
+
+typedef MD_IntPtr MD_ArenaFunc(struct MD_Arena *arena, MD_ArenaOperation op, MD_u64 v);
+
+typedef struct MD_Arena MD_Arena;
+struct MD_Arena
+{
+    MD_ArenaFunc *func;
+};
+
+//~ Arena Helpers
+
+typedef struct MD_ArenaTemp MD_ArenaTemp;
+struct MD_ArenaTemp
+{
+    MD_Arena *arena;
+    MD_u64 pos;
+};
+
 //~ Basic Unicode string types.
 
 typedef struct MD_String8 MD_String8;
@@ -667,6 +702,16 @@ MD_FUNCTION void* MD_AllocZero(MD_u64 size);
 // assume that we have zeroed memory incorrectly in the future (when our
 // allocation approach changes).
 #define MD_PushArrayZero(T,c) (T*)MD_AllocZero(sizeof(T)*(c))
+
+//~ Arena Functions
+
+MD_FUNCTION void*        MD_ArenaPush(MD_Arena *arena, MD_u64 v);
+MD_FUNCTION MD_ArenaTemp MD_ArenaBeginTemp(MD_Arena *arena);
+MD_FUNCTION void         MD_ArenaEndTemp(MD_ArenaTemp temp);
+MD_FUNCTION void         MD_ArenaSetAlign(MD_Arena *arena, MD_u64 v);
+MD_FUNCTION void         MD_ArenaPushAlign(MD_Arena *arena, MD_u64 v);
+
+#define MD_PushArrayAr(a,T,c) (T*)(MD_ArenaPush((a), sizeof(T)*(c)))
 
 //~ Characters
 

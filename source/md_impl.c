@@ -56,6 +56,42 @@ MD_AllocZero(MD_u64 size)
 #endif
 }
 
+//~ Arena Functions
+
+MD_FUNCTION void*
+MD_ArenaPush(MD_Arena *arena, MD_u64 v)
+{
+    MD_IntPtr result = arena->func(arena, MD_ArenaOperation_Push, v);
+    return(result.ptr);
+}
+
+MD_FUNCTION MD_ArenaTemp
+MD_ArenaBeginTemp(MD_Arena *arena)
+{
+    MD_IntPtr pos = arena->func(arena, MD_ArenaOperation_GetPos, 0);
+    MD_ArenaTemp result = MD_ZERO_STRUCT;
+    result.arena = arena;
+    result.pos = pos.u64;
+    return(result);
+}
+
+MD_FUNCTION void
+MD_ArenaEndTemp(MD_ArenaTemp temp)
+{
+    temp.arena->func(temp.arena, MD_ArenaOperation_PopTo, temp.pos);
+}
+
+MD_FUNCTION void
+MD_ArenaSetAlign(MD_Arena *arena, MD_u64 v){
+    arena->func(arena, MD_ArenaOperation_SetAutoAlign, v);
+}
+
+MD_FUNCTION void
+MD_ArenaPushAlign(MD_Arena *arena, MD_u64 v){
+    arena->func(arena, MD_ArenaOperation_PushAlign, v);
+}
+
+
 //~ Characters
 
 MD_FUNCTION_IMPL MD_b32
