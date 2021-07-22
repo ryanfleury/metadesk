@@ -1,33 +1,72 @@
 // LICENSE AT END OF FILE (MIT).
 
-// NOTE(allen): Notes on overrides/macro options:
-// Individual Overridables:
-//  #define MD_IMPL_FileIterIncrement
-//  #define MD_IMPL_Reserve
-//  #define MD_IMPL_Commit
-//  #define MD_IMPL_Decommit
-//  #define MD_IMPL_Release
-//  #define MD_IMPL_ArenaNew
-//  #define MD_IMPL_ArenaRelease
-//  #define MD_SCRATCH_SIZE
-// Default Implementation Controls
-//  #define MD_NO_DEFAULT_IMPL -> skip code for all default implementations
+/* NOTE(allen): Notes on overrides/macro options:
+**
+** Individual Overridables:
+**  #define MD_IMPL_FileIterIncrement
+**  #define MD_IMPL_Reserve
+**  #define MD_IMPL_Commit
+**  #define MD_IMPL_Decommit
+**  #define MD_IMPL_Release
+**  #define MD_IMPL_ArenaNew
+**  #define MD_IMPL_ArenaRelease
+**
+**  #define MD_SCRATCH_SIZE
+**
+** Default Implementation Controls
+**  ~If no controls are set, then the system automatically enables all defaults~
+**  #define MD_DEFAULT_FILE_ITER -> construct "file iteration" from OS
+**  #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS
+**  #define MD_DEFAULT_ARENA     -> construct "arena" from "low level memory"
+**
+*/
 
-#if !defined(MD_NO_DEFAULT_IMPL)
-# define MD_NO_DEFAULT_IMPL 0
+//~ Check for controls
+#if defined(MD_DEFAULT_FILE_ITER)
+# define MD_INTERNAL_CONTROL_SET 1
+#endif
+#if defined(MD_DEFAULT_MEMORY)
+# define MD_INTERNAL_CONTROL_SET 1
+#endif
+#if defined(MD_DEFAULT_ARENA)
+# define MD_INTERNAL_CONTROL_SET 1
+#endif
+#if !defined(MD_INTERNAL_CONTROL_SET)
+# define MD_INTERNAL_CONTROL_SET 0
+#endif
+
+#if !MD_INTERNAL_CONTROL_SET
+# define MD_DEFAULT_FILE_ITER 1
+# define MD_DEFAULT_MEMORY 1
+# define MD_DEFAULT_ARENA 1
+#endif
+
+//~ Set default values for controls
+#if !defined(MD_DEFAULT_FILE_ITER)
+# define MD_DEFAULT_FILE_ITER 0
+#endif
+#if !defined(MD_DEFAULT_MEMORY)
+# define MD_DEFAULT_MEMORY 0
+#endif
+#if !defined(MD_DEFAULT_ARENA)
+# define MD_DEFAULT_ARENA 0
 #endif
 #if !defined(MD_SCRATCH_SIZE)
 # define MD_SCRATCH_SIZE (1 << 30)
 #endif
 
 //~/////////////////////////////////////////////////////////////////////////////
-////////////////////////// Win32 Implementation ////////////////////////////////
+/////////////////////////// Win32 Implementation ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !MD_NO_DEFAULT_IMPL && MD_OS_WINDOWS
+#if (MD_DEFAULT_FILE_ITER || MD_DEFAULT_MEMORY) && MD_OS_WINDOWS
 
 #include <Windows.h>
 #pragma comment(lib, "User32.lib")
+
+#endif
+
+#if MD_DEFAULT_FILE_ITER && MD_OS_WINDOWS
 
 #if !defined(MD_IMPL_FileIterIncrement)
 # define MD_IMPL_FileIterIncrement MD_WIN32_FileIterIncrement
@@ -78,6 +117,10 @@ MD_WIN32_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path,
     return result;
 }
 
+#endif
+
+#if MD_DEFAULT_MEMORY && MD_OS_WINDOWS
+
 #if !defined(MD_IMPL_Reserve)
 # define MD_IMPL_Reserve MD_WIN32_Reserve
 #endif
@@ -118,19 +161,24 @@ MD_WIN32_Release(void *ptr, MD_u64 size){
 ////////////////////////// Linux Implementation ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !MD_NO_DEFAULT_IMPL && MD_OS_LINUX
+#if (MD_DEFAULT_FILE_ITER || MD_DEFAULT_MEMORY) && MD_OS_LINUX
 
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/syscall.h>
-// NOTE(mal): To get these constants I need to #define _GNU_SOURCE, which invites non-POSIX behavior I'd rather avoid
+// NOTE(mal): To get these constants I need to #define _GNU_SOURCE,
+// which invites non-POSIX behavior I'd rather avoid
 #ifndef O_PATH
 #define O_PATH                 010000000
 #endif
 #define AT_NO_AUTOMOUNT        0x800
 #define AT_SYMLINK_NOFOLLOW    0x100
+
+#endif
+
+#if MD_DEFAULT_FILE_ITER && MD_OS_LINUX
 
 #if !defined(MD_IMPL_FileIterIncrement)
 # define MD_IMPL_FileIterIncrement MD_LINUX_FileIterIncrement
@@ -197,9 +245,15 @@ MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 p
 
 #endif
 
+#if MD_DEFAULT_MEMORY && MD_OS_LINUX
+# error not implemented
+#endif
+
 //~/////////////////////////////////////////////////////////////////////////////
 ///////////// MD Arena From Reserve/Commit/Decommit/Release ////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+
+#if MD_DEFAULT_ARENA
 
 #define MD_ArenaDefault_HeaderSize 64
 #define MD_ArenaDefault_CommitSize (1 << 20)
@@ -300,6 +354,8 @@ MD_ArenaDefaultRelease(MD_Arena *arena_opq){
     MD_u64 cap = arena->cap;
     MD_IMPL_Release(arena, cap);
 }
+
+#endif
 
 //~/////////////////////////////////////////////////////////////////////////////
 //////////////////////// MD Library Implementation /////////////////////////////
