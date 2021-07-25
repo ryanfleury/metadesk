@@ -1,0 +1,36 @@
+1. Avoid function pointer based overrides, prefer macro based overrides
+   Macros allow you to define one override per compilation context, but
+   that one override has better range, than the kinds of overrides you
+   can do with function pointers. You can always use macros to plug in
+   a dynamic dispatch system, but you can't use function pointers to
+   plug in high speed light weight systems.
+   [ This same idea should for thread contexts ]
+
+2. It's starting to seem like the header technique is the way to go.
+   It solves a couple of problems for the library, which won't know
+   the size of the arena struct when it is written. And there are good
+   enough bridge techniques for libraries that have non-header arenas,
+   to get up and running, and fixing the remaining issues or fully
+   transitioning to header technique shouldn't be too hard.
+
+3. It seems like it will be better to count on pre-briding at least
+   the types and default controls (before the header) so that we can
+   get type checking on various arena and array of arenas parameters.
+   [ This idea was less fully explored, it may still turn out to be
+   better to stick with post-bridging ].
+
+[ ] Could there be an easy bridge from a malloc/free style allocator
+    in the codebase to an arena style in the library?
+
+[ ] Figure out the header technique problem:
+    Arena min position to implement clear?
+    Init instead of New, pass in memory for thread context?
+
+[ ] Test integrating two libraries into the same codebase
+
+[ ] Thread Context/Get Scratch cooperative mode
+
+[ ] What if only the slow path ever triggered a function call?
+    And we put everything in the common path into macros?
+
+[ ] MD_ArenaPushAlignDefault(arena->pos, arena->align, arena->cap);

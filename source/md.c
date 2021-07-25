@@ -8,8 +8,17 @@
 **  #define MD_IMPL_Commit
 **  #define MD_IMPL_Decommit
 **  #define MD_IMPL_Release
-**  #define MD_IMPL_ArenaNew
-**  #define MD_IMPL_ArenaRelease
+**
+**  #define MD_IMPL_Arena              <type>
+**  #define MD_IMPL_ArenaNew           (MD_u64) -> MD_IMPL_Arena*
+**  #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
+**  #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> MD_u64
+**  #define MD_IMPL_ArenaGetCap        (MD_IMPL_Arena*) -> MD_u64
+**  #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, MD_u64) -> void*
+**  #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, MD_u64) -> void
+**  #define MD_IMPL_ArenaPushAlign     (MD_IMPL_Arena*, MD_u64) -> void
+**  #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, MD_u64) -> void
+**  #define MD_IMPL_ArenaMinPos        (MD_IMPL_Arena*) -> MD_u64
 **
 **  #define MD_SCRATCH_SIZE
 **
@@ -260,7 +269,6 @@ MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 p
 
 typedef struct MD_ArenaDefault MD_ArenaDefault;
 struct MD_ArenaDefault{
-    MD_ArenaFunc *func;
     MD_u64 pos;
     MD_u64 cmt;
     MD_u64 cap;
@@ -268,70 +276,16 @@ struct MD_ArenaDefault{
 };
 MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_ArenaDefault_HeaderSize, arena_def_size_check);
 
-#define MD_IMPL_ArenaNew MD_ArenaDefaultNew
-#define MD_IMPL_ArenaRelease MD_ArenaDefaultRelease
-
-static MD_IntPtr
-MD_ArenaDefaultImpl(MD_Arena *arena_opq, MD_ArenaOperation op, MD_u64 v){
-    MD_ArenaDefault *arena = (MD_ArenaDefault*)arena_opq;
-    MD_u8 *buf = (MD_u8*)arena_opq;
-    MD_IntPtr result = MD_ZERO_STRUCT;
-    switch (op){
-        case MD_ArenaOperation_GetPos:
-        {
-            result.u64 = arena->pos;
-        }break;
-        
-        case MD_ArenaOperation_GetCap:
-        {
-            result.u64 = arena->cap;
-        }break;
-        
-        case MD_ArenaOperation_Push:
-        {
-            if (arena->pos + v <= arena->cap){
-                MD_u64 pos = arena->pos;
-                MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
-                MD_u64 new_pos = pos_clamped + v;
-                MD_u64 align_m1 = arena->align - 1;
-                MD_u64 new_pos_aligned = (new_pos + align_m1)&(~align_m1);
-                MD_u64 new_pos_clamped = ((arena->cap < new_pos_aligned) ? arena->cap : new_pos_aligned);
-                result.ptr = buf + pos;
-                arena->pos = new_pos_aligned;
-                
-                if (new_pos_clamped > arena->cmt){
-                    MD_u64 cmt_amt_raw = new_pos_clamped - arena->cmt;
-                    MD_u64 cmt_align_m1 = MD_ArenaDefault_CommitSize - 1;
-                    MD_u64 cmt_amt = (cmt_amt_raw + cmt_align_m1)&(~cmt_align_m1);
-                    MD_IMPL_Commit(buf + arena->cmt, cmt_amt);
-                    arena->cmt += cmt_amt;
-                }
-            }
-        }break;
-        
-        case MD_ArenaOperation_PopTo:
-        {
-            MD_u64 pos_clamped = ((v > MD_ArenaDefault_HeaderSize) ? v : MD_ArenaDefault_HeaderSize);
-            arena->pos = pos_clamped;
-        }break;
-        
-        case MD_ArenaOperation_PushAlign:
-        {
-            MD_u64 pos = arena->pos;
-            MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
-            MD_u64 align_m1 = arena->align - 1;
-            MD_u64 new_pos_aligned = (pos_clamped + align_m1)&(~align_m1);
-            MD_u64 new_pos_clamped = ((arena->cap < new_pos_aligned) ? arena->cap : new_pos_aligned);
-            arena->pos = new_pos_clamped;
-        }break;
-        
-        case MD_ArenaOperation_SetAutoAlign:
-        {
-            arena->align = v;
-        }break;
-    }
-    return(result);
-}
+#define MD_IMPL_Arena          MD_ArenaDefault
+#define MD_IMPL_ArenaNew       MD_ArenaDefaultNew
+#define MD_IMPL_ArenaRelease   MD_ArenaDefaultRelease
+#define MD_IMPL_ArenaGetPos(a) ((a)->pos)
+#define MD_IMPL_ArenaGetCap(a) ((a)->cap)
+#define MD_IMPL_ArenaPush      MD_ArenaDefaultPush
+#define MD_IMPL_ArenaPopTo     MD_ArenaDefaultPopTo
+#define MD_IMPL_ArenaPushAlign MD_ArenaDefaultPushAlign
+#define MD_IMPL_ArenaSetAutoAlign(a,b) ((a)->align = (b))
+#define MD_IMPL_ArenaMinPos(a) MD_ArenaDefault_HeaderSize
 
 static MD_Arena*
 MD_ArenaDefaultNew(MD_u64 cap){
@@ -340,7 +294,6 @@ MD_ArenaDefaultNew(MD_u64 cap){
     MD_IMPL_Commit(mem, cmt);
     
     MD_ArenaDefault *arena = (MD_ArenaDefault*)mem;
-    arena->func = MD_ArenaDefaultImpl;
     arena->pos  = MD_ArenaDefault_HeaderSize;
     arena->cmt  = cmt;
     arena->cap  = cap;
@@ -355,12 +308,54 @@ MD_ArenaDefaultRelease(MD_Arena *arena_opq){
     MD_IMPL_Release(arena, cap);
 }
 
+static void*
+MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size){
+    void *result = 0;
+    MD_u8 *buf = (MD_u8*)arena;
+    if (arena->pos + size <= arena->cap){
+        MD_u64 pos = arena->pos;
+        MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
+        MD_u64 new_pos = pos_clamped + size;
+        MD_u64 align_m1 = arena->align - 1;
+        MD_u64 new_pos_aligned = (new_pos + align_m1)&(~align_m1);
+        MD_u64 new_pos_clamped = ((arena->cap < new_pos_aligned) ? arena->cap : new_pos_aligned);
+        result = buf + pos;
+        arena->pos = new_pos_aligned;
+        
+        if (new_pos_clamped > arena->cmt){
+            MD_u64 cmt_amt_raw = new_pos_clamped - arena->cmt;
+            MD_u64 cmt_align_m1 = MD_ArenaDefault_CommitSize - 1;
+            MD_u64 cmt_amt = (cmt_amt_raw + cmt_align_m1)&(~cmt_align_m1);
+            MD_IMPL_Commit(buf + arena->cmt, cmt_amt);
+            arena->cmt += cmt_amt;
+        }
+    }
+    return(result);
+}
+
+static void
+MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos){
+    MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
+    arena->pos = pos_clamped;
+}
+
+static void
+MD_ArenaDefaultPushAlign(MD_ArenaDefault *arena, MD_u64 boundary){
+    MD_u64 pos = arena->pos;
+    MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
+    MD_u64 align_m1 = boundary - 1;
+    MD_u64 new_pos_aligned = (pos_clamped + align_m1)&(~align_m1);
+    MD_u64 new_pos_clamped = ((arena->cap < new_pos_aligned) ? arena->cap : new_pos_aligned);
+    arena->pos = new_pos_clamped;
+}
+
 #endif
 
 //~/////////////////////////////////////////////////////////////////////////////
 //////////////////////// MD Library Implementation /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO(allen): update these
 #if !defined(MD_IMPL_ArenaNew)
 # error Missing implementation for MD_IMPL_ArenaNew
 #endif
@@ -417,48 +412,48 @@ MD_MemoryCopy(void *dest, void *src, MD_u64 size)
 //~ Arena Functions
 
 MD_FUNCTION_IMPL void*
-MD_ArenaPush(MD_Arena *arena, MD_u64 v){
-    MD_IntPtr result = arena->func(arena, MD_ArenaOperation_Push, v);
-    return(result.ptr);
+MD_ArenaPush(MD_Arena *arena, MD_u64 size){
+    void *result = MD_IMPL_ArenaPush((MD_IMPL_Arena*)arena, size);
+    return(result);
 }
 
 MD_FUNCTION_IMPL MD_ArenaTemp
 MD_ArenaBeginTemp(MD_Arena *arena){
-    MD_IntPtr pos = arena->func(arena, MD_ArenaOperation_GetPos, 0);
     MD_ArenaTemp result = MD_ZERO_STRUCT;
     result.arena = arena;
-    result.pos = pos.u64;
+    result.pos   = MD_IMPL_ArenaGetPos((MD_IMPL_Arena*)arena);
     return(result);
 }
 
 MD_FUNCTION_IMPL void
 MD_ArenaEndTemp(MD_ArenaTemp temp){
-    temp.arena->func(temp.arena, MD_ArenaOperation_PopTo, temp.pos);
+    MD_IMPL_ArenaPopTo((MD_IMPL_Arena*)temp.arena, temp.pos);
 }
 
 MD_FUNCTION_IMPL void
 MD_ArenaSetAlign(MD_Arena *arena, MD_u64 v){
-    arena->func(arena, MD_ArenaOperation_SetAutoAlign, v);
+    MD_IMPL_ArenaSetAutoAlign((MD_IMPL_Arena*)arena, v);
 }
 
 MD_FUNCTION_IMPL void
 MD_ArenaPushAlign(MD_Arena *arena, MD_u64 v){
-    arena->func(arena, MD_ArenaOperation_PushAlign, v);
+    MD_IMPL_ArenaPushAlign((MD_IMPL_Arena*)arena, v);
 }
 
 MD_FUNCTION_IMPL void
 MD_ArenaClear(MD_Arena *arena){
-    arena->func(arena, MD_ArenaOperation_PopTo, 0);
+    MD_u64 pos = MD_IMPL_ArenaMinPos((MD_IMPL_Arena*)arena);
+    MD_IMPL_ArenaPopTo((MD_IMPL_Arena*)arena, pos);
 }
 
 MD_FUNCTION_IMPL MD_Arena*
 MD_ArenaNew(MD_u64 cap){
-    return(MD_IMPL_ArenaNew(cap));
+    return((MD_Arena*)MD_IMPL_ArenaNew(cap));
 }
 
 MD_FUNCTION_IMPL void
 MD_ArenaRelease(MD_Arena *arena){
-    MD_IMPL_ArenaRelease(arena);
+    MD_IMPL_ArenaRelease((MD_IMPL_Arena*)arena);
 }
 
 //~ Thread Context Functions

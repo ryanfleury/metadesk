@@ -54,3 +54,4 @@ command_list =
 
 fkey_command[1] = "build";
 fkey_command[2] = "build_with_clang";
+

@@ -260,28 +260,7 @@ typedef double   MD_f64;
 
 //~ Abstract Arena
 
-typedef union MD_IntPtr MD_IntPtr;
-union MD_IntPtr{
-    MD_u64 u64;
-    void *ptr;
-};
-
-typedef struct MD_Arena MD_Arena;
-
-typedef enum MD_ArenaOperation{
-    MD_ArenaOperation_GetPos,
-    MD_ArenaOperation_GetCap,
-    MD_ArenaOperation_Push,
-    MD_ArenaOperation_PopTo,
-    MD_ArenaOperation_PushAlign,
-    MD_ArenaOperation_SetAutoAlign,
-} MD_ArenaOperation;
-
-typedef MD_IntPtr MD_ArenaFunc(MD_Arena *arena, MD_ArenaOperation op, MD_u64 v);
-
-struct MD_Arena{
-    MD_ArenaFunc *func;
-};
+typedef void MD_Arena;
 
 //~ Arena Helpers
 
