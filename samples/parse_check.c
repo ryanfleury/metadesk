@@ -8,7 +8,7 @@ int main(int argument_count, char **arguments)
     MD_ThreadContext tctx;
     MD_ThreadInit(&tctx);
     
-    arena = MD_ArenaNew(1ull << 40);
+    arena = MD_ArenaAlloc(1ull << 40);
     
     MD_Node *list = MD_MakeList(arena);
     for(int i = 1; i < argument_count; i += 1)

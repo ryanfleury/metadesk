@@ -5,6 +5,55 @@
 #ifndef MD_H
 #define MD_H
 
+/* NOTE(allen): Notes on overrides/macro options:
+**
+** Individual Overridables:
+**  "file iteration" ** OPTIONAL
+**   #define MD_IMPL_FileIterIncrement
+**     (MD_Arena*, MD_FileIter*, MD_String8, MD_FileInfo* out) -> MD_b32
+**
+**  "low level memory" ** OPTIONAL (required for default arena)
+**   #define MD_IMPL_Reserve            (MD_u64) -> void*
+**   #define MD_IMPL_Commit             (void*, MD_u64) -> void
+**   #define MD_IMPL_Decommit           (void*, MD_u64) -> void
+**   #define MD_IMPL_Release            (void*, MD_u64) -> void
+**
+**  "arena" ** REQUIRED (default implementation available)
+**   #define MD_IMPL_Arena              <type>
+**   #define MD_IMPL_ArenaAlloc         (MD_u64) -> MD_IMPL_Arena*
+**   #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
+**   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> MD_u64
+**   #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, MD_u64) -> void*
+**   #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, MD_u64) -> void
+**   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, MD_u64) -> void
+**   #define MD_IMPL_ArenaHeaderSize    MD_u64
+**
+**  "constants" ** REQUIRED (defaults to 1 gigabyte)
+**   #define MD_SCRATCH_SIZE            MD_u64
+**
+** Default Implementation Controls
+**  These controls default to '1' i.e. 'enabled'
+**   #define MD_DEFAULT_FILE_ITER -> construct "file iteration" from OS headers
+**   #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS headers
+**   #define MD_DEFAULT_ARENA     -> construct "arena" from "low level memory"
+**
+*/
+
+//~ Set default values for controls
+#if !defined(MD_DEFAULT_FILE_ITER)
+# define MD_DEFAULT_FILE_ITER 1
+#endif
+#if !defined(MD_DEFAULT_MEMORY)
+# define MD_DEFAULT_MEMORY 1
+#endif
+#if !defined(MD_DEFAULT_ARENA)
+# define MD_DEFAULT_ARENA 1
+#endif
+#if !defined(MD_SCRATCH_SIZE)
+# define MD_SCRATCH_SIZE (1 << 30)
+#endif
+
+
 // NOTE(rjf): Compiler cracking from the 4th dimension
 
 #if defined(__clang__)
@@ -258,9 +307,28 @@ typedef int64_t  MD_b64;
 typedef float    MD_f32;
 typedef double   MD_f64;
 
-//~ Abstract Arena
+//~ Default Arena
 
-typedef void MD_Arena;
+#if MD_DEFAULT_ARENA
+
+typedef struct MD_ArenaDefault MD_ArenaDefault;
+struct MD_ArenaDefault{
+    MD_u64 pos;
+    MD_u64 cmt;
+    MD_u64 cap;
+    MD_u64 align;
+};
+#define MD_IMPL_Arena MD_ArenaDefault
+
+#endif
+
+//~ Abstract Arena Type
+
+#if !defined(MD_IMPL_Arena)
+# error Missing implementation for MD_IMPL_Arena
+#endif
+
+typedef MD_IMPL_Arena MD_Arena;
 
 //~ Arena Helpers
 
@@ -272,6 +340,7 @@ struct MD_ArenaTemp{
 
 //~ Thread Context
 
+// TODO(allen): overrides for get scratch
 typedef struct MD_ThreadContext MD_ThreadContext;
 struct MD_ThreadContext{
     MD_Arena *scratch_pool[2];
@@ -682,19 +751,20 @@ MD_FUNCTION void* MD_MemoryCopy(void *dst, void *src, MD_u64 size);
 
 //~ Arena Functions
 
-MD_FUNCTION void*        MD_ArenaPush(MD_Arena *arena, MD_u64 v);
-MD_FUNCTION MD_ArenaTemp MD_ArenaBeginTemp(MD_Arena *arena);
-MD_FUNCTION void         MD_ArenaEndTemp(MD_ArenaTemp temp);
-MD_FUNCTION void         MD_ArenaSetAlign(MD_Arena *arena, MD_u64 v);
-MD_FUNCTION void         MD_ArenaPushAlign(MD_Arena *arena, MD_u64 v);
+MD_FUNCTION MD_Arena*    MD_ArenaAlloc(MD_u64 cap);
+MD_FUNCTION void         MD_ArenaRelease(MD_Arena *arena);
+
+MD_FUNCTION void*        MD_ArenaPush(MD_Arena *arena, MD_u64 size);
+MD_FUNCTION void         MD_ArenaPutBack(MD_Arena *arena, MD_u64 size);
+MD_FUNCTION void         MD_ArenaSetAlign(MD_Arena *arena, MD_u64 boundary);
+MD_FUNCTION void         MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary);
 MD_FUNCTION void         MD_ArenaClear(MD_Arena *arena);
 
-#define MD_PushArrayAr(a,T,c) (T*)(MD_ArenaPush((a), sizeof(T)*(c)))
-#define MD_PushArrayZeroAr(a,T,c) (T*)(MD_MemoryZero(MD_ArenaPush((a), sizeof(T)*(c)),\
-sizeof(T)*(c)))
+#define MD_PushArray(a,T,c) (T*)(MD_ArenaPush((a), sizeof(T)*(c)))
+#define MD_PushArrayZero(a,T,c) (T*)(MD_MemoryZero(MD_PushArray(a,T,c), sizeof(T)*(c)))
 
-MD_FUNCTION MD_Arena*    MD_ArenaNew(MD_u64 cap);
-MD_FUNCTION void         MD_ArenaRelease(MD_Arena *arena);
+MD_FUNCTION MD_ArenaTemp MD_ArenaBeginTemp(MD_Arena *arena);
+MD_FUNCTION void         MD_ArenaEndTemp(MD_ArenaTemp temp);
 
 //~ Thread Context Functions
 

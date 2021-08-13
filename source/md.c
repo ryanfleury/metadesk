@@ -1,80 +1,16 @@
 // LICENSE AT END OF FILE (MIT).
 
-/* NOTE(allen): Notes on overrides/macro options:
-**
-** Individual Overridables:
-**  #define MD_IMPL_FileIterIncrement
-**  #define MD_IMPL_Reserve
-**  #define MD_IMPL_Commit
-**  #define MD_IMPL_Decommit
-**  #define MD_IMPL_Release
-**
-**  #define MD_IMPL_Arena              <type>
-**  #define MD_IMPL_ArenaNew           (MD_u64) -> MD_IMPL_Arena*
-**  #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
-**  #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> MD_u64
-**  #define MD_IMPL_ArenaGetCap        (MD_IMPL_Arena*) -> MD_u64
-**  #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, MD_u64) -> void*
-**  #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, MD_u64) -> void
-**  #define MD_IMPL_ArenaPushAlign     (MD_IMPL_Arena*, MD_u64) -> void
-**  #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, MD_u64) -> void
-**  #define MD_IMPL_ArenaMinPos        (MD_IMPL_Arena*) -> MD_u64
-**
-**  #define MD_SCRATCH_SIZE
-**
-** Default Implementation Controls
-**  ~If no controls are set, then the system automatically enables all defaults~
-**  #define MD_DEFAULT_FILE_ITER -> construct "file iteration" from OS
-**  #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS
-**  #define MD_DEFAULT_ARENA     -> construct "arena" from "low level memory"
-**
-*/
-
-//~ Check for controls
-#if defined(MD_DEFAULT_FILE_ITER)
-# define MD_INTERNAL_CONTROL_SET 1
-#endif
-#if defined(MD_DEFAULT_MEMORY)
-# define MD_INTERNAL_CONTROL_SET 1
-#endif
-#if defined(MD_DEFAULT_ARENA)
-# define MD_INTERNAL_CONTROL_SET 1
-#endif
-#if !defined(MD_INTERNAL_CONTROL_SET)
-# define MD_INTERNAL_CONTROL_SET 0
-#endif
-
-#if !MD_INTERNAL_CONTROL_SET
-# define MD_DEFAULT_FILE_ITER 1
-# define MD_DEFAULT_MEMORY 1
-# define MD_DEFAULT_ARENA 1
-#endif
-
-//~ Set default values for controls
-#if !defined(MD_DEFAULT_FILE_ITER)
-# define MD_DEFAULT_FILE_ITER 0
-#endif
-#if !defined(MD_DEFAULT_MEMORY)
-# define MD_DEFAULT_MEMORY 0
-#endif
-#if !defined(MD_DEFAULT_ARENA)
-# define MD_DEFAULT_ARENA 0
-#endif
-#if !defined(MD_SCRATCH_SIZE)
-# define MD_SCRATCH_SIZE (1 << 30)
-#endif
-
 //~/////////////////////////////////////////////////////////////////////////////
 /////////////////////////// Win32 Implementation ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+//- win32 header
 #if (MD_DEFAULT_FILE_ITER || MD_DEFAULT_MEMORY) && MD_OS_WINDOWS
-
-#include <Windows.h>
-#pragma comment(lib, "User32.lib")
-
+# include <Windows.h>
+# pragma comment(lib, "User32.lib")
 #endif
 
+//- win32 "file iteration"
 #if MD_DEFAULT_FILE_ITER && MD_OS_WINDOWS
 
 #if !defined(MD_IMPL_FileIterIncrement)
@@ -128,6 +64,7 @@ MD_WIN32_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path,
 
 #endif
 
+//- win32 "low level memory"
 #if MD_DEFAULT_MEMORY && MD_OS_WINDOWS
 
 #if !defined(MD_IMPL_Reserve)
@@ -170,23 +107,23 @@ MD_WIN32_Release(void *ptr, MD_u64 size){
 ////////////////////////// Linux Implementation ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+//- linux headers
 #if (MD_DEFAULT_FILE_ITER || MD_DEFAULT_MEMORY) && MD_OS_LINUX
-
-#include <dirent.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/syscall.h>
+# include <dirent.h>
+# include <sys/stat.h>
+# include <fcntl.h>
+# include <unistd.h>
+# include <sys/syscall.h>
 // NOTE(mal): To get these constants I need to #define _GNU_SOURCE,
 // which invites non-POSIX behavior I'd rather avoid
-#ifndef O_PATH
-#define O_PATH                 010000000
+# ifndef O_PATH
+#  define O_PATH                010000000
+# endif
+# define AT_NO_AUTOMOUNT        0x800
+# define AT_SYMLINK_NOFOLLOW    0x100
 #endif
-#define AT_NO_AUTOMOUNT        0x800
-#define AT_SYMLINK_NOFOLLOW    0x100
 
-#endif
-
+//- linux "file iteration"
 #if MD_DEFAULT_FILE_ITER && MD_OS_LINUX
 
 #if !defined(MD_IMPL_FileIterIncrement)
@@ -254,7 +191,23 @@ MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 p
 
 #endif
 
+//- linux "low level memory"
 #if MD_DEFAULT_MEMORY && MD_OS_LINUX
+
+#if !defined(MD_IMPL_Reserve)
+# define MD_IMPL_Reserve MD_LINUX_Reserve
+#endif
+#if !defined(MD_IMPL_Commit)
+# define MD_IMPL_Commit MD_LINUX_Commit
+#endif
+#if !defined(MD_IMPL_Decommit)
+# define MD_IMPL_Decommit MD_LINUX_Decommit
+#endif
+#if !defined(MD_IMPL_Release)
+# define MD_IMPL_Release MD_LINUX_Release
+#endif
+
+// TODO(allen): implement
 # error not implemented
 #endif
 
@@ -264,37 +217,38 @@ MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 p
 
 #if MD_DEFAULT_ARENA
 
-#define MD_ArenaDefault_HeaderSize 64
+#if !defined(MD_IMPL_Reserve)
+# error Missing implementation for MD_IMPL_Reserve
+#endif
+#if !defined(MD_IMPL_Commit)
+# error Missing implementation for MD_IMPL_Commit
+#endif
+#if !defined(MD_IMPL_Decommit)
+# error Missing implementation for MD_IMPL_Decommit
+#endif
+#if !defined(MD_IMPL_Release)
+# error Missing implementation for MD_IMPL_Release
+#endif
+
+#define MD_IMPL_ArenaHeaderSize 64
 #define MD_ArenaDefault_CommitSize (1 << 20)
+MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_size_check);
 
-typedef struct MD_ArenaDefault MD_ArenaDefault;
-struct MD_ArenaDefault{
-    MD_u64 pos;
-    MD_u64 cmt;
-    MD_u64 cap;
-    MD_u64 align;
-};
-MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_ArenaDefault_HeaderSize, arena_def_size_check);
-
-#define MD_IMPL_Arena          MD_ArenaDefault
-#define MD_IMPL_ArenaNew       MD_ArenaDefaultNew
+#define MD_IMPL_ArenaAlloc     MD_ArenaDefaultAlloc
 #define MD_IMPL_ArenaRelease   MD_ArenaDefaultRelease
 #define MD_IMPL_ArenaGetPos(a) ((a)->pos)
-#define MD_IMPL_ArenaGetCap(a) ((a)->cap)
 #define MD_IMPL_ArenaPush      MD_ArenaDefaultPush
 #define MD_IMPL_ArenaPopTo     MD_ArenaDefaultPopTo
-#define MD_IMPL_ArenaPushAlign MD_ArenaDefaultPushAlign
 #define MD_IMPL_ArenaSetAutoAlign(a,b) ((a)->align = (b))
-#define MD_IMPL_ArenaMinPos(a) MD_ArenaDefault_HeaderSize
 
 static MD_Arena*
-MD_ArenaDefaultNew(MD_u64 cap){
+MD_ArenaDefaultAlloc(MD_u64 cap){
     void *mem = MD_IMPL_Reserve(cap);
     MD_u64 cmt = ((MD_ArenaDefault_CommitSize < cap) ? MD_ArenaDefault_CommitSize : cap);
     MD_IMPL_Commit(mem, cmt);
     
     MD_ArenaDefault *arena = (MD_ArenaDefault*)mem;
-    arena->pos  = MD_ArenaDefault_HeaderSize;
+    arena->pos  = MD_IMPL_ArenaHeaderSize;
     arena->cmt  = cmt;
     arena->cap  = cap;
     arena->align = sizeof(void*);
@@ -314,7 +268,7 @@ MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size){
     MD_u8 *buf = (MD_u8*)arena;
     if (arena->pos + size <= arena->cap){
         MD_u64 pos = arena->pos;
-        MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
+        MD_u64 pos_clamped = ((pos > MD_IMPL_ArenaHeaderSize) ? pos : MD_IMPL_ArenaHeaderSize);
         MD_u64 new_pos = pos_clamped + size;
         MD_u64 align_m1 = arena->align - 1;
         MD_u64 new_pos_aligned = (new_pos + align_m1)&(~align_m1);
@@ -335,18 +289,8 @@ MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size){
 
 static void
 MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos){
-    MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
+    MD_u64 pos_clamped = ((pos > MD_IMPL_ArenaHeaderSize) ? pos : MD_IMPL_ArenaHeaderSize);
     arena->pos = pos_clamped;
-}
-
-static void
-MD_ArenaDefaultPushAlign(MD_ArenaDefault *arena, MD_u64 boundary){
-    MD_u64 pos = arena->pos;
-    MD_u64 pos_clamped = ((pos > MD_ArenaDefault_HeaderSize) ? pos : MD_ArenaDefault_HeaderSize);
-    MD_u64 align_m1 = boundary - 1;
-    MD_u64 new_pos_aligned = (pos_clamped + align_m1)&(~align_m1);
-    MD_u64 new_pos_clamped = ((arena->cap < new_pos_aligned) ? arena->cap : new_pos_aligned);
-    arena->pos = new_pos_clamped;
 }
 
 #endif
@@ -354,14 +298,6 @@ MD_ArenaDefaultPushAlign(MD_ArenaDefault *arena, MD_u64 boundary){
 //~/////////////////////////////////////////////////////////////////////////////
 //////////////////////// MD Library Implementation /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-
-// TODO(allen): update these
-#if !defined(MD_IMPL_ArenaNew)
-# error Missing implementation for MD_IMPL_ArenaNew
-#endif
-#if !defined(MD_IMPL_ArenaRelease)
-# error Missing implementation for MD_IMPL_ArenaRelease
-#endif
 
 #define MD_FUNCTION_IMPL MD_FUNCTION
 #define MD_UNTERMINATED_TOKEN_LEN_CAP 20
@@ -411,49 +347,86 @@ MD_MemoryCopy(void *dest, void *src, MD_u64 size)
 
 //~ Arena Functions
 
+#if !defined(MD_IMPL_ArenaAlloc)
+# error Missing implementation for MD_IMPL_ArenaAlloc
+#endif
+#if !defined(MD_IMPL_ArenaRelease)
+# error Missing implementation for MD_IMPL_ArenaRelease
+#endif
+#if !defined(MD_IMPL_ArenaGetPos)
+# error Missing implementation for MD_IMPL_ArenaGetPos
+#endif
+#if !defined(MD_IMPL_ArenaPush)
+# error Missing implementation for MD_IMPL_ArenaPush
+#endif
+#if !defined(MD_IMPL_ArenaPopTo)
+# error Missing implementation for MD_IMPL_ArenaPopTo
+#endif
+#if !defined(MD_IMPL_ArenaSetAutoAlign)
+# error Missing implementation for MD_IMPL_ArenaSetAutoAlign
+#endif
+#if !defined(MD_IMPL_ArenaHeaderSize)
+# error Missing implementation for MD_IMPL_ArenaHeaderSize
+#endif
+
+MD_FUNCTION_IMPL MD_Arena*
+MD_ArenaAlloc(MD_u64 cap){
+    return(MD_IMPL_ArenaAlloc(cap));
+}
+
+MD_FUNCTION_IMPL void
+MD_ArenaRelease(MD_Arena *arena){
+    MD_IMPL_ArenaRelease(arena);
+}
+
 MD_FUNCTION_IMPL void*
 MD_ArenaPush(MD_Arena *arena, MD_u64 size){
-    void *result = MD_IMPL_ArenaPush((MD_IMPL_Arena*)arena, size);
+    void *result = MD_IMPL_ArenaPush(arena, size);
     return(result);
+}
+
+MD_FUNCTION_IMPL void
+MD_ArenaPutBack(MD_Arena *arena, MD_u64 size){
+    MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
+    MD_u64 new_pos = pos - size;
+    MD_u64 new_pos_clamped = ((new_pos < MD_IMPL_ArenaHeaderSize) ?
+                              MD_IMPL_ArenaHeaderSize :  new_pos);
+    MD_IMPL_ArenaPopTo(arena, new_pos_clamped);
+}
+
+MD_FUNCTION_IMPL void
+MD_ArenaSetAlign(MD_Arena *arena, MD_u64 boundary){
+    MD_IMPL_ArenaSetAutoAlign(arena, boundary);
+}
+
+MD_FUNCTION_IMPL void
+MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary){
+    MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
+    MD_u64 align_m1 = boundary - 1;
+    MD_u64 new_pos_aligned = (pos + align_m1)&(~align_m1);
+    MD_u64 new_pos_clamped = ((new_pos_aligned > arena->cap) ? new_pos_aligned : arena->cap);
+    if (new_pos_clamped > pos){
+        MD_u64 amt = new_pos_clamped - pos;
+        MD_MemoryZero(MD_IMPL_ArenaPush(arena, amt), amt);
+    }
+}
+
+MD_FUNCTION_IMPL void
+MD_ArenaClear(MD_Arena *arena){
+    MD_IMPL_ArenaPopTo(arena, MD_IMPL_ArenaHeaderSize);
 }
 
 MD_FUNCTION_IMPL MD_ArenaTemp
 MD_ArenaBeginTemp(MD_Arena *arena){
-    MD_ArenaTemp result = MD_ZERO_STRUCT;
+    MD_ArenaTemp result;
     result.arena = arena;
-    result.pos   = MD_IMPL_ArenaGetPos((MD_IMPL_Arena*)arena);
+    result.pos   = MD_IMPL_ArenaGetPos(arena);
     return(result);
 }
 
 MD_FUNCTION_IMPL void
 MD_ArenaEndTemp(MD_ArenaTemp temp){
-    MD_IMPL_ArenaPopTo((MD_IMPL_Arena*)temp.arena, temp.pos);
-}
-
-MD_FUNCTION_IMPL void
-MD_ArenaSetAlign(MD_Arena *arena, MD_u64 v){
-    MD_IMPL_ArenaSetAutoAlign((MD_IMPL_Arena*)arena, v);
-}
-
-MD_FUNCTION_IMPL void
-MD_ArenaPushAlign(MD_Arena *arena, MD_u64 v){
-    MD_IMPL_ArenaPushAlign((MD_IMPL_Arena*)arena, v);
-}
-
-MD_FUNCTION_IMPL void
-MD_ArenaClear(MD_Arena *arena){
-    MD_u64 pos = MD_IMPL_ArenaMinPos((MD_IMPL_Arena*)arena);
-    MD_IMPL_ArenaPopTo((MD_IMPL_Arena*)arena, pos);
-}
-
-MD_FUNCTION_IMPL MD_Arena*
-MD_ArenaNew(MD_u64 cap){
-    return((MD_Arena*)MD_IMPL_ArenaNew(cap));
-}
-
-MD_FUNCTION_IMPL void
-MD_ArenaRelease(MD_Arena *arena){
-    MD_IMPL_ArenaRelease((MD_IMPL_Arena*)arena);
+    MD_IMPL_ArenaPopTo(temp.arena, temp.pos);
 }
 
 //~ Thread Context Functions
@@ -464,7 +437,7 @@ MD_FUNCTION_IMPL void
 MD_ThreadInit(MD_ThreadContext *tctx_mem){
     md_thread_ctx = tctx_mem;
     for (MD_u32 i = 0; i < MD_ArrayCount(md_thread_ctx->scratch_pool); i += 1){
-        tctx_mem->scratch_pool[i] = MD_ArenaNew(MD_SCRATCH_SIZE);
+        tctx_mem->scratch_pool[i] = MD_ArenaAlloc(MD_SCRATCH_SIZE);
     }
 }
 
@@ -688,7 +661,7 @@ MD_S8Copy(MD_Arena *arena, MD_String8 string)
 {
     MD_String8 res;
     res.size = string.size;
-    res.str = MD_PushArrayAr(arena, MD_u8, string.size + 1);
+    res.str = MD_PushArray(arena, MD_u8, string.size + 1);
     MD_MemoryCopy(res.str, string.str, string.size);
     return(res);
 }
@@ -700,7 +673,7 @@ MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
     va_list args2;
     va_copy(args2, args);
     MD_u64 needed_bytes = md_stbsp_vsnprintf(0, 0, fmt, args)+1;
-    result.str = MD_PushArrayAr(arena, MD_u8, needed_bytes);
+    result.str = MD_PushArray(arena, MD_u8, needed_bytes);
     result.size = needed_bytes - 1;
     md_stbsp_vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
@@ -720,7 +693,7 @@ MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
 MD_FUNCTION_IMPL void
 MD_S8ListPush(MD_Arena *arena, MD_String8List *list, MD_String8 string)
 {
-    MD_String8Node *node = MD_PushArrayAr(arena, MD_String8Node, 1);
+    MD_String8Node *node = MD_PushArray(arena, MD_String8Node, 1);
     node->string = string;
     
     MD_QueuePush(list->first, list->last, node);
@@ -812,7 +785,7 @@ MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (list.total_size + join.pre.size +
                    sep_count*join.mid.size + join.post.size);
-    result.str = MD_PushArrayAr(arena, MD_u8, result.size);
+    result.str = MD_PushArray(arena, MD_u8, result.size);
     
     // fill
     MD_u8 *ptr = result.str;
@@ -895,7 +868,7 @@ MD_S8Stylize(MD_Arena *arena, MD_String8 string, MD_IdentifierStyle word_style,
     {
         result.size += separator.size*(words.node_count-1);
     }
-    result.str = MD_PushArrayAr(arena, MD_u8, result.size);
+    result.str = MD_PushArray(arena, MD_u8, result.size);
     
     {
         MD_u64 write_pos = 0;
@@ -1123,7 +1096,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS16(MD_Arena *arena, MD_String16 in)
 {
     MD_u64 cap = in.size*3;
-    MD_u8 *str = MD_PushArrayAr(arena, MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArray(arena, MD_u8, cap + 1);
     MD_u16 *ptr = in.str;
     MD_u16 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1142,7 +1115,7 @@ MD_FUNCTION MD_String16
 MD_S16FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size*2;
-    MD_u16 *str = MD_PushArrayAr(arena, MD_u16, (cap + 1));
+    MD_u16 *str = MD_PushArray(arena, MD_u16, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1162,7 +1135,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS32(MD_Arena *arena, MD_String32 in)
 {
     MD_u64 cap = in.size*4;
-    MD_u8 *str = MD_PushArrayAr(arena, MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArray(arena, MD_u8, cap + 1);
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1179,7 +1152,7 @@ MD_FUNCTION MD_String32
 MD_S32FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size;
-    MD_u32 *str = MD_PushArrayAr(arena, MD_u32, (cap + 1));
+    MD_u32 *str = MD_PushArray(arena, MD_u32, (cap + 1));
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1364,7 +1337,7 @@ MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps)
     
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (MD_u64)(ptr - buffer);
-    result.str = MD_PushArrayAr(arena, MD_u8, result.size);
+    result.str = MD_PushArray(arena, MD_u8, result.size);
     MD_MemoryCopy(result.str, buffer, result.size);
     return(result);
 }
@@ -1460,10 +1433,9 @@ MD_HashPtr(void *p)
 
 MD_FUNCTION_IMPL MD_Map
 MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count){
-    // TODO(allen): super arena?
     MD_Map result = {0};
     result.bucket_count = bucket_count;
-    result.buckets = MD_PushArrayZeroAr(arena, MD_MapBucket, bucket_count);
+    result.buckets = MD_PushArrayZero(arena, MD_MapBucket, bucket_count);
     return(result);
 }
 
@@ -1541,7 +1513,7 @@ MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
     MD_MapSlot *result = 0;
     if (map->bucket_count > 0){
         MD_u64 index = key.hash%map->bucket_count;
-        MD_MapSlot *slot = MD_PushArrayAr(arena, MD_MapSlot, 1);
+        MD_MapSlot *slot = MD_PushArray(arena, MD_MapSlot, 1);
         MD_MapBucket *bucket = &map->buckets[index];
         MD_QueuePush(bucket->first, bucket->last, slot);
         slot->key = key;
@@ -1842,7 +1814,7 @@ MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds)
 MD_FUNCTION_IMPL MD_Message*
 MD_MakeNodeError(MD_Arena *arena, MD_Node *node, MD_MessageKind kind, MD_String8 str)
 {
-    MD_Message *error = MD_PushArrayZeroAr(arena, MD_Message, 1);
+    MD_Message *error = MD_PushArrayZero(arena, MD_Message, 1);
     error->node = node;
     error->kind = kind;
     error->string = str;
@@ -2510,7 +2482,7 @@ MD_FUNCTION_IMPL MD_Node *
 MD_MakeNode(MD_Arena *arena, MD_NodeKind kind, MD_String8 string, MD_String8 raw_string,
             MD_u64 offset)
 {
-    MD_Node *node = MD_PushArrayZeroAr(arena, MD_Node, 1);
+    MD_Node *node = MD_PushArrayZero(arena, MD_Node, 1);
     node->kind = kind;
     node->string = string;
     node->raw_string = raw_string;
@@ -2976,7 +2948,7 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
             
             //- rjf: insert the fully parsed option
             {
-                MD_CmdLineOption *opt = MD_PushArrayAr(arena, MD_CmdLineOption, 1);
+                MD_CmdLineOption *opt = MD_PushArray(arena, MD_CmdLineOption, 1);
                 MD_MemoryZero(opt, sizeof(*opt));
                 opt->name = option_name;
                 opt->values = option_values;
@@ -3056,7 +3028,7 @@ MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
         fseek(file, 0, SEEK_END);
         MD_u64 file_size = ftell(file);
         fseek(file, 0, SEEK_SET);
-        file_contents.str = MD_PushArrayAr(arena, MD_u8, file_size+1);
+        file_contents.str = MD_PushArray(arena, MD_u8, file_size+1);
         if(file_contents.str)
         {
             file_contents.size = file_size;

@@ -185,7 +185,7 @@ int main(int argument_count, char **arguments)
     MD_ThreadContext tctx;
     MD_ThreadInit(&tctx);
     
-    arena = MD_ArenaNew(1ull << 40);
+    arena = MD_ArenaAlloc(1ull << 40);
     
     //- rjf: parse command line
     MD_String8List arg_list = MD_StringListFromArgCV(arena, argument_count, arguments);

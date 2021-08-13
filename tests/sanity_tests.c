@@ -123,7 +123,7 @@ int main(void)
     MD_ThreadContext tctx;
     MD_ThreadInit(&tctx);
     
-    arena = MD_ArenaNew(1ull << 40);
+    arena = MD_ArenaAlloc(1ull << 40);
     
     Test("Lexer")
     {
