@@ -207,8 +207,28 @@ MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 p
 # define MD_IMPL_Release MD_LINUX_Release
 #endif
 
-// TODO(allen): implement
-# error not implemented
+static void*
+MD_LINUX_Reserve(MD_u64 size){
+    void *result = mmap(0, size, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, (off_t)0);
+    return(result);
+}
+
+static void
+MD_LINUX_Commit(void *ptr, MD_u64 size){
+    mprotect(ptr, size, PROT_READ|PROT_WRITE);
+}
+
+static void
+MD_LINUX_Decommit(void *ptr, MD_u64 size){
+    mprotect(ptr, size, PROT_NONE);
+    madvise(ptr, size, MADV_DONTNEED);
+}
+
+static void
+MD_LINUX_Release(void *ptr, MD_u64 size){
+    munmap(ptr, size);
+}
+
 #endif
 
 //~/////////////////////////////////////////////////////////////////////////////
