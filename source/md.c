@@ -1139,8 +1139,6 @@ MD_Utf16FromCodepoint(MD_u16 *out, MD_u32 codepoint)
     return(advance);
 }
 
-// TODO(allen): arena "put back" operation to optimize these a bit more
-
 MD_FUNCTION MD_String8
 MD_S8FromS16(MD_Arena *arena, MD_String16 in)
 {
@@ -1157,6 +1155,7 @@ MD_S8FromS16(MD_Arena *arena, MD_String16 in)
         size += MD_Utf8FromCodepoint(str + size, consume.codepoint);
     }
     str[size] = 0;
+    MD_ArenaPutBack(arena, cap - size); // := ((cap + 1) - (size + 1))
     return(MD_S8(str, size));
 }
 
@@ -1164,7 +1163,7 @@ MD_FUNCTION MD_String16
 MD_S16FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size*2;
-    MD_u16 *str = MD_PushArray(arena, MD_u16, (cap + 1));
+    MD_u16 *str = MD_PushArray(arena, MD_u16, cap + 1);
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1176,6 +1175,7 @@ MD_S16FromS8(MD_Arena *arena, MD_String8 in)
         size += MD_Utf16FromCodepoint(str + size, consume.codepoint);
     }
     str[size] = 0;
+    MD_ArenaPutBack(arena, 2*(cap - size)); // := 2*((cap + 1) - (size + 1))
     MD_String16 result = {str, size};
     return(result);
 }
@@ -1194,6 +1194,7 @@ MD_S8FromS32(MD_Arena *arena, MD_String32 in)
         size += MD_Utf8FromCodepoint(str + size, *ptr);
     }
     str[size] = 0;
+    MD_ArenaPutBack(arena, cap - size); // := ((cap + 1) - (size + 1))
     return(MD_S8(str, size));
 }
 
@@ -1201,7 +1202,7 @@ MD_FUNCTION MD_String32
 MD_S32FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size;
-    MD_u32 *str = MD_PushArray(arena, MD_u32, (cap + 1));
+    MD_u32 *str = MD_PushArray(arena, MD_u32, cap + 1);
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1214,6 +1215,7 @@ MD_S32FromS8(MD_Arena *arena, MD_String8 in)
         size += 1;
     }
     str[size] = 0;
+    MD_ArenaPutBack(arena, 4*(cap - size)); // := 4*((cap + 1) - (size + 1))
     MD_String32 result = {str, size};
     return(result);
 }
