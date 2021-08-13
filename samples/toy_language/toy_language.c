@@ -182,9 +182,6 @@ EvaluateScope(NamespaceNode *ns, MD_Node *code)
 
 int main(int argument_count, char **arguments)
 {
-    MD_ThreadContext tctx;
-    MD_ThreadInit(&tctx);
-    
     arena = MD_ArenaAlloc(1ull << 40);
     
     //- rjf: parse command line

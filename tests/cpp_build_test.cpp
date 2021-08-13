@@ -5,9 +5,6 @@ static MD_Arena *arena = 0;
 
 int main(void)
 {
-    MD_ThreadContext tctx;
-    MD_ThreadInit(&tctx);
-    
     arena = MD_ArenaAlloc(1ull << 40);
     
     printf("%d\n", MD_CPP_VERSION);

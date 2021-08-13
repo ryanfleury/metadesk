@@ -217,6 +217,7 @@ MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 p
 
 #if MD_DEFAULT_ARENA
 
+//- "low level memory" implementation check
 #if !defined(MD_IMPL_Reserve)
 # error Missing implementation for MD_IMPL_Reserve
 #endif
@@ -295,6 +296,78 @@ MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos){
 
 #endif
 
+//- "arena" implementation checks
+#if !defined(MD_IMPL_ArenaAlloc)
+# error Missing implementation for MD_IMPL_ArenaAlloc
+#endif
+#if !defined(MD_IMPL_ArenaRelease)
+# error Missing implementation for MD_IMPL_ArenaRelease
+#endif
+#if !defined(MD_IMPL_ArenaGetPos)
+# error Missing implementation for MD_IMPL_ArenaGetPos
+#endif
+#if !defined(MD_IMPL_ArenaPush)
+# error Missing implementation for MD_IMPL_ArenaPush
+#endif
+#if !defined(MD_IMPL_ArenaPopTo)
+# error Missing implementation for MD_IMPL_ArenaPopTo
+#endif
+#if !defined(MD_IMPL_ArenaSetAutoAlign)
+# error Missing implementation for MD_IMPL_ArenaSetAutoAlign
+#endif
+#if !defined(MD_IMPL_ArenaHeaderSize)
+# error Missing implementation for MD_IMPL_ArenaHeaderSize
+#endif
+
+//~/////////////////////////////////////////////////////////////////////////////
+///////////////////////////// MD Scratch Pool //////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+#if MD_DEFAULT_SCRATCH
+
+#if !defined(MD_IMPL_ScratchSize)
+# define MD_IMPL_ScratchSize (1llu << 30)
+#endif
+#if !defined(MD_IMPL_ScratchCount)
+# define MD_IMPL_ScratchCount 2llu
+#endif
+
+#if !defined(MD_IMPL_GetScratch)
+# define MD_IMPL_GetScratch MD_GetScratchDefault
+#endif
+
+MD_THREAD_LOCAL MD_Arena *md_thread_scratch_pool[MD_IMPL_ScratchCount] = {0, 0};
+
+static MD_Arena*
+MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count){
+    MD_Arena **scratch_pool = md_thread_scratch_pool;
+    if (scratch_pool[0] == 0){
+        MD_Arena **arena_ptr = scratch_pool;
+        for (MD_u64 i = 0; i < MD_IMPL_ScratchCount; i += 1, arena_ptr += 1){
+            *arena_ptr = MD_ArenaAlloc(MD_IMPL_ScratchSize);
+        }
+    }
+    MD_Arena *result = 0;
+    MD_Arena **arena_ptr = scratch_pool;
+    for (MD_u64 i = 0; i < MD_IMPL_ScratchCount; i += 1, arena_ptr += 1){
+        MD_Arena *arena = *arena_ptr;
+        MD_Arena **conflict_ptr = conflicts;
+        for (MD_u32 j = 0; j < count; j += 1, conflict_ptr += 1){
+            if (arena == *conflict_ptr){
+                arena = 0;
+                break;
+            }
+        }
+        if (arena != 0){
+            result = arena;
+            break;
+        }
+    }
+    return(result);
+}
+
+#endif
+
 //~/////////////////////////////////////////////////////////////////////////////
 //////////////////////// MD Library Implementation /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,28 +419,6 @@ MD_MemoryCopy(void *dest, void *src, MD_u64 size)
 }
 
 //~ Arena Functions
-
-#if !defined(MD_IMPL_ArenaAlloc)
-# error Missing implementation for MD_IMPL_ArenaAlloc
-#endif
-#if !defined(MD_IMPL_ArenaRelease)
-# error Missing implementation for MD_IMPL_ArenaRelease
-#endif
-#if !defined(MD_IMPL_ArenaGetPos)
-# error Missing implementation for MD_IMPL_ArenaGetPos
-#endif
-#if !defined(MD_IMPL_ArenaPush)
-# error Missing implementation for MD_IMPL_ArenaPush
-#endif
-#if !defined(MD_IMPL_ArenaPopTo)
-# error Missing implementation for MD_IMPL_ArenaPopTo
-#endif
-#if !defined(MD_IMPL_ArenaSetAutoAlign)
-# error Missing implementation for MD_IMPL_ArenaSetAutoAlign
-#endif
-#if !defined(MD_IMPL_ArenaHeaderSize)
-# error Missing implementation for MD_IMPL_ArenaHeaderSize
-#endif
 
 MD_FUNCTION_IMPL MD_Arena*
 MD_ArenaAlloc(MD_u64 cap){
@@ -429,36 +480,14 @@ MD_ArenaEndTemp(MD_ArenaTemp temp){
     MD_IMPL_ArenaPopTo(temp.arena, temp.pos);
 }
 
-//~ Thread Context Functions
-
-MD_THREAD_LOCAL MD_ThreadContext *md_thread_ctx;
-
-MD_FUNCTION_IMPL void
-MD_ThreadInit(MD_ThreadContext *tctx_mem){
-    md_thread_ctx = tctx_mem;
-    for (MD_u32 i = 0; i < MD_ArrayCount(md_thread_ctx->scratch_pool); i += 1){
-        tctx_mem->scratch_pool[i] = MD_ArenaAlloc(MD_SCRATCH_SIZE);
-    }
-}
+//~ Arena Scratch Pool
 
 MD_FUNCTION_IMPL MD_ArenaTemp
-MD_GetScratch(MD_Arena **conflicts, MD_u32 count){
+MD_GetScratch(MD_Arena **conflicts, MD_u64 count){
+    MD_Arena *arena = MD_IMPL_GetScratch(conflicts, count);
     MD_ArenaTemp result = MD_ZERO_STRUCT;
-    MD_ThreadContext *tctx = md_thread_ctx;
-    MD_Arena **arena_ptr = tctx->scratch_pool;
-    for (MD_u32 i = 0; i < MD_ArrayCount(tctx->scratch_pool); i += 1, arena_ptr += 1){
-        MD_b32 has_conflict = 0;
-        MD_Arena **conflict_ptr = conflicts;
-        for (MD_u32 j = 0; j < count; j += 1, conflict_ptr += 1){
-            if (*arena_ptr == *conflict_ptr){
-                has_conflict = 1;
-                break;
-            }
-        }
-        if (!has_conflict){
-            result = MD_ArenaBeginTemp(*arena_ptr);
-            break;
-        }
+    if (arena != 0){
+        result = MD_ArenaBeginTemp(arena);
     }
     return(result);
 }

@@ -7,7 +7,7 @@
 
 /* NOTE(allen): Notes on overrides/macro options:
 **
-** Individual Overridables:
+** Overridable :
 **  "file iteration" ** OPTIONAL
 **   #define MD_IMPL_FileIterIncrement
 **     (MD_Arena*, MD_FileIter*, MD_String8, MD_FileInfo* out) -> MD_b32
@@ -28,14 +28,18 @@
 **   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, MD_u64) -> void
 **   #define MD_IMPL_ArenaHeaderSize    MD_u64
 **
-**  "constants" ** REQUIRED (defaults to 1 gigabyte)
-**   #define MD_SCRATCH_SIZE            MD_u64
+**  "scratch" ** REQUIRED (default implementation available)
+**   #define MD_IMPL_GetScratch         (MD_IMPL_Arena**, MD_u64) -> MD_IMPL_Arena*
+**  "scratch constants" ** OPTIONAL (required for default scratch)
+**   #define MD_IMPL_ScratchSize        MD_u64 / default 1 gigabyte
+**   #define MD_IMPL_ScratchCount       MD_u64 / default 2
 **
 ** Default Implementation Controls
 **  These controls default to '1' i.e. 'enabled'
 **   #define MD_DEFAULT_FILE_ITER -> construct "file iteration" from OS headers
 **   #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS headers
 **   #define MD_DEFAULT_ARENA     -> construct "arena" from "low level memory"
+**   #define MD_DEFAULT_SCRATCH   -> construct "scratch" from "arena"
 **
 */
 
@@ -49,8 +53,8 @@
 #if !defined(MD_DEFAULT_ARENA)
 # define MD_DEFAULT_ARENA 1
 #endif
-#if !defined(MD_SCRATCH_SIZE)
-# define MD_SCRATCH_SIZE (1 << 30)
+#if !defined(MD_DEFAULT_SCRATCH)
+# define MD_DEFAULT_SCRATCH 1
 #endif
 
 
@@ -336,14 +340,6 @@ typedef struct MD_ArenaTemp MD_ArenaTemp;
 struct MD_ArenaTemp{
     MD_Arena *arena;
     MD_u64 pos;
-};
-
-//~ Thread Context
-
-// TODO(allen): overrides for get scratch
-typedef struct MD_ThreadContext MD_ThreadContext;
-struct MD_ThreadContext{
-    MD_Arena *scratch_pool[2];
 };
 
 //~ Basic Unicode string types.
@@ -766,10 +762,9 @@ MD_FUNCTION void         MD_ArenaClear(MD_Arena *arena);
 MD_FUNCTION MD_ArenaTemp MD_ArenaBeginTemp(MD_Arena *arena);
 MD_FUNCTION void         MD_ArenaEndTemp(MD_ArenaTemp temp);
 
-//~ Thread Context Functions
+//~ Arena Scratch Pool
 
-MD_FUNCTION void         MD_ThreadInit(MD_ThreadContext *tctx_mem);
-MD_FUNCTION MD_ArenaTemp MD_GetScratch(MD_Arena **conflicts, MD_u32 count);
+MD_FUNCTION MD_ArenaTemp MD_GetScratch(MD_Arena **conflicts, MD_u64 count);
 
 #define MD_ReleaseScratch(scratch) MD_ArenaEndTemp(scratch)
 

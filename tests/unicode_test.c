@@ -16,9 +16,6 @@ void run_test_on_string(MD_String8 string)
 
 int main(void)
 {
-    MD_ThreadContext tctx;
-    MD_ThreadInit(&tctx);
-    
     arena = MD_ArenaAlloc(1ull << 40);
     
     // TODO(allen): throw more at this.

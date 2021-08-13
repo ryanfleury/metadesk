@@ -11,9 +11,6 @@ static MD_Arena *arena = 0;
 
 int main(int argument_count, char **arguments)
 {
-    MD_ThreadContext tctx;
-    MD_ThreadInit(&tctx);
-    
     arena = MD_ArenaAlloc(1ull << 40);
     
     MD_String8 example_code = MD_S8Lit("@struct Foo:\n"
