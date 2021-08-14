@@ -114,6 +114,7 @@ MD_WIN32_Release(void *ptr, MD_u64 size){
 # include <fcntl.h>
 # include <unistd.h>
 # include <sys/syscall.h>
+# include <sys/mman.h>
 // NOTE(mal): To get these constants I need to #define _GNU_SOURCE,
 // which invites non-POSIX behavior I'd rather avoid
 # ifndef O_PATH
