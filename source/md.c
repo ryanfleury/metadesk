@@ -2843,64 +2843,6 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
     return result;
 }
 
-//~ Generation
-
-MD_FUNCTION_IMPL void
-MD_DebugOutputTree(FILE *file, MD_Node *node, int indent_spaces)
-{
-#define MD_PrintIndent() do { for(int i = 0; i < indent_spaces; i += 1) fprintf(file, " "); } while(0)
-    for(MD_Node *tag = node->first_tag; !MD_NodeIsNil(tag); tag = tag->next)
-    {
-        MD_PrintIndent();
-        fprintf(file, "@%.*s", MD_S8VArg(tag->string));
-        if(!MD_NodeIsNil(tag->first_child))
-        {
-            fprintf(file, "(");
-            for(MD_Node *child = tag->first_child; !MD_NodeIsNil(child); child = child->next)
-            {
-                MD_DebugOutputTree(file, child, 0);
-                fprintf(file, ", ");
-            }
-            fprintf(file, ")\n");
-        }
-        else if(!MD_NodeIsNil(tag->next))
-        {
-            fprintf(file, " ");
-        }
-    }
-    if(!MD_NodeIsNil(node->first_tag))
-    {
-        fprintf(file, "\n");
-    }
-    
-    if(node->raw_string.size > 0)
-    {
-        MD_PrintIndent();
-        fprintf(file, "%.*s", MD_S8VArg(node->raw_string));
-    }
-    
-    if(!MD_NodeIsNil(node->first_child))
-    {
-        if(node->raw_string.size > 0)
-        {
-            fprintf(file, ":\n");
-        }
-        MD_PrintIndent();
-        fprintf(file, "{\n");
-        for(MD_Node *child = node->first_child; !MD_NodeIsNil(child); child = child->next)
-        {
-            MD_DebugOutputTree(file, child, indent_spaces+2);
-        }
-        MD_PrintIndent();
-        fprintf(file, "}\n");
-    }
-    else
-    {
-        fprintf(file, "\n");
-    }
-#undef MD_PrintIndent
-}
-
 //~ String Generation
 
 MD_FUNCTION_IMPL MD_String8List
