@@ -2846,7 +2846,7 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 //~ String Generation
 
 MD_FUNCTION_IMPL MD_String8List
-MD_DebugStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string)
+MD_DebugStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string, MD_GenerateFlags flags)
 {
     MD_String8List list = {0};
 #define MD_PrintIndent(_indent_level) do\
@@ -2857,36 +2857,90 @@ MD_S8ListPush(arena, &list, indent_string);\
 }\
 }while(0)
     
-    //- rjf: tags of node
-    for(MD_EachNode(tag, node->first_tag))
+    //- rjf: prev-comment
+    if(flags & MD_GenerateFlag_Comments && node->prev_comment.size != 0)
     {
         MD_PrintIndent(indent);
-        MD_S8ListPush(arena, &list, MD_S8Lit("@"));
-        MD_S8ListPush(arena, &list, tag->string);
-        if(!MD_NodeIsNil(tag->first_child))
+        MD_S8ListPush(arena, &list, MD_S8Lit("/*\n"));
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, node->prev_comment);
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("*/\n"));
+    }
+    
+    //- rjf: tags of node
+    if(flags & MD_GenerateFlag_Tags)
+    {
+        for(MD_EachNode(tag, node->first_tag))
         {
-            int tag_arg_indent = indent + 1 + tag->string.size + 1;
-            MD_S8ListPush(arena, &list, MD_S8Lit("("));
-            for(MD_EachNode(child, tag->first_child))
+            MD_PrintIndent(indent);
+            MD_S8ListPush(arena, &list, MD_S8Lit("@"));
+            MD_S8ListPush(arena, &list, tag->string);
+            if(flags & MD_GenerateFlag_TagArguments && !MD_NodeIsNil(tag->first_child))
             {
-                int child_indent = tag_arg_indent;
-                if(MD_NodeIsNil(child->prev))
+                int tag_arg_indent = indent + 1 + tag->string.size + 1;
+                MD_S8ListPush(arena, &list, MD_S8Lit("("));
+                for(MD_EachNode(child, tag->first_child))
                 {
-                    child_indent = 0;
+                    int child_indent = tag_arg_indent;
+                    if(MD_NodeIsNil(child->prev))
+                    {
+                        child_indent = 0;
+                    }
+                    MD_String8List child_strings = MD_DebugStringListFromNode(arena, child, child_indent, MD_S8Lit(" "), flags);
+                    MD_S8ListConcat(&list, &child_strings);
+                    if(!MD_NodeIsNil(child->next))
+                    {
+                        MD_S8ListPush(arena, &list, MD_S8Lit(",\n"));
+                    }
                 }
-                MD_String8List child_strings = MD_DebugStringListFromNode(arena, child, child_indent, MD_S8Lit(" "));
-                MD_S8ListConcat(&list, &child_strings);
-                if(!MD_NodeIsNil(child->next))
-                {
-                    MD_S8ListPush(arena, &list, MD_S8Lit(",\n"));
-                }
+                MD_S8ListPush(arena, &list, MD_S8Lit(")\n"));
             }
-            MD_S8ListPush(arena, &list, MD_S8Lit(")\n"));
+            else
+            {
+                MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+            }
         }
-        else
-        {
-            MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
-        }
+    }
+    
+    //- rjf: node kind
+    if(flags & MD_GenerateFlag_NodeKind)
+    {
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("// kind: \""));
+        MD_S8ListPush(arena, &list, MD_StringFromNodeKind(node->kind));
+        MD_S8ListPush(arena, &list, MD_S8Lit("\"\n"));
+    }
+    
+    //- rjf: node flags
+    if(flags & MD_GenerateFlag_NodeFlags)
+    {
+        MD_PrintIndent(indent);
+        MD_ArenaTemp scratch = MD_GetScratch(&arena, 1);
+        MD_String8List flag_strs = MD_StringListFromNodeFlags(scratch.arena, node->flags);
+        MD_StringJoin join = { MD_S8Lit(""), MD_S8Lit("|"), MD_S8Lit("") };
+        MD_String8 flag_str = MD_S8ListJoin(arena, flag_strs, &join);
+        MD_S8ListPush(arena, &list, MD_S8Lit("// flags: \""));
+        MD_S8ListPush(arena, &list, flag_str);
+        MD_S8ListPush(arena, &list, MD_S8Lit("\"\n"));
+        MD_ReleaseScratch(scratch);
+    }
+    
+    //- rjf: node string hash
+    if(flags & MD_GenerateFlag_StringHash)
+    {
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Fmt(arena, "// string hash: 0x%llx\n", node->string_hash));
+    }
+    
+    if(flags & MD_GenerateFlag_Location)
+    {
+        MD_PrintIndent(indent);
+        MD_CodeLoc loc = MD_CodeLocFromNode(node);
+        MD_String8 string = MD_S8Fmt(arena, "// location: %.*s:%i:%i\n", loc.filename, (int)loc.line, (int)loc.column);
+        MD_S8ListPush(arena, &list, string);
     }
     
     //- rjf: name of node
@@ -2906,7 +2960,7 @@ MD_S8ListPush(arena, &list, indent_string);\
     }
     
     //- rjf: children list
-    if(!MD_NodeIsNil(node->first_child))
+    if(flags & MD_GenerateFlag_Children && !MD_NodeIsNil(node->first_child))
     {
         if(node->string.size != 0)
         {
@@ -2916,12 +2970,25 @@ MD_S8ListPush(arena, &list, indent_string);\
         MD_S8ListPush(arena, &list, MD_S8Lit("{\n"));
         for(MD_EachNode(child, node->first_child))
         {
-            MD_String8List child_strings = MD_DebugStringListFromNode(arena, child, indent+1, indent_string);
+            MD_String8List child_strings = MD_DebugStringListFromNode(arena, child, indent+1, indent_string, flags);
             MD_S8ListConcat(&list, &child_strings);
             MD_S8ListPush(arena, &list, MD_S8Lit(",\n"));
         }
         MD_PrintIndent(indent);
         MD_S8ListPush(arena, &list, MD_S8Lit("}"));
+    }
+    
+    //- rjf: next-comment
+    if(flags & MD_GenerateFlag_Comments && node->next_comment.size != 0)
+    {
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("\n/*\n"));
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, node->next_comment);
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("*/\n"));
     }
     
 #undef MD_PrintIndent

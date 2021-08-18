@@ -650,6 +650,26 @@ struct MD_ParseResult
     MD_MessageList errors;
 };
 
+//~ String Generation Types
+
+typedef MD_u32 MD_GenerateFlags;
+enum
+{
+    MD_GenerateFlag_Tags         = (1<<0),
+    MD_GenerateFlag_TagArguments = (1<<1),
+    MD_GenerateFlag_Children     = (1<<2),
+    MD_GenerateFlag_Comments     = (1<<3),
+    MD_GenerateFlag_NodeKind     = (1<<4),
+    MD_GenerateFlag_NodeFlags    = (1<<5),
+    MD_GenerateFlag_StringHash   = (1<<6),
+    MD_GenerateFlag_Location     = (1<<7),
+    
+    MD_GenerateFlags_Tree = (MD_GenerateFlag_Tags |
+                             MD_GenerateFlag_TagArguments |
+                             MD_GenerateFlag_Children),
+    MD_GenerateFlags_All  = 0xffffffff,
+};
+
 //~ Command line parsing helper types.
 
 typedef struct MD_CmdLineOption MD_CmdLineOption;
@@ -963,7 +983,7 @@ MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 
 //~ String Generation
 
-MD_FUNCTION MD_String8List MD_DebugStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string);
+MD_FUNCTION MD_String8List MD_DebugStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string, MD_GenerateFlags flags);
 
 //~ Command Line Argument Helper
 
