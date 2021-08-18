@@ -18,7 +18,9 @@ int main(int argument_count, char **arguments)
     {
         for(MD_EachNode(node, root->first_child))
         {
-            MD_DebugOutputTree(stdout, node, 0);
+            MD_String8List strs = MD_DebugStringListFromNode(arena, node, 0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
+            MD_String8 str = MD_S8ListJoin(arena, &strs, 0);
+            fprintf(stdout, "%.*s\n", MD_S8VArg(str));
         }
     }
     
