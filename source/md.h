@@ -961,9 +961,9 @@ MD_FUNCTION void MD_PrintNodeMessageFmt(FILE *out, MD_Node *node, MD_MessageKind
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 
-//~ Generation
+//~ String Generation
 
-MD_FUNCTION void MD_DebugOutputTree(FILE *file, MD_Node *node, int indent_spaces);
+MD_FUNCTION MD_String8List MD_DebugStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string);
 
 //~ Command Line Argument Helper
 

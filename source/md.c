@@ -2901,6 +2901,91 @@ MD_DebugOutputTree(FILE *file, MD_Node *node, int indent_spaces)
 #undef MD_PrintIndent
 }
 
+//~ String Generation
+
+MD_FUNCTION_IMPL MD_String8List
+MD_DebugStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string)
+{
+    MD_String8List list = {0};
+#define MD_PrintIndent(_indent_level) do\
+{\
+for(int i = 0; i < (_indent_level); i += 1)\
+{\
+MD_S8ListPush(arena, &list, indent_string);\
+}\
+}while(0)
+    
+    //- rjf: tags of node
+    for(MD_EachNode(tag, node->first_tag))
+    {
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("@"));
+        MD_S8ListPush(arena, &list, tag->string);
+        if(!MD_NodeIsNil(tag->first_child))
+        {
+            int tag_arg_indent = indent + 1 + tag->string.size + 1;
+            MD_S8ListPush(arena, &list, MD_S8Lit("("));
+            for(MD_EachNode(child, tag->first_child))
+            {
+                int child_indent = tag_arg_indent;
+                if(MD_NodeIsNil(child->prev))
+                {
+                    child_indent = 0;
+                }
+                MD_String8List child_strings = MD_DebugStringListFromNode(arena, child, child_indent, MD_S8Lit(" "));
+                MD_S8ListConcat(&list, &child_strings);
+                if(!MD_NodeIsNil(child->next))
+                {
+                    MD_S8ListPush(arena, &list, MD_S8Lit(",\n"));
+                }
+            }
+            MD_S8ListPush(arena, &list, MD_S8Lit(")\n"));
+        }
+        else
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+        }
+    }
+    
+    //- rjf: name of node
+    if(node->string.size != 0)
+    {
+        MD_PrintIndent(indent);
+        if(node->kind == MD_NodeKind_File)
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("`"));
+            MD_S8ListPush(arena, &list, node->string);
+            MD_S8ListPush(arena, &list, MD_S8Lit("`"));
+        }
+        else
+        {
+            MD_S8ListPush(arena, &list, node->raw_string);
+        }
+    }
+    
+    //- rjf: children list
+    if(!MD_NodeIsNil(node->first_child))
+    {
+        if(node->string.size != 0)
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit(":\n"));
+        }
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("{\n"));
+        for(MD_EachNode(child, node->first_child))
+        {
+            MD_String8List child_strings = MD_DebugStringListFromNode(arena, child, indent+1, indent_string);
+            MD_S8ListConcat(&list, &child_strings);
+            MD_S8ListPush(arena, &list, MD_S8Lit(",\n"));
+        }
+        MD_PrintIndent(indent);
+        MD_S8ListPush(arena, &list, MD_S8Lit("}"));
+    }
+    
+#undef MD_PrintIndent
+    return list;
+}
+
 //~ Command Line Argument Helper
 
 MD_FUNCTION MD_String8List
