@@ -1272,6 +1272,34 @@ MD_PathChopLastSlash(MD_String8 string)
     return string;
 }
 
+MD_FUNCTION_IMPL MD_String8
+MD_S8SkipWhitespace(MD_String8 string)
+{
+    for(MD_u64 i = 0; i < string.size; i += 1)
+    {
+        if(!MD_CharIsSpace(string.str[i]))
+        {
+            string = MD_S8Skip(string, i);
+            break;
+        }
+    }
+    return string;
+}
+
+MD_FUNCTION_IMPL MD_String8
+MD_S8ChopWhitespace(MD_String8 string)
+{
+    for(MD_u64 i = string.size-1; i < string.size; i -= 1)
+    {
+        if(!MD_CharIsSpace(string.str[i]))
+        {
+            string = MD_S8Prefix(string, i+1);
+            break;
+        }
+    }
+    return string;
+}
+
 //~ Numeric Strings
 
 MD_FUNCTION_IMPL MD_u64
@@ -2858,6 +2886,7 @@ MD_S8ListPush(arena, &list, indent_string);\
 }while(0)
     
     //- rjf: prev-comment
+    // TODO(rjf): @node_comments
     if(flags & MD_GenerateFlag_Comments && node->prev_comment.size != 0)
     {
         MD_PrintIndent(indent);
@@ -2915,6 +2944,7 @@ MD_S8ListPush(arena, &list, indent_string);\
     }
     
     //- rjf: node flags
+    // TODO(rjf): @node_comments
     if(flags & MD_GenerateFlag_NodeFlags)
     {
         MD_PrintIndent(indent);
@@ -2939,7 +2969,7 @@ MD_S8ListPush(arena, &list, indent_string);\
     {
         MD_PrintIndent(indent);
         MD_CodeLoc loc = MD_CodeLocFromNode(node);
-        MD_String8 string = MD_S8Fmt(arena, "// location: %.*s:%i:%i\n", loc.filename, (int)loc.line, (int)loc.column);
+        MD_String8 string = MD_S8Fmt(arena, "// location: %.*s:%i:%i\n", MD_S8VArg(loc.filename), (int)loc.line, (int)loc.column);
         MD_S8ListPush(arena, &list, string);
     }
     
@@ -2989,6 +3019,236 @@ MD_S8ListPush(arena, &list, indent_string);\
         MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
         MD_PrintIndent(indent);
         MD_S8ListPush(arena, &list, MD_S8Lit("*/\n"));
+    }
+    
+#undef MD_PrintIndent
+    return list;
+}
+
+MD_FUNCTION_IMPL MD_String8List
+MD_ReconstructedStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string, MD_GenerateFlags flags)
+{
+    // TODO(rjf): // TODO(rjf): // TODO(rjf): 
+    // TODO(rjf): // TODO(rjf): // TODO(rjf): 
+    // TODO(rjf): cleanup pass
+    // TODO(rjf): // TODO(rjf): // TODO(rjf): 
+    // TODO(rjf): // TODO(rjf): // TODO(rjf): 
+    
+    MD_CodeLoc node_loc = MD_CodeLocFromNode(node);
+    
+    MD_String8List list = {0};
+#define MD_PrintIndent(_indent_level) do\
+{\
+for(int i = 0; i < (_indent_level); i += 1)\
+{\
+MD_S8ListPush(arena, &list, indent_string);\
+}\
+}while(0)
+    
+    //- rjf: prev-comment
+    // TODO(rjf): @node_comments
+    if(flags & MD_GenerateFlag_Comments && node->prev_comment.size != 0)
+    {
+        MD_String8 comment = MD_S8SkipWhitespace(MD_S8ChopWhitespace(node->prev_comment));
+        MD_b32 requires_multiline = MD_S8FindSubstring(comment, MD_S8Lit("\n"), 0, 0) < comment.size;
+        MD_PrintIndent(indent);
+        if(requires_multiline)
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("/*\n"));
+        }
+        else
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("// "));
+        }
+        MD_S8ListPush(arena, &list, comment);
+        if(requires_multiline)
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("\n*/\n"));
+        }
+        else
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+        }
+    }
+    
+    //- rjf: tags of node
+    if(flags & MD_GenerateFlag_Tags)
+    {
+        for(MD_EachNode(tag, node->first_tag))
+        {
+            MD_PrintIndent(indent);
+            MD_S8ListPush(arena, &list, MD_S8Lit("@"));
+            MD_S8ListPush(arena, &list, tag->string);
+            if(flags & MD_GenerateFlag_TagArguments && !MD_NodeIsNil(tag->first_child))
+            {
+                int tag_arg_indent = indent + 1 + tag->string.size + 1;
+                MD_S8ListPush(arena, &list, MD_S8Lit("("));
+                MD_u32 last_line = MD_CodeLocFromNode(tag).line;
+                for(MD_EachNode(child, tag->first_child))
+                {
+                    MD_CodeLoc child_loc = MD_CodeLocFromNode(child);
+                    if(child_loc.line != last_line)
+                    {
+                        MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+                        MD_PrintIndent(indent);
+                    }
+                    last_line = child_loc.line;
+                    
+                    int child_indent = tag_arg_indent;
+                    if(MD_NodeIsNil(child->prev))
+                    {
+                        child_indent = 0;
+                    }
+                    MD_String8List child_strings = MD_ReconstructedStringListFromNode(arena, child, child_indent, MD_S8Lit(" "), flags);
+                    MD_S8ListConcat(&list, &child_strings);
+                    if(!MD_NodeIsNil(child->next))
+                    {
+                        MD_S8ListPush(arena, &list, MD_S8Lit(",\n"));
+                    }
+                }
+                MD_S8ListPush(arena, &list, MD_S8Lit(")\n"));
+            }
+            else
+            {
+                MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+            }
+        }
+    }
+    
+    //- rjf: name of node
+    if(node->string.size != 0)
+    {
+        MD_PrintIndent(indent);
+        if(node->kind == MD_NodeKind_File)
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("`"));
+            MD_S8ListPush(arena, &list, node->string);
+            MD_S8ListPush(arena, &list, MD_S8Lit("`"));
+        }
+        else
+        {
+            MD_S8ListPush(arena, &list, node->raw_string);
+        }
+    }
+    
+    //- rjf: children list
+    if(flags & MD_GenerateFlag_Children && !MD_NodeIsNil(node->first_child))
+    {
+        if(node->string.size != 0)
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit(":"));
+        }
+        MD_PrintIndent(indent);
+        
+        // rjf: figure out opener/closer symbols
+        MD_u8 opener_char = 0;
+        MD_u8 closer_char = 0;
+        if(node->flags & MD_NodeFlag_HasParenLeft)
+        {
+            opener_char = '(';
+        }
+        else if(node->flags & MD_NodeFlag_HasBracketLeft)
+        {
+            opener_char = '[';
+        }
+        else if(node->flags & MD_NodeFlag_HasBraceLeft)
+        {
+            opener_char = '{';
+        }
+        if(node->flags & MD_NodeFlag_HasParenRight)
+        {
+            closer_char = ')';
+        }
+        else if(node->flags & MD_NodeFlag_HasBracketRight)
+        {
+            closer_char = ']';
+        }
+        else if(node->flags & MD_NodeFlag_HasBraceRight)
+        {
+            closer_char = '}';
+        }
+        
+        MD_b32 multiline = 0;
+        for(MD_EachNode(child, node->first_child))
+        {
+            MD_CodeLoc child_loc = MD_CodeLocFromNode(child);
+            if(child_loc.line != node_loc.line)
+            {
+                multiline = 1;
+                break;
+            }
+        }
+        
+        if(opener_char != 0)
+        {
+            if(multiline)
+            {
+                MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+                MD_PrintIndent(indent);
+            }
+            MD_S8ListPush(arena, &list, MD_S8(&opener_char, 1));
+        }
+        MD_u32 last_line = node_loc.line;
+        for(MD_EachNode(child, node->first_child))
+        {
+            int child_indent = 0;
+            MD_CodeLoc child_loc = MD_CodeLocFromNode(child);
+            if(child_loc.line != last_line)
+            {
+                MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+                MD_PrintIndent(indent);
+                child_indent = indent+1;
+            }
+            last_line = child_loc.line;
+            MD_String8List child_strings = MD_ReconstructedStringListFromNode(arena, child, child_indent, indent_string, flags);
+            MD_S8ListConcat(&list, &child_strings);
+        }
+        MD_PrintIndent(indent);
+        if(closer_char != 0)
+        {
+            if(last_line != node_loc.line)
+            {
+                MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+                MD_PrintIndent(indent);
+            }
+            MD_S8ListPush(arena, &list, MD_S8(&closer_char, 1));
+        }
+    }
+    
+    //- rjf: trailing separator symbols
+    if(node->flags & MD_NodeFlag_IsBeforeSemicolon)
+    {
+        MD_S8ListPush(arena, &list, MD_S8Lit(";"));
+    }
+    else if(node->flags & MD_NodeFlag_IsBeforeComma)
+    {
+        MD_S8ListPush(arena, &list, MD_S8Lit(","));
+    }
+    
+    //- rjf: next-comment
+    // TODO(rjf): @node_comments
+    if(flags & MD_GenerateFlag_Comments && node->next_comment.size != 0)
+    {
+        MD_String8 comment = MD_S8SkipWhitespace(MD_S8ChopWhitespace(node->next_comment));
+        MD_b32 requires_multiline = MD_S8FindSubstring(comment, MD_S8Lit("\n"), 0, 0) < comment.size;
+        MD_PrintIndent(indent);
+        if(requires_multiline)
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("/*\n"));
+        }
+        else
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("// "));
+        }
+        MD_S8ListPush(arena, &list, comment);
+        if(requires_multiline)
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("\n*/\n"));
+        }
+        else
+        {
+            MD_S8ListPush(arena, &list, MD_S8Lit("\n"));
+        }
     }
     
 #undef MD_PrintIndent
