@@ -44,6 +44,9 @@
 **
 */
 
+// TODO(rjf): implicitly-delimited sets are not having their separator flags
+// appropriately set
+
 //~ Set default values for controls
 #if !defined(MD_DEFAULT_FILE_ITER)
 # define MD_DEFAULT_FILE_ITER 1
@@ -505,6 +508,9 @@ struct MD_Node
     MD_u64 string_hash;
     
     // Comments.
+    // TODO(rjf): @node_comments these are pretty under-powered... should they
+    // just be nodes, maybe? Would that allow for some cool stuff, like comment
+    // hierarchies?
     MD_String8 prev_comment;
     MD_String8 next_comment;
     
@@ -649,6 +655,26 @@ struct MD_ParseResult
     MD_Node *last_node;
     MD_u64 string_advance;
     MD_MessageList errors;
+};
+
+//~ String Generation Types
+
+typedef MD_u32 MD_GenerateFlags;
+enum
+{
+    MD_GenerateFlag_Tags         = (1<<0),
+    MD_GenerateFlag_TagArguments = (1<<1),
+    MD_GenerateFlag_Children     = (1<<2),
+    MD_GenerateFlag_Comments     = (1<<3),
+    MD_GenerateFlag_NodeKind     = (1<<4),
+    MD_GenerateFlag_NodeFlags    = (1<<5),
+    MD_GenerateFlag_StringHash   = (1<<6),
+    MD_GenerateFlag_Location     = (1<<7),
+    
+    MD_GenerateFlags_Tree = (MD_GenerateFlag_Tags |
+                             MD_GenerateFlag_TagArguments |
+                             MD_GenerateFlag_Children),
+    MD_GenerateFlags_All  = 0xffffffff,
 };
 
 //~ Command line parsing helper types.
@@ -846,7 +872,7 @@ MD_FUNCTION MD_String16    MD_S16FromS8(MD_Arena *arena, MD_String8 str);
 MD_FUNCTION MD_String8     MD_S8FromS32(MD_Arena *arena, MD_String32 str);
 MD_FUNCTION MD_String32    MD_S32FromS8(MD_Arena *arena, MD_String8 str);
 
-//~ File Name Strings
+//~ String Skipping/Chopping Helpers
 
 // This is intended for removing extensions.
 MD_FUNCTION MD_String8 MD_PathChopLastPeriod(MD_String8 string);
@@ -859,6 +885,9 @@ MD_FUNCTION MD_String8 MD_PathSkipLastPeriod(MD_String8 string);
 
 // This is intended for getting the folder string from a full path.
 MD_FUNCTION MD_String8 MD_PathChopLastSlash(MD_String8 string);
+
+MD_FUNCTION MD_String8 MD_S8SkipWhitespace(MD_String8 string);
+MD_FUNCTION MD_String8 MD_S8ChopWhitespace(MD_String8 string);
 
 //~ Numeric Strings
 
@@ -962,9 +991,10 @@ MD_FUNCTION void MD_PrintNodeMessageFmt(FILE *out, MD_Node *node, MD_MessageKind
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 
-//~ Generation
+//~ String Generation
 
-MD_FUNCTION void MD_DebugOutputTree(FILE *file, MD_Node *node, int indent_spaces);
+MD_FUNCTION MD_String8List MD_DebugStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string, MD_GenerateFlags flags);
+MD_FUNCTION MD_String8List MD_ReconstructedStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string, MD_GenerateFlags flags);
 
 //~ Command Line Argument Helper
 
