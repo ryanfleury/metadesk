@@ -69,22 +69,32 @@ int main(int argument_count, char **arguments)
     MD_Node *root_list = MD_MakeList(arena);
     {
         printf("Searching for site pages at \"%.*s\"...\n", MD_S8VArg(page_dir_path));
-        MD_FileInfo file_info = {0};
-        for(MD_FileIter it = {0}; MD_FileIterIncrement(arena, &it, page_dir_path, &file_info);)
+        
+        MD_FileIter it = {0};
+        if (MD_FileIterBegin(&it, page_dir_path))
         {
-            if(MD_S8Match(MD_PathSkipLastPeriod(file_info.filename), MD_S8Lit("md"), MD_StringMatchFlag_CaseInsensitive) &&
-               !MD_S8Match(MD_PathSkipLastSlash(MD_PathChopLastPeriod(file_info.filename)),
-                           MD_PathSkipLastSlash(MD_PathChopLastPeriod(site_info_path)),
-                           MD_StringMatchFlag_CaseInsensitive |
-                           MD_StringMatchFlag_SlashInsensitive))
+            for(;;)
             {
-                printf("Processing site page at \"%.*s\"...\n", MD_S8VArg(file_info.filename));
-                MD_String8 folder = MD_PathChopLastSlash(page_dir_path);
-                MD_String8 path = MD_S8Fmt(arena, "%.*s/%.*s",
-                                           MD_S8VArg(folder), MD_S8VArg(file_info.filename));
-                MD_Node *node = MD_ParseWholeFile(arena, path).node;
-                MD_PushNewReference(arena, root_list, node);
+                MD_FileInfo file_info = MD_FileIterNext(arena, &it);
+                if (file_info.filename.size == 0)
+                {
+                    break;
+                }
+                if(MD_S8Match(MD_PathSkipLastPeriod(file_info.filename), MD_S8Lit("md"), MD_StringMatchFlag_CaseInsensitive) &&
+                   !MD_S8Match(MD_PathSkipLastSlash(MD_PathChopLastPeriod(file_info.filename)),
+                               MD_PathSkipLastSlash(MD_PathChopLastPeriod(site_info_path)),
+                               MD_StringMatchFlag_CaseInsensitive |
+                               MD_StringMatchFlag_SlashInsensitive))
+                {
+                    printf("Processing site page at \"%.*s\"...\n", MD_S8VArg(file_info.filename));
+                    MD_String8 folder = MD_PathChopLastSlash(page_dir_path);
+                    MD_String8 path = MD_S8Fmt(arena, "%.*s/%.*s",
+                                               MD_S8VArg(folder), MD_S8VArg(file_info.filename));
+                    MD_Node *node = MD_ParseWholeFile(arena, path).node;
+                    MD_PushNewReference(arena, root_list, node);
+                }
             }
+            MD_FileIterEnd(&it);
         }
     }
     

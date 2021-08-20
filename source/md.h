@@ -9,8 +9,9 @@
 **
 ** Overridable :
 **  "file iteration" ** OPTIONAL
-**   #define MD_IMPL_FileIterIncrement
-**     (MD_Arena*, MD_FileIter*, MD_String8, MD_FileInfo* out) -> MD_b32
+**   #define MD_IMPL_FileIterBegin      (MD_FileIter*, MD_String8) -> MD_b32
+**   #define MD_IMPL_FileIterNext       (MD_Arena*, MD_FileIter*) -> MD_FileInfo
+**   #define MD_IMPL_FileIterEnd        (MD_FileIter*) -> void
 **
 **  "low level memory" ** OPTIONAL (required for default arena)
 **   #define MD_IMPL_Reserve            (MD_u64) -> void*
@@ -688,7 +689,7 @@ typedef struct MD_FileIter MD_FileIter;
 struct MD_FileIter
 {
     // This is opaque state to store OS-specific file-system iteration data.
-    MD_u64 state[2];
+    MD_u8 opaque[640];
 };
 
 //~ Basic Utilities
@@ -977,7 +978,9 @@ MD_FUNCTION MD_i64 MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name);
 //~ File System
 
 MD_FUNCTION MD_String8  MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename);
-MD_FUNCTION MD_b32      MD_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info);
+MD_FUNCTION MD_b32      MD_FileIterBegin(MD_FileIter *it, MD_String8 path);
+MD_FUNCTION MD_FileInfo MD_FileIterNext(MD_Arena *arena, MD_FileIter *it);
+MD_FUNCTION void        MD_FileIterEnd(MD_FileIter *it);
 
 #endif // MD_H
 

@@ -13,53 +13,89 @@
 //- win32 "file iteration"
 #if MD_DEFAULT_FILE_ITER && MD_OS_WINDOWS
 
-#if !defined(MD_IMPL_FileIterIncrement)
-# define MD_IMPL_FileIterIncrement MD_WIN32_FileIterIncrement
+#if !defined(MD_IMPL_FileIterBegin)
+# define MD_IMPL_FileIterBegin MD_WIN32_FileIterBegin
+#endif
+#if !defined(MD_IMPL_FileIterNext)
+# define MD_IMPL_FileIterNext MD_WIN32_FileIterNext
+#endif
+#if !defined(MD_IMPL_FileIterEnd)
+# define MD_IMPL_FileIterEnd MD_WIN32_FileIterEnd
 #endif
 
+typedef struct MD_WIN32_FileIter{
+    HANDLE state;
+    MD_u64 first;
+    WIN32_FIND_DATAW find_data;
+} MD_WIN32_FileIter;
+
+MD_StaticAssert(sizeof(MD_FileIter) >= sizeof(MD_WIN32_FileIter), file_iter_size_check);
+
 static MD_b32
-MD_WIN32_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path,
-                           MD_FileInfo *out_info)
+MD_WIN32_FileIterBegin(MD_FileIter *it, MD_String8 path)
 {
-    MD_b32 result = 0;
+    //- init search
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     
-    MD_ArenaTemp scratch = MD_GetScratch(&arena, 1);
+    MD_u8 c = path.str[path.size - 1];
+    MD_b32 need_star = (c == '/' || c == '\\');
+    MD_String8 cpath = need_star ? MD_S8Fmt(scratch.arena, "%.*s*", MD_S8VArg(path)) : path;
+    MD_String16 cpath16 = MD_S16FromS8(scratch.arena, cpath);
     
-    WIN32_FIND_DATAA find_data = MD_ZERO_STRUCT;
-    HANDLE state = *(HANDLE *)(&it->state[0]);
-    if(state == 0)
-    {
-        MD_b32 need_star = 0;
-        if(path.str[path.size-1] == '/' ||
-           path.str[path.size-1] == '\\')
-        {
-            need_star = 1;
-        }
-        MD_String8 cpath = need_star ? MD_S8Fmt(scratch.arena, "%.*s*", MD_S8VArg(path)) : path;
-        state = FindFirstFileA((char*)cpath.str, &find_data);
-        result = !!state;
-    }
-    else
-    {
-        result = !!FindNextFileA(state, &find_data);
-    }
-    
-    it->state[0] = *(MD_u64 *)(&state);
-    if(result)
-    {
-        out_info->flags = 0;
-        if(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        {
-            out_info->flags |= MD_FileFlag_Directory;
-        }
-        out_info->filename = MD_S8Fmt(arena, "%s", find_data.cFileName);
-        out_info->file_size = ((((MD_u64)find_data.nFileSizeHigh) << 32) |
-                               ((MD_u64)find_data.nFileSizeLow));
-    }
+    WIN32_FIND_DATAW find_data = MD_ZERO_STRUCT;
+    HANDLE state = FindFirstFileW((WCHAR*)cpath16.str, &find_data);
     
     MD_ReleaseScratch(scratch);
     
-    return result;
+    //- fill results
+    MD_b32 result = !!state;
+    if (result){
+        MD_WIN32_FileIter *win32_it = (MD_WIN32_FileIter*)it; 
+        win32_it->state = state;
+        win32_it->first = 1;
+        MD_MemoryCopy(&win32_it->find_data, &find_data, sizeof(find_data));
+    }
+    return(result);
+}
+
+static MD_FileInfo
+MD_WIN32_FileIterNext(MD_Arena *arena, MD_FileIter *it)
+{
+    //- get low-level file info for this step
+    MD_b32 good = 0;
+    
+    MD_WIN32_FileIter *win32_it = (MD_WIN32_FileIter*)it; 
+    WIN32_FIND_DATAW *find_data = &win32_it->find_data;
+    if (win32_it->first){
+        win32_it->first = 0;
+        good = 1;
+    }
+    else{
+        good = FindNextFileW(win32_it->state, find_data);
+    }
+    
+    //- convert to MD_FileInfo
+    MD_FileInfo result = {0};
+    if (good){
+        if (find_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY){
+            result.flags |= MD_FileFlag_Directory;
+        }
+        MD_u16 *filename_base = (MD_u16*)find_data->cFileName;
+        MD_u16 *ptr = filename_base;
+        for (;*ptr != 0; ptr += 1);
+        MD_String16 filename16 = {filename_base, (MD_u64)(ptr - filename_base)};
+        result.filename = MD_S8FromS16(arena, filename16);
+        result.file_size = ((((MD_u64)find_data->nFileSizeHigh) << 32) |
+                            ((MD_u64)find_data->nFileSizeLow));
+    }
+    return(result);
+}
+
+static void
+MD_WIN32_FileIterEnd(MD_FileIter *it)
+{
+    MD_WIN32_FileIter *win32_it = (MD_WIN32_FileIter*)it; 
+    CloseHandle(win32_it->state);
 }
 
 #endif
@@ -3091,12 +3127,31 @@ MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
 }
 
 MD_FUNCTION_IMPL MD_b32
-MD_FileIterIncrement(MD_Arena *arena, MD_FileIter *it, MD_String8 path, MD_FileInfo *out_info)
+MD_FileIterBegin(MD_FileIter *it, MD_String8 path)
 {
-#if !defined(MD_IMPL_FileIterIncrement)
+#if !defined(MD_IMPL_FileIterBegin)
     return(0);
 #else
-    return(MD_IMPL_FileIterIncrement(arena, it, path, out_info));
+    return(MD_IMPL_FileIterBegin(it, path));
+#endif
+}
+
+MD_FUNCTION_IMPL MD_FileInfo
+MD_FileIterNext(MD_Arena *arena, MD_FileIter *it)
+{
+#if !defined(MD_IMPL_FileIterNext)
+    MD_FileInfo result = {0};
+    return(result);
+#else
+    return(MD_IMPL_FileIterNext(arena, it));
+#endif
+}
+
+MD_FUNCTION_IMPL void
+MD_FileIterEnd(MD_FileIter *it)
+{
+#if defined(MD_IMPL_FileIterEnd)
+    MD_IMPL_FileIterEnd(it);
 #endif
 }
 
