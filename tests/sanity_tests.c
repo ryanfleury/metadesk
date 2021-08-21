@@ -1,3 +1,5 @@
+//$ exe //
+
 #include "md.h"
 #include "md_c_helpers.h"
 

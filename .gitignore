@@ -10,3 +10,5 @@
 *.exp
 build
 build/*
+local
+local/*
