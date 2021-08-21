@@ -1,5 +1,9 @@
 #!/bin/bash
 
+###### Usage ##################################################################
+# ./bld_init.sh
+# Clears out the local folder and populates it with default initial scripts.
+
 ##### Declare The Local File Names ############################################
 local_file_names=(
   compiler.sh

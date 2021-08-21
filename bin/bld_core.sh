@@ -1,7 +1,38 @@
 #!/bin/bash
 
 ###### Usage ##################################################################
-# TODO
+# ./bld_core.sh <command> [arguments ...]
+# 
+# command: compile
+#  ./bld_core.sh compile <source-file> [opts ...]
+#  
+#  Creates object files from a single source file and options with a compiler.
+#  Scans the source file for '//$' and '//' and pulls options out of the tokens
+#   in between, combines options from the source file with the passed options.
+#
+#
+# command: link
+#  ./bld_core.sh link <out-name> [input-file ...] -- [opts ...]
+#
+#
+#  Creates binaries (executables and dynamic libraries) from objects,
+#   libraries, and options with a linker.
+#  First automatically compiles source files into objects.
+#  Object files can be specified as '<name>.o' or '<name>.obj', and will be
+#   automatically adjusted according to the selected compiler.
+#  Library files should be specified with '<name>.lib', and will be
+#   automatically adjusted according to the selected linker.
+#  If the option 'dll' appears in the list the linker will produce a dynamic
+#   library (or "shared object").
+#
+#
+# command: lib
+#  ./bld_core.sh lib <out-name> [input-file ...] -- [opts ...]
+#  
+#  Creates library archives (.lib or .a) from objects.
+#  First automatically compiles source files into objects.
+#  Object files can be specified as '<name>.o' or '<name>.obj', and will be
+#   automatically adjusted according to the selected compiler.
 
 ###### Get Paths ##############################################################
 og_path=$PWD
