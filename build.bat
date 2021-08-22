@@ -21,9 +21,6 @@ cl %compile_flags% ..\tests\unicode_test.c
 cl %compile_flags% ..\tests\cpp_build_test.cpp
 popd
 
-rem Stop wasting time getting hung on broken parser
-rem exit
-
 echo.
 echo ~~~ Running Sanity Tests ~~~
 pushd build

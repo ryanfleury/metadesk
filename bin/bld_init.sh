@@ -10,6 +10,7 @@ local_file_names=(
   compile_mode.sh
   ctx.sh
   linker.sh
+  arch.sh
 )
 
 ###### Get Paths ##############################################################

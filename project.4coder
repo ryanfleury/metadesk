@@ -51,19 +51,21 @@ command_list =
 		},
 	},
     {
-        .name = "bld_core test",
+        .name = "all_dev_checks",
         .out = "*compilation*",
         .footer_panel = true,
         .save_dirty_files = true,
         .cursor_at_end = false,
         .cmd =
         {
-          { "git_bash bin\\bld_core.sh", .os = "win" },
+          { "git_bash bin\\all_dev_checks.sh", .os = "win" },
+          { "bin/all_dev_checks.sh", .os = "linux" },
+          { "bin/all_dev_checks.sh", .os = "mac" },
         },
     },
 };
 
-fkey_command[1] = "build";
-fkey_command[2] = "build_with_clang";
+fkey_command[1] = "all_dev_checks";
 
-fkey_command[5] = "bld_core test";
+fkey_command[8] = "build";
+fkey_command[9] = "build_with_clang";

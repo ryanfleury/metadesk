@@ -34,57 +34,29 @@
 #  Object files can be specified as '<name>.o' or '<name>.obj', and will be
 #   automatically adjusted according to the selected compiler.
 
-###### Get Paths ##############################################################
-og_path=$PWD
-cd "$(dirname "$0")"
-cd ..
- root_path=$PWD
-  bin_path="$root_path/bin"
-local_path="$root_path/local"
-build_path="$root_path/build"
-  src_path="$root_path/source"
 
+###### Has Opt Function #######################################################
 
-###### Crack Operating System From Environment ################################
-os="undefined"
-if [ "$OSTYPE" == "win32" ] ||
-   [ "$OSTYPE" == "msys"  ]; then
-  os="windows"
-elif [ "$OSTYPE" == "linux-gnu" ]; then
-  os="linux"
-elif [ "$OSTYPE" == "darwin" ]; then
-  os="osx"
-fi
-
-
-###### Implicit Options #######################################################
-    compiler=$($local_path/compiler.sh)
-      linker=$($local_path/linker.sh)
-compile_mode=$($local_path/compile_mode.sh)
-         ctx=$($local_path/ctx.sh)
-
-implicit_opts=($out_name $compiler $linker $compile_mode $ctx $os)
-
-
-###### Object File Extension ##################################################
-dot_ext_obj=".obj"
-if [[ "$linker" == "clang" || "$linker" == "gcc" ]]; then
-  dot_ext_obj=".o"
-fi
-
-
-###### Binary File Extension ##################################################
-dot_ext_exe=""
-dot_ext_dll=""
-if [ "$os" == "windows" ]; then
-  dot_ext_exe=".exe"
-  dot_ext_dll=".dll"
-elif [ "$os" == "linux" ] || [ "$os" == "mac" ]; then
-  dot_ext_exe=""
-  dot_ext_dll=".so"
-else
-  echo "ERROR: binary extension not defined for OS: $os"
-fi
+function bld_has_opt {
+  ###### parse arguments ####################################################
+  local key_opt=$1
+  local opts=()
+  for ((i=2; i<=$#; i+=1)); do
+    opts+=(${!i})
+  done
+  
+  ###### scan ###############################################################
+  local has_key=0
+  for ((i=0;i<${#opts[@]};i+=1)); do
+    local opt=${opts[i]}
+    if [[ "$opt" == "$key_opt" ]]; then
+      has_key=1
+      break
+    fi
+  done
+  
+  echo $has_key
+}
 
 ###### Flags From Opts Function ###############################################
 
@@ -208,7 +180,7 @@ function bld_compile {
   done
   
   if [ "$in_file" == "" ]; then
-    echo "lib: missing input file"
+    echo "compile: missing input file"
     return 1
   fi
   
@@ -219,14 +191,23 @@ function bld_compile {
   local src_opts=($(bld_opts_from_src $final_in_file))
   local all_opts=($(bld_dedup ${opts[@]} ${src_opts[@]}))
   
-  ###### out file name ######################################################
-  local out_file_base=${final_in_file##*/}
-  local out_file_base_no_ext=${out_file_base%.*}
-  local out_file="$out_file_base_no_ext$dot_ext_obj"
+  ###### diagnostics ########################################################
+  local diagnostics=$(bld_has_opt diagnostics ${all_opts[@]})
   
-  ###### feedback output ####################################################
-  echo "cmp $final_in_file -- ${all_opts[@]}"
-  echo ">>> $out_file"
+  ###### out file name ######################################################
+  local file_base=${final_in_file##*/}
+  local file_base_no_ext=${file_base%.*}
+  local out_file="$file_base_no_ext$dot_ext_obj"
+  
+  ###### diagnostic output ##################################################
+  if [ "$diagnostics" == "1" ]; then
+    echo "cmp $final_in_file -- ${all_opts[@]}"
+  fi
+  
+  ###### print source file (if the compiler doesn't do it automatically) ####
+  if [ "$manually_print_target" == "1" ]; then
+    echo "$file_base"
+  fi
   
   ###### get real flags #####################################################
   local flags_file=$bin_path/compiler_flags.txt
@@ -264,16 +245,19 @@ function bld_link {
   done
   
   if [ "$out_name" == "" ]; then
-    echo "lib: missing output name"
+    echo "link: missing output name"
     return 1
   fi
   if [ "${#in_files}" == "0" ]; then
-    echo "lib: missing input file(s)"
+    echo "link: missing input file(s)"
     return 1
   fi
   
   ###### finish options #####################################################
   local all_opts=($(bld_dedup ${opts[@]}))
+  
+  ###### diagnostics ########################################################
+  local diagnostics=$(bld_has_opt diagnostics ${all_opts[@]})
   
   ###### sort in files ######################################################
   local in_src=()
@@ -343,10 +327,14 @@ function bld_link {
   fi
   out_file="$out_name$dot_ext_out"
   
-  ###### feedback output ####################################################
+  ###### diagnostic output ##################################################
   local final_in_files="${interm_obj[@]} ${in_obj[@]} ${in_lib[@]}"
-  echo "lnk $final_in_files -- ${all_opts[@]}"
-  echo ">>> $out_file"
+  if [ "$diagnostics" == "1" ]; then
+    echo "lnk $final_in_files -- ${all_opts[@]}"
+  fi
+  
+  ###### print output file ##################################################
+  echo "$out_file"
   
   ###### move to output folder ##############################################
   mkdir -p "$build_path"
@@ -356,9 +344,6 @@ function bld_link {
   if [ "$linker_kind" == "link" ]; then
     $linker -OUT:"$out_file" $flags $final_in_files
   elif [ "$linker_kind" == "clang" ]; then
-    # TODO(allen): setup to use clang as the linker driver - much easier way
-    # thank trying to use the actual linker on unix
-    # NOTE(mal): You mean like this? (taking into account that $linker evaluates to clang)
     $linker -o "$out_file" $flags $final_in_files
   else
     echo "ERROR: invokation not defined for this linker"
@@ -398,6 +383,9 @@ function bld_lib {
   
   ###### finish options #####################################################
   local all_opts=($(bld_dedup ${opts[@]}))
+  
+  ###### diagnostics ########################################################
+  local diagnostics=$(bld_has_opt diagnostics ${all_opts[@]})
   
   ###### sort in files ######################################################
   local in_src=()
@@ -449,10 +437,14 @@ function bld_lib {
     echo "ERROR: static library output not defined for OS: $os"
   fi
   
-  ###### feedback output ####################################################
+  ###### diagnostic output ##################################################
   local final_in_files="${interm_obj[@]} ${in_obj[@]}"
-  echo "lib $final_in_files -- ${all_opts[@]}"
-  echo ">>> $out_file"
+  if [ "$diagnostics" == "1" ]; then
+    echo "lib $final_in_files -- ${all_opts[@]}"
+  fi
+  
+  ###### print output file ##################################################
+  echo "$out_file"
   
   ###### move to output folder ##############################################
   mkdir -p "$build_path"
@@ -464,7 +456,7 @@ function bld_lib {
   elif [ "$os" == "linux" || "$os" == "mac" ]; then
     # TODO(allen): invoke ar here - make sure to delete the original .a first
     # because ar does not (seem) to replace the output file, just append
-    echo "TODO: implement ar path in bld_core.sh:library"
+    echo "TODO: implement ar path in bld_core.sh:bld_lib"
     false
   else
     echo "ERROR: static library invokation not defined for OS: $os"
@@ -510,11 +502,117 @@ function bld_unit {
 }
 
 
+###### Show Ctx Function ######################################################
+
+function bld_show_ctx {
+  local mod_opts=()
+  for ((i=0;i<${#implicit_opts[@]};i+=1)); do
+    local mod_opt="[${implicit_opts[i]}]"
+    mod_opts+=($mod_opt)
+  done
+  echo "${mod_opts[@]}"
+}
+
+
+###### Get Paths ##############################################################
+og_path=$PWD
+cd "$(dirname "$0")"
+cd ..
+
+ root_path=$PWD
+  bin_path="$root_path/bin"
+local_path="$root_path/local"
+build_path="$root_path/build"
+  src_path="$root_path/source"
+
+
+###### Crack Operating System From Environment ################################
+os="undefined"
+if [ "$OSTYPE" == "win32" ] ||
+   [ "$OSTYPE" == "msys"  ]; then
+  os="windows"
+elif [ "$OSTYPE" == "linux-gnu" ]; then
+  os="linux"
+elif [ "$OSTYPE" == "darwin" ]; then
+  os="osx"
+fi
+
+
+###### Implicit Options #######################################################
+    compiler=$($local_path/compiler.sh)
+      linker=$($local_path/linker.sh)
+compile_mode=$($local_path/compile_mode.sh)
+        arch=$($local_path/arch.sh)
+         ctx=$($local_path/ctx.sh)
+
+
+###### Apply Override #########################################################
+parse_i="1"
+override_list=()
+if [ "${!parse_i}" == "override" ]; then
+  for ((parse_i+=1; parse_i<=$#; parse_i+=1)); do
+    arg="${!parse_i}"
+    if [ "$arg" == "--" ]; then
+      ((parse_i+=1))
+      break
+    fi
+    if [[ "$arg" == *":"* ]]; then
+      arg_key="${arg%%:*}"
+      arg_val="${arg#*:}"
+      declare "${arg_key}=$arg_val"
+      override_list+=("[$arg]")
+    fi
+  done
+fi
+
+
+###### Finish Implicit Options ################################################
+implicit_opts=($out_name $compiler $linker $compile_mode $os $arch $ctx)
+
+
+###### Object File Extension ##################################################
+dot_ext_obj=".obj"
+if [[ "$linker" == "clang" || "$linker" == "gcc" ]]; then
+  dot_ext_obj=".o"
+fi
+
+
+###### Binary File Extension ##################################################
+dot_ext_exe=""
+dot_ext_dll=""
+if [ "$os" == "windows" ]; then
+  dot_ext_exe=".exe"
+  dot_ext_dll=".dll"
+elif [ "$os" == "linux" ] || [ "$os" == "mac" ]; then
+  dot_ext_exe=""
+  dot_ext_dll=".so"
+else
+  echo "ERROR: binary extension not defined for OS: $os"
+fi
+
+
+###### Binary File Extension ##################################################
+manually_print_target="0"
+if [ "$compiler" == "clang" ]; then
+  manually_print_target="1"
+fi
+
+
+###### Diagnostics ############################################################
+top_diagnostics=$(bld_has_opt diagnostics ${implicit_opts[@]})
+
+
+###### Overrides Diagnostics ##################################################
+if [[ "$top_diagnostics" == "1" && "${#override_list}" != "0" ]]; then
+  echo "${override_list[@]} {"
+fi
+
+
 ###### Control ################################################################
-command=$1
+command=${!parse_i}
 args=()
-for ((i=2; i<=$#; i+=1)); do
-  args+=(${!i})
+for ((parse_i+=1; parse_i<=$#; parse_i+=1)); do
+  args+=(${!parse_i})
 done
 
 if [ "$command" == "compile" ]; then
@@ -525,8 +623,16 @@ elif [ "$command" == "lib" ]; then
   bld_lib ${args[@]}
 elif [ "$command" == "unit" ]; then
   bld_unit ${args[@]}
+elif [ "$command" == "show_ctx" ]; then
+  bld_show_ctx
 else
   echo "'$command' not a recognized command"
+fi
+
+
+###### Overrides Diagnostics ##################################################
+if [[ "$top_diagnostics" == "1" && "${#override_list}" != "0" ]]; then
+  echo "}"
 fi
 
 

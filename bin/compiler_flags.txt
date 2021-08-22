@@ -1,6 +1,16 @@
 ###### Visual Studio Compiler #################################################
 cl>-nologo
-cl>-Zi
 cl>-FC
 cl>-MP
 
+
+###### Clang Compiler #########################################################
+clang>-Wno-deprecated-declarations
+clang>-Wno-pointer-sign
+clang>-Wno-writable-strings
+clang>-Wno-unknown-warning-option
+
+
+###### Debug ##################################################################
+debug>cl>-Zi
+debug>clang>-g
