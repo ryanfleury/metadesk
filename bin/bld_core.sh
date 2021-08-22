@@ -524,7 +524,6 @@ elif [ "$command" == "link" ]; then
 elif [ "$command" == "lib" ]; then
   bld_lib ${args[@]}
 elif [ "$command" == "unit" ]; then
-  echo bld_unit ${args[@]}
   bld_unit ${args[@]}
 else
   echo "'$command' not a recognized command"

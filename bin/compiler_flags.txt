@@ -1,2 +1,6 @@
 ###### Visual Studio Compiler #################################################
 cl>-nologo
+cl>-Zi
+cl>-FC
+cl>-MP
+
