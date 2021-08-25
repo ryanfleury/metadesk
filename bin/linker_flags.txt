@@ -1,1 +1,7 @@
-###### TODO ###################################################################
+###### link ###################################################################
+lld-link>-nologo
+lld-link>-DEFAULTLIB:libcmt
+lld-link>-OPT:REF
+lld-link>-INCREMENTAL:NO
+lld-link>debug>-DEBUG
+lld-link>dll>-DLL

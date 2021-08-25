@@ -198,16 +198,6 @@ function bld_compile {
   local file_base_no_ext=${file_base%.*}
   local out_file="$file_base_no_ext$dot_ext_obj"
   
-  ###### diagnostic output ##################################################
-  if [ "$diagnostics" == "1" ]; then
-    echo "cmp $final_in_file -- ${all_opts[@]}"
-  fi
-  
-  ###### print source file (if the compiler doesn't do it automatically) ####
-  if [ "$manually_print_target" == "1" ]; then
-    echo "$file_base"
-  fi
-  
   ###### get real flags #####################################################
   local flags_file=$bin_path/compiler_flags.txt
   local flags=$(bld_flags_from_opts $flags_file ${all_opts[@]})
@@ -220,8 +210,21 @@ function bld_compile {
   rm -f "$out_file_base.o"
   rm -f "$out_file_base.obj"
   
-  ###### compile ############################################################
+  ###### get flags ##########################################################
   local all_flags="-c -I$src_path ${flags}"
+  
+  ###### diagnostic output ##################################################
+  if [ "$diagnostics" == "1" ]; then
+    echo "cmp $final_in_file -- ${all_opts[@]}"
+    echo $compiler "$final_in_file" $all_flags
+  fi
+  
+  ###### print source file (if the compiler doesn't do it automatically) ####
+  if [ "$manually_print_target" == "1" ]; then
+    echo "$file_base"
+  fi
+  
+  ###### compile ############################################################
   $compiler "$final_in_file" $all_flags
 }
 
@@ -326,23 +329,28 @@ function bld_link {
   fi
   out_file="$out_name$dot_ext_out"
   
+  ###### move to output folder ##############################################
+  mkdir -p "$build_path"
+  cd $build_path
+  
   ###### diagnostic output ##################################################
   local final_in_files="${interm_obj[@]} ${in_obj[@]} ${in_lib[@]}"
   if [ "$diagnostics" == "1" ]; then
     echo "lnk $final_in_files -- ${all_opts[@]}"
   fi
   
-  ###### print output file ##################################################
-  echo "$out_file"
-  
-  ###### move to output folder ##############################################
-  mkdir -p "$build_path"
-  cd $build_path
-  
   ###### link ###############################################################
   if [ "$linker_kind" == "link" ]; then
+    if [ "$diagnostics" == "1" ]; then
+      echo $linker -OUT:"$out_file" $flags $final_in_files
+    fi
+    echo "$out_file"
     $linker -OUT:"$out_file" $flags $final_in_files
   elif [ "$linker_kind" == "clang" ]; then
+    if [ "$diagnostics" == "1" ]; then
+      echo $linker -o "$out_file" $flags $final_in_files
+    fi
+    echo "$out_file"
     $linker -o "$out_file" $flags $final_in_files
   else
     echo "ERROR: invokation not defined for this linker"
@@ -570,9 +578,9 @@ implicit_opts=($out_name $compiler $linker $compile_mode $os $arch $ctx)
 
 
 ###### Object File Extension ##################################################
-dot_ext_obj=".obj"
-if [[ "$linker" == "clang" || "$linker" == "gcc" ]]; then
-  dot_ext_obj=".o"
+dot_ext_obj=".o"
+if [[ "$compiler" == "cl" ]]; then
+  dot_ext_obj=".obj"
 fi
 
 

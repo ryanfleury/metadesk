@@ -301,7 +301,7 @@ MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_si
 static MD_Arena*
 MD_ArenaDefaultAlloc(MD_u64 cap){
     void *mem = MD_IMPL_Reserve(cap);
-    MD_u64 cmt = MD_ClampBot(MD_ArenaDefault_CommitSize, cap);
+    MD_u64 cmt = MD_ClampTop(cap, MD_ArenaDefault_CommitSize);
     MD_IMPL_Commit(mem, cmt);
     
     MD_ArenaDefault *arena = (MD_ArenaDefault*)mem;
