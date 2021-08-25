@@ -1,6 +1,27 @@
 // LICENSE AT END OF FILE (MIT).
 
 //~/////////////////////////////////////////////////////////////////////////////
+/////////////////////////// CRT Implementation /////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+#if MD_DEFAULT_MEMSET
+
+#include <stdlib.h>
+#include <string.h>
+
+#if !defined(MD_IMPL_Memset)
+# define MD_IMPL_Memset MD_CRT_Memset
+#endif
+#if !defined(MD_IMPL_Memmove)
+# define MD_IMPL_Memmove MD_CRT_Memmove
+#endif
+
+#define MD_CRT_Memset memset
+#define MD_CRT_Memmove memmove
+
+#endif
+
+//~/////////////////////////////////////////////////////////////////////////////
 /////////////////////////// Win32 Implementation ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -458,22 +479,6 @@ static MD_Node _md_nil_node =
     &_md_nil_node,         // ref_target
 };
 
-//~ Memory Operations
-
-MD_FUNCTION_IMPL void*
-MD_MemoryZero(void *memory, MD_u64 size)
-{
-    memset(memory, 0, size);
-    return(memory);
-}
-
-MD_FUNCTION_IMPL void*
-MD_MemoryCopy(void *dest, void *src, MD_u64 size)
-{
-    memcpy(dest, src, size);
-    return(dest);
-}
-
 //~ Arena Functions
 
 MD_FUNCTION_IMPL MD_Arena*
@@ -803,7 +808,7 @@ MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push)
             list->last = to_push->last;
         }
     }
-    MD_MemoryZero(to_push, sizeof(*to_push));
+    MD_MemoryZeroStruct(to_push);
 }
 
 MD_FUNCTION_IMPL MD_String8List
@@ -1978,7 +1983,7 @@ MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
     {
         *list = *to_push;
     }
-    MD_MemoryZero(to_push, sizeof(*to_push));
+    MD_MemoryZeroStruct(to_push);
 }
 
 MD_FUNCTION_IMPL MD_ParseResult
@@ -2331,7 +2336,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
                 }
                 else if(next_token.kind == MD_TokenKind_Newline)
                 {
-                    MD_MemoryZero(&comment_token, sizeof(comment_token));
+                    MD_MemoryZeroStruct(&comment_token);
                 }
             }
             else if((token.kind & MD_TokenGroup_Whitespace) != 0)
@@ -3391,8 +3396,7 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
             
             //- rjf: insert the fully parsed option
             {
-                MD_CmdLineOption *opt = MD_PushArray(arena, MD_CmdLineOption, 1);
-                MD_MemoryZero(opt, sizeof(*opt));
+                MD_CmdLineOption *opt = MD_PushArrayZero(arena, MD_CmdLineOption, 1);
                 opt->name = option_name;
                 opt->values = option_values;
                 if(cmdln.last_option == 0)

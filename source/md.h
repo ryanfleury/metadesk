@@ -5,9 +5,16 @@
 #ifndef MD_H
 #define MD_H
 
+// TODO(rjf): implicitly-delimited sets are not having their separator flags
+// appropriately set
+
 /* NOTE(allen): Notes on overrides/macro options:
 **
 ** Overridable :
+**  "memset" ** REQUIRED (default crt-based implementation available)
+**   #define MD_IMPL_Memset             (void*, int, MD_u64) -> void*
+**   #define MD_IMPL_Memmove            (void*, void*, MD_u64) -> void*
+**
 **  "file iteration" ** OPTIONAL
 **   #define MD_IMPL_FileIterBegin      (MD_FileIter*, MD_String8) -> MD_b32
 **   #define MD_IMPL_FileIterNext       (MD_Arena*, MD_FileIter*) -> MD_FileInfo
@@ -37,6 +44,7 @@
 **
 ** Default Implementation Controls
 **  These controls default to '1' i.e. 'enabled'
+**   #define MD_DEFAULT_MEMSET    -> construct "memset" from CRT
 **   #define MD_DEFAULT_FILE_ITER -> construct "file iteration" from OS headers
 **   #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS headers
 **   #define MD_DEFAULT_ARENA     -> construct "arena" from "low level memory"
@@ -44,10 +52,10 @@
 **
 */
 
-// TODO(rjf): implicitly-delimited sets are not having their separator flags
-// appropriately set
-
 //~ Set default values for controls
+#if !defined(MD_DEFAULT_MEMSET)
+# define MD_DEFAULT_MEMSET 1
+#endif
 #if !defined(MD_DEFAULT_FILE_ITER)
 # define MD_DEFAULT_FILE_ITER 1
 #endif
@@ -293,10 +301,8 @@
 #define MD_GLOBAL static
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <string.h>
 #define STB_SPRINTF_DECORATE(name) md_stbsp_##name
 #include "md_stb_sprintf.h"
 
@@ -774,8 +780,10 @@ struct MD_FileIter
 
 //~ Memory Operations
 
-MD_FUNCTION void* MD_MemoryZero(void *memory, MD_u64 size);
-MD_FUNCTION void* MD_MemoryCopy(void *dst, void *src, MD_u64 size);
+#define MD_MemorySet(p,v,z)    (MD_IMPL_Memset(p,v,z))
+#define MD_MemoryZero(p,z)     (MD_IMPL_Memset(p,0,z))
+#define MD_MemoryZeroStruct(p) (MD_IMPL_Memset(p,0,sizeof(*(p))))
+#define MD_MemoryCopy(d,s,z)   (MD_IMPL_Memmove(d,s,z))
 
 //~ Arena Functions
 
