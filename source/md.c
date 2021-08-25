@@ -301,7 +301,7 @@ MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_si
 static MD_Arena*
 MD_ArenaDefaultAlloc(MD_u64 cap){
     void *mem = MD_IMPL_Reserve(cap);
-    MD_u64 cmt = ((MD_ArenaDefault_CommitSize < cap) ? MD_ArenaDefault_CommitSize : cap);
+    MD_u64 cmt = MD_ClampBot(MD_ArenaDefault_CommitSize, cap);
     MD_IMPL_Commit(mem, cmt);
     
     MD_ArenaDefault *arena = (MD_ArenaDefault*)mem;
@@ -325,11 +325,11 @@ MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size){
     MD_u8 *buf = (MD_u8*)arena;
     if (arena->pos + size <= arena->cap){
         MD_u64 pos = arena->pos;
-        MD_u64 pos_clamped = ((pos > MD_IMPL_ArenaHeaderSize) ? pos : MD_IMPL_ArenaHeaderSize);
+        MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, pos);
         MD_u64 new_pos = pos_clamped + size;
         MD_u64 align_m1 = arena->align - 1;
         MD_u64 new_pos_aligned = (new_pos + align_m1)&(~align_m1);
-        MD_u64 new_pos_clamped = ((arena->cap < new_pos_aligned) ? arena->cap : new_pos_aligned);
+        MD_u64 new_pos_clamped = MD_ClampTop(new_pos_aligned, arena->cap);
         result = buf + pos;
         arena->pos = new_pos_aligned;
         
@@ -346,7 +346,7 @@ MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size){
 
 static void
 MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos){
-    MD_u64 pos_clamped = ((pos > MD_IMPL_ArenaHeaderSize) ? pos : MD_IMPL_ArenaHeaderSize);
+    MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, pos);
     arena->pos = pos_clamped;
 }
 
@@ -496,8 +496,7 @@ MD_FUNCTION_IMPL void
 MD_ArenaPutBack(MD_Arena *arena, MD_u64 size){
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 new_pos = pos - size;
-    MD_u64 new_pos_clamped = ((new_pos < MD_IMPL_ArenaHeaderSize) ?
-                              MD_IMPL_ArenaHeaderSize :  new_pos);
+    MD_u64 new_pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, new_pos);
     MD_IMPL_ArenaPopTo(arena, new_pos_clamped);
 }
 
@@ -511,7 +510,7 @@ MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary){
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 align_m1 = boundary - 1;
     MD_u64 new_pos_aligned = (pos + align_m1)&(~align_m1);
-    MD_u64 new_pos_clamped = ((new_pos_aligned > arena->cap) ? new_pos_aligned : arena->cap);
+    MD_u64 new_pos_clamped = MD_ClampTop(new_pos_aligned, arena->cap);
     if (new_pos_clamped > pos){
         MD_u64 amt = new_pos_clamped - pos;
         MD_MemoryZero(MD_IMPL_ArenaPush(arena, amt), amt);
@@ -978,7 +977,10 @@ MD_S8Stylize(MD_Arena *arena, MD_String8 string, MD_IdentifierStyle word_style,
                     
                     case MD_IdentifierStyle_LowerCamelCase:
                     {
-                        result.str[write_pos] = node == words.first ? MD_CharToLower(result.str[write_pos]) : MD_CharToUpper(result.str[write_pos]);
+                        MD_b32 is_first = (node == words.first);
+                        result.str[write_pos] = (is_first ?
+                                                 MD_CharToLower(result.str[write_pos]) :
+                                                 MD_CharToUpper(result.str[write_pos]));
                         for(MD_u64 i = write_pos+1; i < write_pos + node->string.size; i += 1)
                         {
                             result.str[i] = MD_CharToLower(result.str[i]);
@@ -3332,7 +3334,7 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
         {
             MD_u64 colon_signifier_pos = MD_S8FindSubstring(option_name, MD_S8Lit(":"), 0, 0);
             MD_u64 equal_signifier_pos = MD_S8FindSubstring(option_name, MD_S8Lit("="), 0, 0);
-            MD_u64 signifier_pos = colon_signifier_pos > equal_signifier_pos ? equal_signifier_pos : colon_signifier_pos;
+            MD_u64 signifier_pos = MD_Min(colon_signifier_pos, equal_signifier_pos);
             if(signifier_pos < option_name.size)
             {
                 first_value = MD_S8Skip(option_name, signifier_pos+1);

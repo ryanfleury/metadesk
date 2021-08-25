@@ -2,7 +2,7 @@
 
 ###### Usage ##################################################################
 # ./bld_core.sh <command> [arguments ...]
-# 
+#
 # command: compile
 #  ./bld_core.sh compile <source-file> [opts ...]
 #  
@@ -13,7 +13,6 @@
 #
 # command: link
 #  ./bld_core.sh link <out-name> [input-file ...] -- [opts ...]
-#
 #
 #  Creates binaries (executables and dynamic libraries) from objects,
 #   libraries, and options with a linker.

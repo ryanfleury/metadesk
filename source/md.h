@@ -724,6 +724,11 @@ struct MD_FileIter
 #define MD_StaticAssert(c,label) MD_u8 MD_static_assert_##label[(c)?(1):(-1)]
 #define MD_ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
 
+#define MD_Min(a,b) (((a)<(b))?(a):(b))
+#define MD_Max(a,b) (((a)>(b))?(a):(b))
+#define MD_ClampBot(a,b) MD_Max(a,b)
+#define MD_ClampTop(a,b) MD_Min(a,b)
+
 //~ Linked List Macros.
 
 // terminator modes
