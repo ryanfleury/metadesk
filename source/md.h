@@ -20,6 +20,9 @@
 **   #define MD_IMPL_FileIterNext       (MD_Arena*, MD_FileIter*) -> MD_FileInfo
 **   #define MD_IMPL_FileIterEnd        (MD_FileIter*) -> void
 **
+**  "file load" ** OPTIONAL
+**   #define MD_IMPL_LoadEntireFile     (MD_Arena*, MD_String8 filename) -> MD_String8   
+**
 **  "low level memory" ** OPTIONAL (required for default arena)
 **   #define MD_IMPL_Reserve            (MD_u64) -> void*
 **   #define MD_IMPL_Commit             (void*, MD_u64) -> void
@@ -56,6 +59,9 @@
 #if !defined(MD_DEFAULT_MEMSET)
 # define MD_DEFAULT_MEMSET 1
 #endif
+#if !defined(MD_DEFAULT_FILE_LOAD)
+# define MD_DEFAULT_FILE_LOAD 1
+#endif
 #if !defined(MD_DEFAULT_FILE_ITER)
 # define MD_DEFAULT_FILE_ITER 1
 #endif
@@ -67,6 +73,10 @@
 #endif
 #if !defined(MD_DEFAULT_SCRATCH)
 # define MD_DEFAULT_SCRATCH 1
+#endif
+
+#if !defined(MD_ENABLE_PRINT_HELPERS)
+# define MD_ENABLE_PRINT_HELPERS 0
 #endif
 
 
@@ -297,11 +307,14 @@
 
 //~ Common defines
 
-#define MD_FUNCTION
+#if !defined(MD_FUNCTION)
+# define MD_FUNCTION
+#endif
+#define MD_FUNCTION_IMPL MD_FUNCTION
+
 #define MD_GLOBAL static
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdarg.h>
 #define STB_SPRINTF_DECORATE(name) md_stbsp_##name
 #include "md_stb_sprintf.h"
@@ -624,7 +637,7 @@ typedef enum MD_MessageKind
     MD_MessageKind_Note,
     MD_MessageKind_Warning,
     MD_MessageKind_Error,
-    MD_MessageKind_CatastrophicError,
+    MD_MessageKind_FatalError,
 }
 MD_MessageKind;
 
@@ -865,6 +878,9 @@ MD_FUNCTION MD_String8     MD_S8Fmt(MD_Arena *arena, char *fmt, ...);
 
 MD_FUNCTION void           MD_S8ListPush(MD_Arena *arena, MD_String8List *list,
                                          MD_String8 string);
+MD_FUNCTION void           MD_S8ListPushFmt(MD_Arena *arena, MD_String8List *list,
+                                            char *fmt, ...);
+
 MD_FUNCTION void           MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push);
 MD_FUNCTION MD_String8List MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count,
                                       MD_String8 *splits);
@@ -994,10 +1010,23 @@ it##_r = it##_r->next, it = MD_NodeFromReference(it##_r)
 
 //~ Error/Warning Helpers
 
-MD_FUNCTION void MD_PrintMessage(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION void MD_PrintMessageFmt(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...);
-MD_FUNCTION void MD_PrintNodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION void MD_PrintNodeMessageFmt(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...);
+MD_FUNCTION MD_String8 MD_StringFromMessageKind(MD_MessageKind kind);
+
+#define MD_FmtCodeLoc "%.*s:%i:%i:"
+#define MD_CodeLocVArg(loc) MD_S8VArg((loc).filename), (loc).line, (loc).column
+
+MD_FUNCTION MD_String8 MD_FormatMessage(MD_Arena *arena, MD_CodeLoc loc, MD_MessageKind kind,
+                                        MD_String8 string);
+
+#if MD_ENABLE_PRINT_HELPERS
+#include <stdio.h>
+MD_FUNCTION void MD_PrintMessage(FILE *file, MD_CodeLoc loc, MD_MessageKind kind,
+                                 MD_String8 string);
+MD_FUNCTION void MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind,
+                                    char *fmt, ...);
+MD_FUNCTION void MD_PrintNodeMessageFmt(FILE *file, MD_Node *node, MD_MessageKind kind,
+                                        char *fmt, ...);
+#endif
 
 //~ Tree Comparison/Verification
 

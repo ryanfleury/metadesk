@@ -21,6 +21,41 @@
 
 #endif
 
+#if MD_DEFAULT_FILE_LOAD
+
+#include <stdio.h>
+
+#if !defined(MD_IMPL_LoadEntireFile)
+# define MD_IMPL_LoadEntireFile MD_CRT_LoadEntireFile
+#endif
+
+MD_FUNCTION_IMPL MD_String8
+MD_CRT_LoadEntireFile(MD_Arena *arena, MD_String8 filename){
+    MD_ArenaTemp scratch = MD_GetScratch(&arena, 1);
+    MD_String8 file_contents = MD_ZERO_STRUCT;
+    MD_String8 filename_copy = MD_S8Copy(scratch.arena, filename);
+    FILE *file = fopen((char*)filename_copy.str, "rb");
+    if(file != 0)
+    {
+        fseek(file, 0, SEEK_END);
+        MD_u64 file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+        file_contents.str = MD_PushArray(arena, MD_u8, file_size+1);
+        if(file_contents.str)
+        {
+            file_contents.size = file_size;
+            fread(file_contents.str, 1, file_size, file);
+            file_contents.str[file_contents.size] = 0;
+        }
+        fclose(file);
+    }
+    MD_ReleaseScratch(scratch);
+    return file_contents;
+}
+
+#endif
+
+
 //~/////////////////////////////////////////////////////////////////////////////
 /////////////////////////// Win32 Implementation ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -449,7 +484,6 @@ MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count){
 //////////////////////// MD Library Implementation /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-#define MD_FUNCTION_IMPL MD_FUNCTION
 #define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
 #define STB_SPRINTF_IMPLEMENTATION
@@ -771,10 +805,9 @@ MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
 MD_FUNCTION_IMPL MD_String8
 MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
 {
-    MD_String8 result = MD_ZERO_STRUCT;
     va_list args;
     va_start(args, fmt);
-    result = MD_S8FmtV(arena, fmt, args);
+    MD_String8 result = MD_S8FmtV(arena, fmt, args);
     va_end(args);
     return result;
 }
@@ -788,6 +821,16 @@ MD_S8ListPush(MD_Arena *arena, MD_String8List *list, MD_String8 string)
     MD_QueuePush(list->first, list->last, node);
     list->node_count += 1;
     list->total_size += string.size;
+}
+
+MD_FUNCTION_IMPL void
+MD_S8ListPushFmt(MD_Arena *arena, MD_String8List *list, char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    MD_String8 string = MD_S8FmtV(arena, fmt, args);
+    va_end(args);
+    MD_S8ListPush(arena, list, string);
 }
 
 MD_FUNCTION_IMPL void
@@ -2229,7 +2272,7 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
         // NOTE(rjf): @error We didn't get a closer for the set
         MD_String8 error_str = MD_S8Fmt(arena, "Unbalanced \"%c\"", set_opener);
         MD_Message *error = MD_MakeTokenError(arena, string, initial_token,
-                                              MD_MessageKind_CatastrophicError, error_str);
+                                              MD_MessageKind_FatalError, error_str);
         MD_MessageListPush(&result.errors, error);
     }
     
@@ -2381,7 +2424,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
                 // NOTE(rjf): @error Unexpected set closing symbol
                 MD_String8 error_str = MD_S8Fmt(arena, "Unbalanced \"%c\"", c);
                 MD_Message *error = MD_MakeTokenError(arena, string, unnamed_set_opener,
-                                                      MD_MessageKind_CatastrophicError, error_str);
+                                                      MD_MessageKind_FatalError, error_str);
                 MD_MessageListPush(&result.errors, error);
                 off += unnamed_set_opener.raw_string.size;
             }
@@ -2546,7 +2589,7 @@ MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename)
     {
         // NOTE(rjf): @error File failing to load
         MD_String8 error_str = MD_S8Fmt(arena, "Could not read file \"%.*s\"", MD_S8VArg(filename));
-        MD_Message *error = MD_MakeNodeError(arena, parse.node, MD_MessageKind_CatastrophicError,
+        MD_Message *error = MD_MakeNodeError(arena, parse.node, MD_MessageKind_FatalError,
                                              error_str);
         MD_MessageListPush(&parse.errors, error);
     }
@@ -2803,52 +2846,63 @@ MD_NodeFromReference(MD_Node *node)
 
 //~ Error/Warning Helpers
 
-MD_FUNCTION_IMPL void
-MD_PrintMessage(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 str)
-{
-    const char *kind_name = "";
+MD_FUNCTION MD_String8
+MD_StringFromMessageKind(MD_MessageKind kind){
+    MD_String8 result = MD_ZERO_STRUCT;
     switch (kind){
         default: break;
-        case MD_MessageKind_Note: kind_name = "note: "; break;
-        case MD_MessageKind_Warning: kind_name = "warning: "; break;
-        case MD_MessageKind_Error: kind_name = "error: "; break;
-        case MD_MessageKind_CatastrophicError: kind_name = "fatal error: "; break;
+        case MD_MessageKind_Note:       result = MD_S8Lit("note");        break;
+        case MD_MessageKind_Warning:    result = MD_S8Lit("warning");     break;
+        case MD_MessageKind_Error:      result = MD_S8Lit("error");       break;
+        case MD_MessageKind_FatalError: result = MD_S8Lit("fatal error"); break;
     }
-    fprintf(out, "%.*s:%i:%i: %s%.*s\n",
-            MD_S8VArg(loc.filename), loc.line, loc.column,
-            kind_name, MD_S8VArg(str));
+    return(result);
 }
 
-MD_FUNCTION_IMPL void
-MD_PrintMessageFmt(FILE *out, MD_CodeLoc loc, MD_MessageKind kind, char *fmt, ...)
-{
+MD_FUNCTION MD_String8
+MD_FormatMessage(MD_Arena *arena, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 string){
+    MD_String8 kind_string = MD_StringFromMessageKind(kind);
+    MD_String8 result = MD_S8Fmt(arena, "" MD_FmtCodeLoc " %.*s: %.*s\n",
+                                 MD_CodeLocVArg(loc), MD_S8VArg(kind_string), MD_S8VArg(string));
+    return(result);
+}
+
+#if MD_ENABLE_PRINT_HELPERS
+
+MD_FUNCTION void
+MD_PrintMessage(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, MD_String8 string){
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+    MD_String8 message = MD_FormatMessage(scratch.arena, code_loc, kind, string);
+    fwrite(message.str, message.size, 1, file);
+    MD_ReleaseScratch(scratch);
+}
+
+MD_FUNCTION void
+MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, char *fmt, ...){
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     va_list args;
     va_start(args, fmt);
-    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     MD_String8 string = MD_S8FmtV(scratch.arena, fmt, args);
-    MD_PrintMessage(out, loc, kind, string);
-    MD_ReleaseScratch(scratch);
     va_end(args);
+    MD_String8 message = MD_FormatMessage(scratch.arena, code_loc, kind, string);
+    fwrite(message.str, message.size, 1, file);
+    MD_ReleaseScratch(scratch);
 }
 
-MD_FUNCTION_IMPL void
-MD_PrintNodeMessage(FILE *out, MD_Node *node, MD_MessageKind kind, MD_String8 str)
-{
-    MD_CodeLoc loc = MD_CodeLocFromNode(node);
-    MD_PrintMessage(out, loc, kind, str);
-}
-
-MD_FUNCTION_IMPL void
-MD_PrintNodeMessageFmt(FILE *out, MD_Node *node, MD_MessageKind kind, char *fmt, ...)
-{
+MD_FUNCTION void
+MD_PrintNodeMessageFmt(FILE *file, MD_Node *node, MD_MessageKind kind, char *fmt, ...){
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     va_list args;
     va_start(args, fmt);
-    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     MD_String8 string = MD_S8FmtV(scratch.arena, fmt, args);
-    MD_PrintNodeMessage(out, node, kind, string);
-    MD_ReleaseScratch(scratch);
     va_end(args);
+    MD_CodeLoc code_loc = MD_CodeLocFromNode(node);
+    MD_String8 message = MD_FormatMessage(scratch.arena, code_loc, kind, string);
+    fwrite(message.str, message.size, 1, file);
+    MD_ReleaseScratch(scratch);
 }
+
+#endif
 
 //~ Tree Comparison/Verification
 
@@ -3467,23 +3521,11 @@ MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name)
 MD_FUNCTION_IMPL MD_String8
 MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
 {
-    MD_String8 file_contents = MD_ZERO_STRUCT;
-    MD_String8 filename_copy = MD_S8Copy(arena, filename);
-    FILE *file = fopen((char*)filename_copy.str, "rb");
-    if(file)
-    {
-        fseek(file, 0, SEEK_END);
-        MD_u64 file_size = ftell(file);
-        fseek(file, 0, SEEK_SET);
-        file_contents.str = MD_PushArray(arena, MD_u8, file_size+1);
-        if(file_contents.str)
-        {
-            file_contents.size = file_size;
-            fread(file_contents.str, 1, file_size, file);
-        }
-        fclose(file);
-    }
-    return file_contents;
+    MD_String8 result = MD_ZERO_STRUCT;
+#if defined(MD_IMPL_LoadEntireFile)
+    result = MD_IMPL_LoadEntireFile(arena, filename);
+#endif
+    return(result);
 }
 
 MD_FUNCTION_IMPL MD_b32

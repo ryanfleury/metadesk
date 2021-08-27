@@ -1,5 +1,7 @@
 // Sample code to demonstrate errors being reported for certain nodes.
 
+#define MD_ENABLE_PRINT_HELPERS 1
+
 #include "md.h"
 #include "md.c"
 

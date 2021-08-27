@@ -1,6 +1,8 @@
 #include "md.h"
 #include "md.c"
 
+#include <stdio.h>
+
 static MD_Arena *arena = 0;
 
 int main(void)

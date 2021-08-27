@@ -103,6 +103,9 @@ MD_FUNCTION MD_b32        MD_C_ExprDeepMatch(MD_C_Expr *a, MD_C_Expr *b, MD_Matc
 
 //~ C Language Generation
 
+// TODO(allen): cleanup these printers
+#include <stdio.h>
+
 MD_FUNCTION void MD_C_Generate_String(FILE *file, MD_Node *node);
 MD_FUNCTION void MD_C_Generate_Struct(FILE *file, MD_Node *node);
 
