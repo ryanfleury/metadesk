@@ -1,63 +1,84 @@
 title: "Metadesk Reference"
+publish
 
 ////////////////////////////////
 //~ Layout for docs.
 
+@def HelperMacros: {}
+@def LinkedListMacros: {}
+@def MemoryOperations: {}
+@def Characters: {}
 @def Strings: {}
-@def Nodes: {}
-@def CodeLoc: {}
-@def Map: {}
+@def MemoryManagement: {}
 @def Tokens: {}
 @def Parsing: {}
+@def Nodes: {}
+@def CodeLoc: {}
+@def StringGeneration: {}
+@def Map: {}
 @def ExpressionParsingHelper: {}
 @def CommandLineHelper: {}
 @def FileSystemHelper: {}
-@def HelperMacros: {}
-@def Characters: {}
-@def Output: {}
 
 main:
 {
-    
-    @title "Strings",
-    @paste Strings,
-    
-    @title "Nodes",
-    @paste Nodes,
-    
-    @title "Source Code Locations",
-    @paste CodeLoc,
-    
-    @title "Map",
-    @paste Map,
-    
-    @title "Tokenization",
-    @paste Tokens,
-    
-    @title "Metadesk Format Parsing",
-    @paste Parsing,
-    
-    @title "Expression Parsing Helper",
-    @paste ExpressionParsingHelper,
-    
-    @title "Command Line Parsing Helper",
-    @paste CommandLineHelper,
-    
-    @title "File System Helper",
-    @paste FileSystemHelper,
-    
     @title "Helper Macros",
     @paste HelperMacros,
+    
+    @title "Linked-List Macros",
+    @paste LinkedListMacros,
     
     @title "Memory Operations",
     @paste MemoryOperations,
     
-    @title "Character Helpers",
+    @title "Characters",
     @paste Characters,
     
-    @title "Generation Helpers",
-    @paste Output,
+    @title "Strings",
+    @paste Strings,
     
+    @title "Memory Management",
+    @paste MemoryManagement,
+    
+    @title "Tokens",
+    @paste Tokens,
+    
+    @title "Parsing",
+    @paste Parsing,
+    
+    @title "Nodes",
+    @paste Nodes,
+    
+    @title "Code Locations",
+    @paste CodeLoc,
+    
+    @title "String Generation",
+    @paste StringGeneration,
+    
+    @title "Map",
+    @paste Map,
+    
+    @title "Expression Parsing Helper",
+    @paste ExpressionParsingHelper,
+    
+    @title "Command Line Helper",
+    @paste CommandLineHelper,
+    
+    @title "File System Helper",
+    @paste FileSystemHelper,
+}
+
+////////////////////////////////
+//~ Arena Helpers
+
+@send(MemoryManagement)
+@doc("This type is used for temporary lifetimes where a portion of an arena is treated like a stack temporarily. This type stores the position at which stack-like allocation began, so that everything pushed onto the arena during this temporary lifetime can be freed all at once.")
+@struct MD_ArenaTemp:
+{
+    @doc("The arena that is being used for temporary allocation.")
+        arena: *MD_Arena,
+    @doc("The position to which the arena should be restored when the associated temporary lifetime ends.")
+        pos: MD_u64,
 }
 
 ////////////////////////////////
@@ -130,35 +151,86 @@ main:
 }
 
 @send(Strings)
-@doc("These flags control matching rules in routines that perform matching on strings and Metadesk AST nodes.")
+@doc("Used as optional parameters for MD_S8ListJoin.")
+@see(MD_S8ListJoin)
+@see(MD_String8List)
+@see(MD_String8)
+@struct MD_StringJoin:
+{
+    @doc("The string to insert before the joined strings in the list.")
+        pre: MD_String8,
+    @doc("The string to insert between each node in the string list.")
+        mid: MD_String8,
+    @doc("The string to insert after the joined strings in the list.")
+        post: MD_String8,
+}
+
+@send(Strings)
+@doc("These flags control matching rules in routines that perform matching on strings and MD_Node trees. Not all flags are within this @code 'enum'. These flags must not be overlapping with those in the MD_StringMatchFlags @code 'enum', nor those in the MD_NodeMatchFlags @code 'enum'. This allows all flags to be associated with their respective behaviors, but also be combined when appropriate.")
 @see(MD_Node)
+@see(MD_String8)
+@see(MD_S8Match)
+@see(MD_NodeMatch)
+@see(MD_NodeDeepMatch)
+@see(MD_StringMatchFlags)
+@see(MD_NodeMatchFlags)
 @prefix(MD_MatchFlag)
 @base_type(MD_u32)
-@flags MD_MatchFlags: {
+@flags MD_MatchFlags:
+{
+    @doc("For routines returning the location of a substring, alters the behavior to return the last match instead of the first match.")
+        FindLast: `1<<0`,
+}
+
+@send(Strings)
+@doc("These flags control matching rules in routines that perform matching on strings. These flags must not be overlapping with those in the MD_MatchFlags @code 'enum', nor those in the MD_NodeMatchFlags @code 'enum'. This allows all flags to be associated with their respective behaviors, but also be combined when appropriate.")
+@see(MD_Node)
+@see(MD_String8)
+@see(MD_S8Match)
+@see(MD_NodeMatch)
+@see(MD_NodeDeepMatch)
+@see(MD_MatchFlags)
+@see(MD_NodeMatchFlags)
+@prefix(MD_StringMatchFlag)
+@base_type(MD_u32)
+@flags MD_StringMatchFlags:
+{
     @doc("When comparing strings, consider lower case letters equivalent to upper case equivalents in the ASCII range.")
-        CaseInsensitive,
+        CaseInsensitive: `1<<4`,
     
     @doc("When comparing strings, do not require the strings to be the same length. If one of the strings is a prefix of another, the two strings will count as a match.")
-        RightSideSloppy,
-    
-    @doc("For routines returning the location of a substring, alters the behavior to return the last match instead of the first match.")
-        FindLast,
+        RightSideSloppy: `1<<5`,
     
     @doc("When comparing strings, consider forward slash and backward slash to be equivalents.")
-        SlashInsensitive,
-    
+        SlashInsensitive: `1<<6`,
+};
+
+@send(Strings)
+@doc("These flags control matching rules in routines that perform matching on MD_Node trees. These flags must not be overlapping with those in the MD_MatchFlags @code 'enum', nor those in the MD_StringMatchFlags @code 'enum'. This allows all flags to be associated with their respective behaviors, but also be combined when appropriate.")
+@see(MD_Node)
+@see(MD_String8)
+@see(MD_S8Match)
+@see(MD_NodeMatch)
+@see(MD_NodeDeepMatch)
+@see(MD_StringMatchFlags)
+@see(MD_MatchFlags)
+@prefix(MD_NodeMatchFlag)
+@base_type(MD_u32)
+@flags MD_NodeMatchFlags:
+{
     @doc("When comparing nodes with this flag set, differences in the order and names of tags on a node count as differences in the input nodes. Without this flag tags are ignored in tree comparisons.")
-        Tags,
+        Tags: `1<<16`,
     
     @doc("When comparing nodes with this flag set in addition to @code 'MD_NodeMatchFlag_Tags', the differences in the arguments of each tag (the tag's children in the tree) are count as differences in the input nodes. Tag arguments are compared with fully recursive compares, whether or not the compare routine would be recursive or not.")
-        TagArguments,
+        TagArguments: `1<<17`,
 };
 
 @send(Strings)
 @doc("This type is used to report the results of consuming one character from a unicode encoded stream.")
 @see(MD_DecodeCodepointFromUtf8)
 @see(MD_DecodeCodepointFromUtf16)
-@struct MD_DecodedCodepoint: {
+@struct MD_DecodedCodepoint:
+{
     @doc("The codepoint of the consumed character.")
         codepoint: MD_u32,
     
@@ -184,28 +256,28 @@ main:
 
 @send(Nodes)
 @doc("These constants distinguish major roles of MD_Node in the Metadesk abstract syntax tree data structure.")
-@enum MD_NodeKind: {
+@enum MD_NodeKind:
+{
     @doc("The @code 'Nil' node is a unique node representing the lack of information, for example iterating off the end of a list, or up to the parent of a root node results in Nil.")
         Nil,
     
     @doc("A @code 'File' node represents parsed Metadesk source text.")
         File,
     
+    @doc("An @code 'ErrorMarker' node is generated when reporting errors. It is used to record the location of an error that occurred in the lexing phase of a parse.")
+        ErrorMarker,
+    
+    @doc("A @code 'Main' node represents the main structure of the metadesk abstract syntax tree. Some of these nodes have children which will also be @code 'Main' nodes. These nodes can be given their text by identifiers, numerics, string and character literals, and operator symbols.")
+        Main,
+    
+    @doc("A @code 'Tag' node represents a tag attached to a label node with the @code '@identifer' syntax. The children of a tag node represent the arguments placed in the tag.")
+        Tag,
+    
     @doc("A @code 'List' node serves as the root of an externally chained list of nodes. Its children are nodes with the @code 'MD_NodeKind_Reference' kind.")
         List,
     
     @doc("A @code 'Reference' node is an indirection to another node. The node field @code 'ref_target' contains a pointer to the referenced node. These nodes are typically used for creating externally chained linked lists that gather nodes from a parse tree.")
         Reference,
-    
-    @doc("A @code 'Label' node represents the main structure of the metadesk abstract syntax tree. Some labels have children which will also be labels. Labels can be given their text by identifiers, numerics, string and character literals, and operator symbols.")
-        @see(MD_TokenKind)
-        Label,
-    
-    @doc("A @code 'Tag' node represents a tag attached to a label node with the @code '@identifer' syntax. The children of a tag node represent the arguments placed in the tag.")
-        Tag,
-    
-    @doc("An @code 'ErrorMarker' node is generated when reporting errors. It is used to record the location of an error that occurred in the lexing phase of a parse.")
-        ErrorMarker,
     
     @doc("Not a real kind value given to nodes, this is always one larger than the largest enum value that can be given to a node.")
         COUNT,
@@ -219,27 +291,27 @@ main:
 @base_type(MD_u32)
 @flags MD_NodeFlags: {
     @doc("This node's children open with @code '('")
-        ParenLeft,
+        HasParenLeft,
     @doc("This node's children close with @code ')'")
-        ParenRight,
+        HasParenRight,
     @doc("This node's children open with @code '['")
-        BracketLeft,
+        HasBracketLeft,
     @doc("This node's children close with @code ']'")
-        BracketRight,
+        HasBracketRight,
     @doc("This node's children open with @code '{'")
-        BraceLeft,
+        HasBraceLeft,
     @doc("This node's children close with @code '}'")
-        BraceRight,
+        HasBraceRight,
     
     @doc("The delimiter between this node and its next sibling is a @code ';'")
-        BeforeSemicolon,
+        IsBeforeSemicolon,
     @doc("The delimiter between this node and its previous sibling is a @code ';'")
-        AfterSemicolon,
+        IsAfterSemicolon,
     
     @doc("The delimiter between this node and its next sibling is a @code ','")
-        BeforeComma,
+        IsBeforeComma,
     @doc("The delimiter between this node and its previous sibling is a @code ','")
-        AfterComma,
+        IsAfterComma,
     
     @doc("This is a string literal, with @code `'` character(s) marking the boundaries.")
         StringSingleQuote,
@@ -415,12 +487,16 @@ main:
 @enum MD_MessageKind: {
     @doc("The message does not have a particular role.")
         Null,
+    
+    @doc("The message is not suggesting that anything wrong occurred, but is instead just providing additional information.")
+        Note,
+    
     @doc("The message is a warning.")
         Warning,
     @doc("The message has information about a non-catastrophic error. Reasonable results may still have been produced, but something illegal was encountered.")
         Error,
     @doc("The message has information about a catastrophic error, meaning that the output of whatever the error was for cannot be trusted, and should be treated as a complete failure.")
-        CatastrophicError,
+        FatalError,
 }
 
 @send(Parsing)
@@ -451,40 +527,59 @@ main:
 }
 
 @send(Parsing)
-@struct MD_ParseResult: {
-    node: *MD_Node;
-    first_error: *MD_Message;
-    bytes_parse: MD_u64;
-};
-
-@send(Parsing)
-@doc("This type is used for encoding the rule for delimiting the end of a set of nodes, when parsing.")
-@see(MD_ParseNodeSet)
-@enum MD_ParseSetRule:
-{
-    @doc("The set needs to end when an appropriate delimiter, matching the opening delimiter, is encountered. If the opening delimiter is a @code '{' character, then the set will end with a @code '}' character. If the opening delimiter is a @code '(' or @code '[' character, then the set will end with either a @code ')' or @code ']' delimiter. If the set has no opening delimiter, then the set will end with either one newline (if children have been specified), or two newlines (if children have not been specified), or a separator character (@code ',' or @code ';').")
-        EndOnDelimiter,
-    @doc("The set is occurring at the top-level, and so it should not end until the entire file has been parsed.")
-        Global,
-}
-
-@send(Parsing)
-@doc("This type is used for the results of calls that do Metadesk parsing.")
+@doc("This type is used to return results from all MD_Node parsing functions.")
 @see(MD_ParseWholeFile)
 @see(MD_ParseWholeString)
 @see(MD_ParseOneNode)
 @see(MD_ParseNodeSet)
-@see(MD_ParseTagList)
 @struct MD_ParseResult:
 {
-    @doc("The node produced by the parser.")
+    @doc("The root node of the Metadesk tree that was parsed.")
         node: *MD_Node;
-    @doc("The last node, in a chain, produced by the parser, when the parsing call is capable of returning many nodes.")
+    // TODO(rjf): this needs to be removed once ParseTagList is not around
+    @doc("RYAN IF THIS IS IN HERE, IT'S YOUR FAULT.")
         last_node: *MD_Node;
-    @doc("The number of bytes processed by the parser. Any bytes after this number, in the string that was passed to the parser, were not considered.")
+    @doc("The number of bytes that were parsed. Skipping this many bytes in the parse input string will provide the point at which the parser stopped parsing.")
         string_advance: MD_u64;
-    @doc("The list of errors produced by the parser when parsing the provided string.")
+    @doc("A list of messages (especially errors) that were encountered during the parse. If this list contains an MD_Message with @code 'MD_MessageKind_FatalError' set as its MD_MessageKind, then the output of the parser should not be trusted.")
         errors: MD_MessageList;
+};
+
+////////////////////////////////
+//~ Expression Parsing
+
+// TODO(rjf): this API is not yet ready.
+
+////////////////////////////////
+//~ String Generation Types
+
+@send(StringGeneration)
+@prefix(MD_GenerateFlag)
+@base_type(MD_u32)
+@doc("These flags are used to control what is generated in a MD_Node tree string generation function.")
+@flags MD_GenerateFlags:
+{
+    @doc("This turns on the code that generates strings associated with tags attached to nodes. This will not enable string generation for tag arguments, which is separately controlled by the @code 'MD_GenerateFlag_TagArguments' flag.")
+        Tags,
+    @doc("This turns on the code that generates strings associated with tags arguments. Does nothing if @code 'MD_GenerateFlag_Tags' is not set.")
+        TagArguments,
+    @doc("This enables recursive descent on the input MD_Node tree, generating strings for all children recursively.")
+        Children,
+    @doc("This enables string generation for comments that were identified by the Metadesk parser as being attached to nodes.")
+        Comments,
+    @doc("This enables string generation relating to each node's MD_NodeKind value.")
+        NodeKind,
+    @doc("This enables string generation relating to each node's MD_NodeFlags value.")
+        NodeFlags,
+    @doc("This enables string generation for the 64-bit hash associated with the string of an MD_Node, which is generated by the parser automatically.")
+        StringHash,
+    @doc("This enables string generation for the source code coordinates of the originally-parsed MD_Node structure.")
+        Location,
+    
+    @doc("A mask used to generate strings for the entire tree structure of an MD_Node tree. Skips comments, location, and other metadata.")
+        Tree: `MD_GenerateFlag_Tags | MD_GenerateFlag_TagArguments | MD_GenerateFlag_Children`,
+    @doc("A mask used to generate everything.")
+        All: `0xffffffff`
 }
 
 ////////////////////////////////
@@ -509,10 +604,8 @@ main:
 @see(MD_MakeCmdLineFromOptions)
 @struct MD_CmdLine:
 {
-    @doc("The list of all command line arguments, as an unstructured list of strings.")
-        arguments: MD_String8List;
-    @doc("The list of arguments that were not parsed as structured options (which are a name, with an optional set of values).")
-        raw_arguments: MD_String8List;
+    @doc("The list of all command line arguments that were not parsed as flags with optional values. Can be used as a list of unstructured input strings; for example, to be considered as input file paths.")
+        inputs: MD_String8List;
     @doc("The first option that was parsed, forming the head of a chain of options.")
         first_option: *MD_CmdLineOption;
     @doc("The last option that was parsed.")
@@ -527,7 +620,9 @@ main:
 @base_type(MD_u32)
 @doc("Flags encoding certain properties of a file.")
 @see(MD_FileInfo)
-@see(MD_FileIterIncrement)
+@see(MD_FileIterBegin)
+@see(MD_FileIterNext)
+@see(MD_FileIterEnd)
 @flags MD_FileFlags: {
     @doc("The associated file is a directory.")
         Directory,
@@ -535,16 +630,24 @@ main:
 
 @send(FileSystemHelper)
 @doc("Encodes general metadata about a file.")
-@see(MD_FileIterIncrement)
-@struct MD_FileInfo: {
+@see(MD_FileFlags)
+@see(MD_FileIterBegin)
+@see(MD_FileIterNext)
+@see(MD_FileIterEnd)
+@struct MD_FileInfo:
+{
     flags: MD_FileFlags;
-    filename: MD_String8;
-    file_size: MD_u64;
+    @doc("The name of the file. This includes the extension of the file, but does not include the directory in which the file is stored.")
+        filename: MD_String8;
+    @doc("The size of the file, in bytes.")
+        file_size: MD_u64;
 };
 
 @send(FileSystemHelper)
 @doc("An opaque iterator type used to store operating-system-specific state, when iterating files.")
-@see(MD_FileIterIncrement)
+@see(MD_FileIterBegin)
+@see(MD_FileIterNext)
+@see(MD_FileIterEnd)
 @opaque
 @struct MD_FileIter: {};
 
@@ -571,97 +674,207 @@ main:
     a,
 };
 
+@send(HelperMacros)
+@doc("Expands to an expression returning the lesser of @code 'a' and @code 'b'. Expands both arguments multiple times, so avoiding complex expressions for @code 'a' and @code 'b' is recommended.")
+@macro MD_Min: {a b}
+
+@send(HelperMacros)
+@doc("Expands to an expression returning the higher of @code 'a' and @code 'b'. Expands both arguments multiple times, so avoiding complex expressions for @code 'a' and @code 'b' is recommended.")
+@macro MD_Max: {a b}
+
+@send(HelperMacros)
+@doc("Equivalent to MD_Max.")
+@macro MD_ClampBot: {a b}
+
+@send(HelperMacros)
+@doc("Equivalent to MD_Min.")
+@macro MD_ClampTop: {a b}
+
 ////////////////////////////////
 //~ Linked List Macros
 
-@send(HelperMacros) @macro MD_CheckNull: { p }
-@send(HelperMacros) @macro MD_SetNull: { p }
-@send(HelperMacros) @macro MD_CheckNil: { p }
-@send(HelperMacros) @macro MD_SetNil: { p }
+@send(LinkedListMacros)
+@doc("Returns true if @code 'p' is a null pointer. Used as a helper in other linked list macros.")
+@macro MD_CheckNull: { p }
 
-@send(HelperMacros) @macro MD_QueuePush_NZ:
+@send(LinkedListMacros)
+@doc("Sets @code 'p' to a null pointer. Used as a helper in other linked list macros.")
+@macro MD_SetNull: { p }
+
+@send(LinkedListMacros)
+@doc("Returns true if @code 'p' is a nil MD_Node pointer. Used as a helper in other linked list macros.")
+@see(MD_NilNode)
+@see(MD_NodeIsNil)
+@macro MD_CheckNil: { p }
+
+@send(LinkedListMacros)
+@doc("Sets @code 'p' to a nil MD_Node pointer. Used as a helper in other linked list macros.")
+@see(MD_NilNode)
+@see(MD_NodeIsNil)
+@macro MD_SetNil: { p }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes @code 'n' into a singly-linked-list queue, with @code 'f' being a pointer to the first element in the queue, and @code 'l' being a pointer to the last element in the queue. Allows for overrides on both what is considered the zero-value, as well as what the name of the next pointer inside of the associated type is.")
+@macro MD_QueuePush_NZ:
 {
-    f,
-    l,
-    n,
-    next,
-    zchk,
-    zset,
+    @doc("A pointer to the first element of the queue. When the queue is empty, this should be equivalent to a zero-value compatible with the @code 'zchk' and @code 'zset' arguments.")
+        f,
+    @doc("A pointer to the last element of the queue. When the queue is empty, this should be equivalent to a zero-value compatible with the @code 'zchk' and @code 'zset' arguments.")
+        l,
+    @doc("A pointer to the element that is to be added to the end of the queue.")
+        n,
+    @doc("The name of the next pointer member within the type used for the queue.")
+        next,
+    @doc("The name of a macro that accepts one argument, and returns whether it is considered the zero-value.")
+        zchk,
+    @doc("The name of a macro that accepts one argument, and assigns the zero-value to it.")
+        zset,
 }
 
-@send(HelperMacros) @macro MD_QueuePop_NZ:
+@send(LinkedListMacros)
+@doc("Expands to an expression that pops the first element out of the queue, with @code 'f' being a pointer to the first element in the queue, and @code 'l' being a pointer to the last element in the queue. Allows for overrides on both what is considered the zero-value, as well as what the name of the next pointer inside of the associated type is.")
+@macro MD_QueuePop_NZ:
 {
-    f,
-    l,
-    next,
-    zset,
+    @doc("A pointer to the first element of the queue. When the queue is empty, this should be equivalent to a zero-value compatible with the @code 'zchk' and @code 'zset' arguments.")
+        f,
+    @doc("A pointer to the last element of the queue. When the queue is empty, this should be equivalent to a zero-value compatible with the @code 'zchk' and @code 'zset' arguments.")
+        l,
+    @doc("The name of the next pointer member within the type used for the queue.")
+        next,
+    @doc("The name of a macro that accepts one argument, and assigns the zero-value to it.")
+        zset,
 }
 
-@send(HelperMacros) @macro MD_StackPush_N:
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes a new element onto the top of a singly-linked stack, with @code 'f' being a pointer to the top of the stack. Allows overriding the name of the pointer member inside of the type used for the stack, which is used to point at the next node in the chain.")
+@macro MD_StackPush_N:
 {
-    f,
-    n,
-    next,
+    @doc("A pointer to the first element of the stack. When the stack is empty, this should be @code '0'.")
+        f,
+    @doc("A pointer to the new element to be added to the stack.")
+        n,
+    @doc("The name of the next pointer member within the type used for the stack.")
+        next,
 }
 
-@send(HelperMacros) @macro MD_StackPop_NZ:
+@send(LinkedListMacros)
+@doc("Expands to an expression that pops the top of a singly-linked stack. Does not return the popped element, which should be grabbed before using this macro. Allows overriding both the name of the pointer member inside of the type used for the stack's links, and how the zero-value is checked.")
+@macro MD_StackPop_NZ:
 {
-    f,
-    next,
-    zchk,
+    @doc("A pointer to the first element of the stack. When the stack is empty, this should be @code '0'.")
+        f,
+    @doc("The name of the next pointer member within the type used for the stack.")
+        next,
+    @doc("The name of a macro that accepts one argument, and returns whether it is considered the zero-value.")
+        zchk,
 }
 
-@send(HelperMacros) @macro MD_DblPushBack_NPZ:
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes a new element to the back of a doubly-linked-list, with @code 'f' being a pointer to the first element in the linked list, @code 'l' being a pointer to the last element in the linked list, and @code 'n' being the new element to add. Allows overriding the names of the pointer members used to store the next and previous links of a node, and the way that the zero-value is both checked for and set.")
+@macro MD_DblPushBack_NPZ:
 {
-    f,
-    l,
-    n,
-    next,
-    prev,
-    zchk,
-    zset,
+    @doc("A pointer to the first element of the list. When the list is empty, this should be the zero-value compatible with the @code 'zchk' and @code 'zset' arguments.")
+        f,
+    @doc("A pointer to the last element of the list. When the list is empty, this should be the zero-value compatible with the @code 'zchk' and @code 'zset' arguments.")
+        l,
+    @doc("A pointer to the new element of the list to be added.")
+        n,
+    @doc("The name of the pointer member in the list's type to consider as encoding the next node in the list.")
+        next,
+    @doc("The name of the pointer member in the list's type to consider as encoding the previous node in the list.")
+        prev,
+    @doc("The name of a macro that accepts one argument, and returns whether it is considered the zero-value.")
+        zchk,
+    @doc("The name of a macro that accepts one argument, and assigns the zero-value to it.")
+        zset,
 }
 
-@send(HelperMacros) @macro MD_DblRemove_NPZ:
+@send(LinkedListMacros)
+@doc("Expands to an expression that removes an element from a doubly-linked-list, with @code 'f' being a pointer to the first element in the linked list, @code 'l' being a pointer to the last element in the linked list, and @code 'n' being the node to be removed. Allows overriding the names of the pointer members used to store the next and previous links of a node, and the way that the zero-value is both checked for and set.")
+@macro MD_DblRemove_NPZ:
 {
-    f,
-    l,
-    n,
-    next,
-    prev,
-    zset,
+    @doc("A pointer to the first element of the list. When the list is empty, this should be the zero-value compatible with the @code 'zchk' and @code 'zset' arguments.")
+        f,
+    @doc("A pointer to the last element of the list. When the list is empty, this should be the zero-value compatible with the @code 'zchk' and @code 'zset' arguments.")
+        l,
+    @doc("A pointer to the new element of the list to be removed.")
+        n,
+    @doc("The name of the pointer member in the list's type to consider as encoding the next node in the list.")
+        next,
+    @doc("The name of the pointer member in the list's type to consider as encoding the previous node in the list.")
+        prev,
+    @doc("The name of a macro that accepts one argument, and assigns the zero-value to it.")
+        zset,
 }
 
-@send(HelperMacros) @macro MD_QueuePush: { f, l, n }
-@send(HelperMacros) @macro MD_QueuePop:  { f, l }
-@send(HelperMacros) @macro MD_StackPush: { f, n }
-@send(HelperMacros) @macro MD_StackPop:  { f }
-@send(HelperMacros) @macro MD_DblPushBack: { f, l, n }
-@send(HelperMacros) @macro MD_DblPushFront: { f, l, n }
-@send(HelperMacros) @macro MD_DblRemove: { f, l, n }
-@send(HelperMacros) @macro MD_NodeDblPushBack: { f, l, n }
-@send(HelperMacros) @macro MD_NodeDblPushFront: { f, l, n }
-@send(HelperMacros) @macro MD_NodeDblRemove: { f, l, n }
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes a node @code 'n' to the back of a singly-linked-list queue defined by @code 'f', a pointer to the first element in the list, and @code 'l', a pointer to the last element in the list. Null pointers are used to delimit the end of the list, and to encode that the list is empty. Expects that there exists a @code 'next' member inside of the type of @code 'f', @code 'l', and @code 'n', which encodes the link to the next node.")
+@macro MD_QueuePush: { f, l, n }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that pops a node @code 'n' from the front of a singly-linked-list queue defined by @code 'f', a pointer to the first element in the list, and @code 'l', a pointer to the last element in the list. Null pointers are used to delimit the end of the list, and to encode that the list is empty. Expects that there exists a @code 'next' member inside of the type of @code 'f', @code 'l', and @code 'n', which encodes the link to the next node.")
+@macro MD_QueuePop:  { f, l }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes a node @code 'n' to the top of a singly-linked-list stack defined by @code 'f', a pointer to the top element of the stack. Null pointers are used to delimit the end of the stack, and an empty stack. Expects that there exists a @code 'next' member inside of the type of @code 'f' and @code 'n', which encodes the link to the next node.")
+@macro MD_StackPush: { f, n }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that pops a node @code 'n' off the top of a singly-linked-list stack defined by @code 'f', a pointer to the top element of the stack. Null pointers are used to delimit the end of the stack, and an empty stack. Expects that there exists a @code 'next' member inside of the type of @code 'f', which encodes the link to the next node in the stack.")
+@macro MD_StackPop:  { f }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes a node @code 'n' to the back of a doubly-linked-list defined by @code 'f', a pointer to the first element in the list, and @code 'l', a pointer to the last element in the list. Null pointers are used to delimit the end of the list, and to encode that the list is empty. Expects that there exists a @code 'next' member inside of the type of @code 'f', @code 'l', and @code 'n', which encodes the link to the next node. Expects that there also exists a @code 'prev' member inside of the type of @code 'f', @code 'l', and @code 'n', which encodes the link to the previous node.")
+@macro MD_DblPushBack: { f, l, n }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes a node @code 'n' to the front of a doubly-linked-list defined by @code 'f', a pointer to the first element in the list, and @code 'l', a pointer to the last element in the list. Null pointers are used to delimit the end of the list, and to encode that the list is empty. Expects that there exists a @code 'next' member inside of the type of @code 'f', @code 'l', and @code 'n', which encodes the link to the next node. Expects that there also exists a @code 'prev' member inside of the type of @code 'f', @code 'l', and @code 'n', which encodes the link to the previous node.")
+@macro MD_DblPushFront: { f, l, n }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that removes a node @code 'n' from a doubly-linked-list defined by @code 'f', a pointer to the first element in the list, and @code 'l', a pointer to the last element in the list. Null pointers are used to delimit the end of the list, and to encode that the list is empty. Expects that there exists a @code 'next' member inside of the type of @code 'f', @code 'l', and @code 'n', which encodes the link to the next node. Expects that there also exists a @code 'prev' member inside of the type of @code 'f', @code 'l', and @code 'n', which encodes the link to the previous node.")
+@macro MD_DblRemove: { f, l, n }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes an MD_Node @code 'n' to the back of a doubly-linked-list defined by @code 'f', a pointer to the first element in the list, and @code 'l', a pointer to the last element in the list. Nil pointers, identical to those returned by MD_NilNode, are used to delimit the end of the list, and to encode that the list is empty.")
+@macro MD_NodeDblPushBack: { f, l, n }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that pushes an MD_Node @code 'n' to the front of a doubly-linked-list defined by @code 'f', a pointer to the first element in the list, and @code 'l', a pointer to the last element in the list. Nil pointers, identical to those returned by MD_NilNode, are used to delimit the end of the list, and to encode that the list is empty.")
+@macro MD_NodeDblPushFront: { f, l, n }
+
+@send(LinkedListMacros)
+@doc("Expands to an expression that removes an MD_Node @code 'n' from a doubly-linked-list defined by @code 'f', a pointer to the first element in the list, and @code 'l', a pointer to the last element in the list. Nil pointers, identical to those returned by MD_NilNode, are used to delimit the end of the list, and to encode that the list is empty.")
+@macro MD_NodeDblRemove: { f, l, n }
 
 ////////////////////////////////
 //~ Memory Operations
 
 @send(MemoryOperations)
-@doc("Zeroes @code 'size' bytes at the address stored in @code 'memory'.")
-@func MD_MemoryZero:
-{
-    memory: *void,
-    size: MD_u64,
-}
+@doc("A macro that expands to an overrideable @code 'memset' equivalent call that sets @code 'size' bytes at the address stored in @code 'memory' to @code 'byte_value'.")
+@macro MD_MemorySet: { memory, byte_value, size }
 
 @send(MemoryOperations)
-@doc("Copies @code 'size' bytes from the address in @code 'src', to the address in @code 'dst'.")
-@func MD_MemoryCopy:
-{
-    dst: *void,
-    src: *void,
-    size: MD_u64,
-}
+@doc("A macro that expands to an overrideable @code 'memset' equivalent call that zeroes @code 'size' bytes at the address stored in @code 'memory'.")
+@macro MD_MemoryZero: { memory, size }
+
+@send(MemoryOperations)
+@doc("A macro that expands to an overrideable @code 'memset' equivalent call that zeroes @code 'sizeof(*(struct_pointer))' bytes at the address stored in @code 'struct_pointer'.")
+@macro MD_MemoryZeroStruct: { struct_pointer }
+
+@send(MemoryOperations)
+@doc("A macro that expands to an overrideable @code 'memmove' equivalent call that copies @code 'size' bytes from @code 'source' to @code 'destination'. The ranges defined by the pointers and @code 'size' may overlap.")
+@macro MD_MemoryCopy: { destination, source, size }
+
+////////////////////////////////
+//~ Arena Functions
+
+// TODO(rjf): docs
+
+////////////////////////////////
+//~ Arena Scratch Pool Functions
+
+// TODO(rjf): docs
 
 ////////////////////////////////
 //~ Characters
@@ -713,16 +926,6 @@ main:
 };
 
 @send(Characters)
-@doc(```
-     Returns whether an ASCII character is within the set of reserved symbolic characters by the Metadesk language: @code '{', @code '}', @code '(', @code ')', @code '\\', @code '[', @code ']', @code '#', @code ',', @code ';',
-     @code ':', or @code '@'.
-     ```)
-@func MD_CharIsReservedSymbol: {
-    c: MD_u8,
-    return: MD_b32,
-};
-
-@send(Characters)
 @doc("Return whether an ASCII character is whitespace.")
 @func MD_CharIsSpace: {
     c: MD_u8,
@@ -754,6 +957,13 @@ main:
 //~ Strings
 
 @send(Strings)
+@doc("Calculates the number of bytes in a C-string by checking for a null-terminator.")
+@func MD_CalculateCStringLength: {
+    cstr: *char,
+    return: MD_u64,
+};
+
+@send(Strings)
 @doc("Constructs an MD_String8.")
 @func MD_S8: {
     @doc("The base pointer of the returned MD_String8.")
@@ -764,7 +974,7 @@ main:
 };
 
 @send(Strings)
-@doc("Constructs an MD_String8 from a C-string by calling an equivalent to @code 'strlen'.")
+@doc("Constructs an MD_String8 from a C-string by calling MD_CalculateCStringLength.")
 @macro MD_S8CString: {
     s,
 };
@@ -772,6 +982,12 @@ main:
 @send(Strings)
 @doc("Constructs an MD_String8 from a C-string literal by using @code 'sizeof'. In C++, the equivalent can be done with the user-defined literal code provided in the library, which uses @code '_md' as a suffix on a string literal.")
 @macro MD_S8Lit: {
+    s,
+};
+
+@send(Strings)
+@doc("Constructs an MD_String8 from a C-string literal by using @code 'sizeof'. Differs from MD_S8Lit in that it does not expand with @code '(MD_String8)' before the brace initializer, allowing it to be used in C for static initializations.")
+@macro MD_S8LitComp: {
     s,
 };
 
@@ -864,44 +1080,6 @@ main:
 };
 
 @send(Strings)
-@doc("Searches @code 'string' for the last @code '.' character occurring in the string, and chops the @code '.' and anything following after it off of the returned string.")
-@see(MD_S8Chop)
-@func MD_PathChopLastPeriod: {
-    string: MD_String8,
-    return: MD_String8,
-};
-
-@send(Strings)
-@doc("Searches @code 'string' for the last @code '/' or @code '\' character occurring in the string, and skips it and anything before it in the returned string.")
-@see(MD_S8Skip)
-@func MD_PathSkipLastSlash: {
-    string: MD_String8,
-    return: MD_String8,
-};
-
-@send(Strings)
-@doc("Searches @code 'string' for the last @code '.' character, and returns the substring starting at the character after it, to the end of the string. For usual file naming schemes where the extension of a file is encoded by any characters following the last @code '.' of a filename, this will return the extension.")
-@see(MD_PathChopLastSlash)
-@see(MD_S8Suffix)
-@see(MD_S8Substring)
-@see(MD_S8Chop)
-@func MD_PathSkipLastPeriod: {
-    string: MD_String8,
-    return: MD_String8,
-};
-
-@send(Strings)
-@doc("Searches @code 'string' for the last @code '/' or @code '\\' character, and returns the substring that ends with that character. For usual file naming schemes where folders are encoded with @code '/' or @code '\\' characters, this will return the entire path to the passed filename, not including the filename itself.")
-@see(MD_PathSkipLastPeriod)
-@see(MD_S8Prefix)
-@see(MD_S8Substring)
-@see(MD_S8Skip)
-@func MD_PathChopLastSlash: {
-    string: MD_String8,
-    return: MD_String8,
-};
-
-@send(Strings)
 @doc("Copies @code 'string' by allocating an entirely new portion of memory and copying the passed string's memory to the newly allocated memory. Returns the copy of @code 'string' using the new memory.")
 @func MD_S8Copy: {
     arena: *MD_Arena,
@@ -948,6 +1126,18 @@ main:
 };
 
 @send(Strings)
+@doc("Pushes a new MD_String8 to an MD_String8List by allocating a new MD_String8Node, filling it with a C-style format string defined by @code 'fmt' and the variadic arguments following it, and modifying the existing list elements in @code 'list' to end with the newly allocated node.")
+@see(MD_String8List)
+@see(MD_String8Node)
+@see(MD_String8)
+@func MD_S8ListPushFmt: {
+    arena: *MD_Arena,
+    list: *MD_String8List,
+    fmt: *char,
+    "...",
+};
+
+@send(Strings)
 @doc("Pushes a MD_String8List to another MD_String8List. This will zero all memory in @code 'to_push', so you cannot expect @code 'to_push' to retain any of the list elements it had before this call. This is because no strings nor nodes are copied, so the nodes in @code 'to_push' are repurposed for being a part of @code 'list'.")
 @see(MD_String8List)
 @see(MD_String8Node)
@@ -965,6 +1155,8 @@ main:
 @see(MD_String8Node)
 @see(MD_S8ListJoin)
 @func MD_S8Split: {
+    @doc("The arena to use for allocation.")
+        arena: *MD_Arena,
     @doc("The string to search for splitting strings, and to subdivide.")
         string: MD_String8,
     @doc("The number of splitting strings to search for.")
@@ -982,68 +1174,28 @@ main:
 @see(MD_String8Node)
 @see(MD_S8Split)
 @func MD_S8ListJoin: {
-    arena: *MD_Arena,
-    list: MD_String8List,
-    join: *MD_StringJoin,
+    @doc("The arena to use for allocation.")
+        arena: *MD_Arena,
+    @doc("The list to join.")
+        list: MD_String8List,
+    @doc("Optional join parameters.")
+        join: *MD_StringJoin,
     return: MD_String8,
 };
 
 @send(Strings)
-@func MD_CalculateCStringLength: {
-    cstr: *char,
-    return: MD_u64,
-};
-
-@send(Strings)
+@doc("Provided an MD_String8 @code 'string' in a traditional identifier style, attempts heuristically to return a transformed version of @code 'string' to a new identifier style. Cannot be fully correct in all cases.")
+@see(MD_IdentifierStyle)
 @func MD_S8Stylize: {
-    arena: *MD_Arena,
-    string: MD_String8,
-    word_style: MD_IdentifierStyle,
-    separator: MD_String8,
+    @doc("The arena to use for allocation.")
+        arena: *MD_Arena,
+    @doc("The string to attempt to transform.")
+        string: MD_String8,
+    @doc("The style that each word should have.")
+        style: MD_IdentifierStyle,
+    @doc("A string to separate each word in the returned string.")
+        separator: MD_String8,
     return: MD_String8
-};
-
-////////////////////////////////
-//~ Numeric Strings
-
-@send(Strings)
-@doc("Parses @code 'string' as an integer with a base defined by @code 'radix'. Returns the parsed value.")
-@func MD_U64FromString: {
-    string: MD_String8,
-    radix: MD_u32,
-    return: MD_u64,
-};
-
-@send(Strings)
-@doc("Parses @code 'string' as an integer with a base defined by C-like rules: If the numeric part of the string begins with @code '0x', then it will be parsed as base-16. If it begins with @code '0b', it will be parsed as base-2. Otherwise, it will be parsed as base 10. Returns the parsed value.")
-@func MD_CStyleIntFromString: {
-    string: MD_String8,
-    return: MD_i64,
-};
-
-@send(Strings)
-@doc("Parses @code 'string' as a floating point number, and returns the parsed value.")
-@func MD_F64FromString: {
-    string: MD_String8,
-    return: MD_f64,
-};
-
-////////////////////////////////
-//~ Enum/Flag Strings
-
-@send(Nodes)
-@doc("Returns a string that contains a name matching @code 'kind'.")
-@func MD_StringFromNodeKind: {
-    kind: MD_NodeKind,
-    return: MD_String8,
-};
-
-@send(Nodes)
-@doc("Builds a string list for all bits set in @code 'flags', with each string being the name of one of the flags that is set.")
-@func MD_StringListFromNodeFlags: {
-    arena: *MD_Arena,
-    flags: MD_NodeFlags,
-    return: MD_String8List,
 };
 
 ////////////////////////////////
@@ -1086,20 +1238,142 @@ main:
 
 @send(Strings)
 @func MD_S16FromS8: {
+    arena: *MD_Arena,
     str: MD_String8,
     return: MD_String16,
 };
 
 @send(Strings)
 @func MD_S8FromS32: {
+    arena: *MD_Arena,
     str: MD_String32,
     return: MD_String8,
 };
 
 @send(Strings)
 @func MD_S32FromS8: {
+    arena: *MD_Arena,
     str: MD_String8,
     return: MD_String32,
+};
+
+////////////////////////////////
+//~ String Skipping/Chopping Helpers
+
+@send(Strings)
+@doc("Searches @code 'string' for the last @code '.' character occurring in the string, and chops the @code '.' and anything following after it off of the returned string.")
+@see(MD_S8Chop)
+@func MD_PathChopLastPeriod: {
+    string: MD_String8,
+    return: MD_String8,
+};
+
+@send(Strings)
+@doc("Searches @code 'string' for the last @code '/' or @code '\' character occurring in the string, and skips it and anything before it in the returned string.")
+@see(MD_S8Skip)
+@func MD_PathSkipLastSlash: {
+    string: MD_String8,
+    return: MD_String8,
+};
+
+@send(Strings)
+@doc("Searches @code 'string' for the last @code '.' character, and returns the substring starting at the character after it, to the end of the string. For usual file naming schemes where the extension of a file is encoded by any characters following the last @code '.' of a filename, this will return the extension.")
+@see(MD_PathChopLastSlash)
+@see(MD_S8Suffix)
+@see(MD_S8Substring)
+@see(MD_S8Chop)
+@func MD_PathSkipLastPeriod: {
+    string: MD_String8,
+    return: MD_String8,
+};
+
+@send(Strings)
+@doc("Searches @code 'string' for the last @code '/' or @code '\\' character, and returns the substring that ends with that character. For usual file naming schemes where folders are encoded with @code '/' or @code '\\' characters, this will return the entire path to the passed filename, not including the filename itself.")
+@see(MD_PathSkipLastPeriod)
+@see(MD_S8Prefix)
+@see(MD_S8Substring)
+@see(MD_S8Skip)
+@func MD_PathChopLastSlash: {
+    string: MD_String8,
+    return: MD_String8,
+};
+
+@send(Strings)
+@doc("Returns the equivalent of @code 'string' with all leading whitespace skipped.")
+@see(MD_S8Substring)
+@see(MD_S8ChopWhitespace)
+@see(MD_S8Skip)
+@see(MD_S8Chop)
+@func MD_S8SkipWhitespace:
+{
+    string: MD_String8,
+    return: MD_String8,
+}
+
+@send(Strings)
+@doc("Returns the equivalent of @code 'string' with all trailing whitespace chopped.")
+@see(MD_S8Substring)
+@see(MD_S8SkipWhitespace)
+@see(MD_S8Skip)
+@see(MD_S8Chop)
+@func MD_S8ChopWhitespace:
+{
+    string: MD_String8,
+    return: MD_String8,
+}
+
+////////////////////////////////
+//~ Numeric Strings
+
+@send(Strings)
+@doc("Parses @code 'string' as an integer with a base defined by @code 'radix'. Returns the parsed value.")
+@func MD_U64FromString: {
+    string: MD_String8,
+    radix: MD_u32,
+    return: MD_u64,
+};
+
+@send(Strings)
+@doc("Parses @code 'string' as an integer with a base defined by C-like rules: If the numeric part of the string begins with @code '0x', then it will be parsed as base-16. If it begins with @code '0b', it will be parsed as base-2. Otherwise, it will be parsed as base 10. Returns the parsed value.")
+@func MD_CStyleIntFromString: {
+    string: MD_String8,
+    return: MD_i64,
+};
+
+@send(Strings)
+@doc("Parses @code 'string' as a floating point number, and returns the parsed value.")
+@func MD_F64FromString: {
+    string: MD_String8,
+    return: MD_f64,
+};
+
+@send(Strings)
+@doc("Builds and returns a string on @code 'arena' that is the textual representation of @code 'x'.")
+@func MD_CStyleHexStringFromU64:
+{
+    arena: *MD_Arena,
+    x: MD_u64,
+    @doc("Determines whether or not the alphabetic characters used in the hex textual representation are upper-case or lower-case.")
+        caps: MD_b32,
+    return: MD_String8,
+}
+
+////////////////////////////////
+//~ Enum/Flag Strings
+
+@send(Nodes)
+@doc("Returns a string that contains a name matching @code 'kind'.")
+@func MD_StringFromNodeKind: {
+    kind: MD_NodeKind,
+    return: MD_String8,
+};
+
+@send(Nodes)
+@doc("Builds a string list for all bits set in @code 'flags', with each string being the name of one of the flags that is set.")
+@func MD_StringListFromNodeFlags: {
+    arena: *MD_Arena,
+    flags: MD_NodeFlags,
+    return: MD_String8List,
 };
 
 ////////////////////////////////
@@ -1175,7 +1449,7 @@ MD_MapOverwrite: {
 ////////////////////////////////
 //~ Parsing
 
-@send(Parsing) @func
+@send(Tokens) @func
 @doc("Produces a single token, given some input string.")
 @see(MD_Token)
 @see(MD_TokenKind)
@@ -1185,7 +1459,7 @@ MD_TokenFromString:
     return: MD_Token;
 }
 
-@send(Parsing) @func
+@send(Tokens) @func
 @doc("Returns the number of bytes that can be skipped, when skipping over certain token kinds.")
 @see(MD_Token)
 @see(MD_TokenKind)
@@ -1665,7 +1939,7 @@ MD_ParseWholeFile:
 ////////////////////////////////
 //~ Generation
 
-@send(Output)
+@send(StringGeneration)
 @doc("Outputs a textual representation of the tree with @code 'node' as its root to @code 'file'.")
 @func MD_DebugOutputTree: {
     file: *FILE,
@@ -1936,44 +2210,44 @@ MD_ParseWholeFile:
 ////////////////////////////////
 //~ C Language Generation
 
-@send(Output)
+@send(StringGeneration)
 @func MD_C_Generate_String: {
     file: *FILE,
     node: *MD_Node,
 };
 
-@send(Output)
+@send(StringGeneration)
 @func MD_C_Generate_Struct: {
     file: *FILE,
     node: *MD_Node,
 };
 
-@send(Output)
+@send(StringGeneration)
 @func MD_C_Generate_Decl: {
     file: *FILE,
     node: *MD_Node,
 };
 
-@send(Output)
+@send(StringGeneration)
 @func MD_C_Generate_DeclByNameAndType: {
     file: *FILE,
     name: MD_String8,
     type: *MD_C_Expr,
 };
 
-@send(Output)
+@send(StringGeneration)
 @func MD_C_Generate_Expr: {
     file: *FILE,
     expr: *MD_C_Expr,
 };
 
-@send(Output)
+@send(StringGeneration)
 @func MD_C_Generate_TypeLHS: {
     file: *FILE,
     type: *MD_C_Expr,
 };
 
-@send(Output)
+@send(StringGeneration)
 @func MD_C_Generate_TypeRHS: {
     file: *FILE,
     type: *MD_C_Expr,

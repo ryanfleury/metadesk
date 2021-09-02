@@ -3398,6 +3398,9 @@ MD_StringListFromArgCV(MD_Arena *arena, int argument_count, char **arguments)
 MD_FUNCTION MD_CmdLine
 MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
 {
+    // TODO(rjf): consider everything as plain unstructured inputs after
+    // a `--` (without a name).
+    
     MD_CmdLine cmdln = MD_ZERO_STRUCT;
     
     for(MD_String8Node *n = options.first, *next = 0;
