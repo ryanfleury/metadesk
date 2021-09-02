@@ -404,13 +404,15 @@ struct MD_String8List
     MD_String8Node *last;
 };
 
-typedef struct MD_StringJoin{
+typedef struct MD_StringJoin MD_StringJoin;
+struct MD_StringJoin
+{
     MD_String8 pre;
     MD_String8 mid;
     MD_String8 post;
-} MD_StringJoin;
+};
 
-// NOTE(rjf): @maintenance These three enums must not overlap, and must share a flag space.
+// NOTE(rjf): @maintenance These three flag types must not overlap.
 typedef MD_u32 MD_MatchFlags;
 typedef MD_u32 MD_StringMatchFlags;
 typedef MD_u32 MD_NodeMatchFlags;
@@ -676,6 +678,58 @@ struct MD_ParseResult
     MD_MessageList errors;
 };
 
+//~ Expression Parsing
+
+typedef enum MD_ExprOperatorKind
+{
+    MD_ExprOperatorKind_Prefix,
+    MD_ExprOperatorKind_Postfix,
+    MD_ExprOperatorKind_Binary,
+} MD_ExprOperatorKind;
+
+typedef struct MD_ExprOperator MD_ExprOperator;
+struct MD_ExprOperator
+{
+    MD_u32 op_id;
+    MD_ExprOperatorKind kind;
+    MD_u32 precedence;
+    MD_Node *md_node;
+};
+
+typedef struct MD_ExprOperatorNode MD_ExprOperatorNode;
+struct MD_ExprOperatorNode
+{
+    struct MD_ExprOperatorNode *next;
+    MD_ExprOperator op;
+};
+
+typedef struct MD_ExprOperatorList MD_ExprOperatorList;
+struct MD_ExprOperatorList
+{
+    MD_ExprOperatorNode *first;
+    MD_ExprOperatorNode *last;
+    MD_u64 count;
+};
+
+typedef struct MD_ExprOperatorTable MD_ExprOperatorTable;
+struct MD_ExprOperatorTable
+{
+    // TODO(allen): @expr_parser fill this in however needed
+    int foo;
+};
+
+typedef struct MD_ExprNode MD_ExprNode;
+struct MD_ExprNode
+{
+    struct MD_ExprNode *parent;
+    struct MD_ExprNode *left;
+    struct MD_ExprNode *right;
+    MD_b32 is_op;
+    MD_u32 op_id;
+    MD_Node *md_node;
+    MD_Node *md_op_node;
+};
+
 //~ String Generation Types
 
 typedef MD_u32 MD_GenerateFlags;
@@ -736,6 +790,7 @@ struct MD_FileIter
     // This is opaque state to store OS-specific file-system iteration data.
     MD_u8 opaque[640];
 };
+
 
 //~ Basic Utilities
 
@@ -1032,6 +1087,18 @@ MD_FUNCTION void MD_PrintNodeMessageFmt(FILE *file, MD_Node *node, MD_MessageKin
 
 MD_FUNCTION MD_b32 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
 MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags);
+
+//~ Expression Parsing
+
+MD_FUNCTION void   MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
+                                       MD_u32 op_id, MD_ExprOperatorKind kind,
+                                       MD_u64 precedence, MD_Node *md_node);
+
+MD_FUNCTION MD_ExprOperatorTable MD_ExprBakeOperatorTableFromList(MD_Arena *arena,
+                                                                  MD_ExprOperatorList *list);
+
+MD_FUNCTION MD_ExprNode* MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table,
+                                      MD_Node *first, MD_Node *one_past_last);
 
 //~ String Generation
 

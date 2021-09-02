@@ -2968,6 +2968,36 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
     return result;
 }
 
+//~ Expression Parsing
+
+MD_FUNCTION void
+MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
+                    MD_u32 op_id, MD_ExprOperatorKind kind,
+                    MD_u64 precedence, MD_Node *md_node){
+    MD_ExprOperatorNode *node = MD_PushArray(arena, MD_ExprOperatorNode, 1);
+    MD_QueuePush(list->first, list->last, node);
+    list->count += 1;
+    node->op.op_id = op_id;
+    node->op.kind = kind;
+    node->op.precedence = precedence;
+    node->op.md_node = md_node;
+}
+
+MD_FUNCTION MD_ExprOperatorTable
+MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list){
+    MD_ExprOperatorTable result = {0};
+    // TODO(allen): @expr_parser
+    return(result);
+}
+
+MD_FUNCTION MD_ExprNode*
+MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table,
+             MD_Node *first, MD_Node *one_past_last){
+    MD_ExprNode *result = 0;
+    // TODO(allen): @expr_parser
+    return(result);
+}
+
 //~ String Generation
 
 MD_FUNCTION_IMPL MD_String8List
