@@ -8,16 +8,6 @@ cd ..
   build_path=$root_path/build
 samples_path=$root_path/samples
 
-echo ~~~ Running Static Site Generator Sample ~~~
-cd $samples_path
-if [ -d "static_site_generator/example_site" ]; then
-  cd static_site_generator/example_site
-  mkdir -p generated
-  cd generated
-  $build_path/static_site_generator.exe --siteinfo:../site_info.mdesk --pagedir:../
-fi
-echo
-
 echo ~~~ Running Output Parse Sample ~~~
 cd $samples_path
 if [ -d "output_parse/examples" ]; then

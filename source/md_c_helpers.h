@@ -1,5 +1,7 @@
 /* date = April 16th 2021 6:05 pm */
 
+#error foo
+
 #ifndef MD_C_HELPERS_H
 #define MD_C_HELPERS_H
 
