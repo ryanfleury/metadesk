@@ -191,8 +191,7 @@ int main(void)
             MD_PushChild(size, MakeTestNode(MD_NodeKind_Main, MD_S8Lit("u64")));
             MD_PushChild(params, size);
             MD_PushChild(tree, params);
-            MD_PushChild(tree, MakeTestNode(MD_NodeKind_Main, MD_S8Lit("-")));
-            MD_PushChild(tree, MakeTestNode(MD_NodeKind_Main, MD_S8Lit(">")));
+            MD_PushChild(tree, MakeTestNode(MD_NodeKind_Main, MD_S8Lit("->")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Main, MD_S8Lit("*")));
             MD_PushChild(tree, MakeTestNode(MD_NodeKind_Main, MD_S8Lit("void")));
             TestResult(MatchParsedWithNode(string, tree));

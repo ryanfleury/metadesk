@@ -1930,8 +1930,10 @@ MD_TokenFromString(MD_String8 string)
                 else if (MD_CharIsUnreservedSymbol(*at))
                 {
                     symbol_lex:
+                    
                     token.kind = MD_TokenKind_Symbol;
                     at += 1;
+                    MD_TokenizerScan(MD_CharIsUnreservedSymbol(*at));
                 }
                 
                 else if (MD_CharIsReservedSymbol(*at))
