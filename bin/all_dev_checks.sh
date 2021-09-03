@@ -9,9 +9,9 @@ root_path=$PWD
 
 ###### Bin Scripts ############################################################
 $bin_path/build_tests.sh
-$bin_path/build_samples.sh
+$bin_path/build_examples.sh
 $bin_path/run_tests.sh
-$bin_path/run_samples.sh
+$bin_path/run_examples.sh
 
 ###### Restore Path ###########################################################
 cd $og_path

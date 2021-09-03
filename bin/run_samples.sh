@@ -4,12 +4,12 @@
 og_path=$PWD
 cd "$(dirname "$0")"
 cd ..
-   root_path=$PWD
-  build_path=$root_path/build
-samples_path=$root_path/samples
+    root_path=$PWD
+   build_path=$root_path/build
+examples_path=$root_path/examples
 
-echo ~~~ Running Output Parse Sample ~~~
-cd $samples_path
+echo ~~~ Running Output Parse Example ~~~
+cd $examples_path
 if [ -d "output_parse/examples" ]; then
   cd output_parse/examples
   mkdir -p output
@@ -18,17 +18,17 @@ if [ -d "output_parse/examples" ]; then
 fi
 echo
 
-echo ~~~ Running C Code Generation Sample ~~~
+echo ~~~ Running C Code Generation Example ~~~
 cd $build_path
 ./c_code_generation.exe
 echo
 
-echo ~~~ Running Error Generation Sample ~~~
+echo ~~~ Running Error Generation Example ~~~
 cd $build_path
-./node_errors.exe $samples_path/node_errors/node_errors.mdesk
+./node_errors.exe $examples_path/node_errors/node_errors.mdesk
 echo
 
-echo ~~~ Running C++ Sample ~~~
+echo ~~~ Running C++ Example ~~~
 cd $build_path
 ./cpp_build_test.exe
 echo
