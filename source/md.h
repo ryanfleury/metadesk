@@ -681,9 +681,11 @@ struct MD_ParseResult
 
 typedef enum MD_ExprOperatorKind
 {
+    // TODO(mal): We could improve this naming scheme
     MD_ExprOperatorKind_Prefix,
     MD_ExprOperatorKind_Postfix,
     MD_ExprOperatorKind_Binary,
+    MD_ExprOperatorKind_BinaryRightAssociative,
 } MD_ExprOperatorKind;
 
 typedef struct MD_ExprOperator MD_ExprOperator;
@@ -715,6 +717,7 @@ struct MD_ExprOperatorTable
 {
     // TODO(allen): @expr_parser fill this in however needed
     int foo;
+    MD_MessageList errors;
 };
 
 typedef struct MD_ExprNode MD_ExprNode;
@@ -727,6 +730,13 @@ struct MD_ExprNode
     MD_u32 op_id;
     MD_Node *md_node;
     MD_Node *md_op_node;
+};
+
+typedef struct MD_ExprParseResult MD_ExprParseResult;
+struct MD_ExprParseResult
+{
+    MD_ExprNode *node;
+    MD_MessageList errors;
 };
 
 //~ String Generation Types
@@ -1096,8 +1106,8 @@ MD_FUNCTION void   MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *lis
 MD_FUNCTION MD_ExprOperatorTable MD_ExprBakeOperatorTableFromList(MD_Arena *arena,
                                                                   MD_ExprOperatorList *list);
 
-MD_FUNCTION MD_ExprNode* MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table,
-                                      MD_Node *first, MD_Node *one_past_last);
+MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table,
+                                            MD_Node *first, MD_Node *one_past_last);
 
 //~ String Generation
 

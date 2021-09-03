@@ -206,6 +206,7 @@ MD_WIN32_Release(void *ptr, MD_u64 size){
 # include <fcntl.h>
 # include <unistd.h>
 # include <sys/syscall.h>
+# include <sys/mman.h>
 // NOTE(mal): To get these constants I need to #define _GNU_SOURCE,
 // which invites non-POSIX behavior I'd rather avoid
 # ifndef O_PATH
@@ -2992,10 +2993,10 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list){
     return(result);
 }
 
-MD_FUNCTION MD_ExprNode*
+MD_FUNCTION MD_ExprParseResult
 MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table,
              MD_Node *first, MD_Node *one_past_last){
-    MD_ExprNode *result = 0;
+    MD_ExprParseResult result = {0};
     // TODO(allen): @expr_parser
     return(result);
 }
