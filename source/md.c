@@ -1917,7 +1917,7 @@ MD_TokenFromString(MD_String8 string)
                                 at += 1;
                             }
                         }
-                        else if (MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.'){
+                        else if (MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.' || *at == '_'){
                             good = 1;
                             at += 1;
                         }

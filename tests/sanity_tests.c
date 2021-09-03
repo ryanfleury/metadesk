@@ -88,24 +88,17 @@ int main(void)
     
     Test("Lexer")
     {
-        MD_String8 string = MD_S8Lit("abc def 123 456 123_456 abc123 123abc");
-        MD_Token tokens[] =
-        {
-            MD_TokenFromString(MD_S8Skip(string, 0)),
-            MD_TokenFromString(MD_S8Skip(string, 3)),
-            MD_TokenFromString(MD_S8Skip(string, 4)),
-            MD_TokenFromString(MD_S8Skip(string, 7)),
-            MD_TokenFromString(MD_S8Skip(string, 8)),
-            MD_TokenFromString(MD_S8Skip(string, 11)),
-            MD_TokenFromString(MD_S8Skip(string, 12)),
-            MD_TokenFromString(MD_S8Skip(string, 15)),
-            MD_TokenFromString(MD_S8Skip(string, 16)),
-            MD_TokenFromString(MD_S8Skip(string, 19)),
-            MD_TokenFromString(MD_S8Skip(string, 20)),
-            MD_TokenFromString(MD_S8Skip(string, 23)),
-            MD_TokenFromString(MD_S8Skip(string, 24)),
-            MD_TokenFromString(MD_S8Skip(string, 27)),
-        };
+        MD_String8 string = MD_S8Lit("abc def 123 456 123_456 abc123 123abc +-*");
+        MD_Token tokens[100];
+        
+        MD_Token *token = tokens;
+        MD_Token *token_opl = tokens + MD_ArrayCount(tokens);
+        MD_u64 pos = 0;
+        for (; pos < string.size && token < token_opl; ){
+            *token = MD_TokenFromString(MD_S8Skip(string, pos));
+            pos += token->raw_string.size;
+            token += 1;
+        }
         
         TestResult(TokenMatch(tokens[0], MD_S8Lit("abc"), MD_TokenKind_Identifier));
         TestResult(TokenMatch(tokens[1], MD_S8Lit(" "), MD_TokenKind_Whitespace));
@@ -115,8 +108,13 @@ int main(void)
         TestResult(TokenMatch(tokens[5], MD_S8Lit(" "), MD_TokenKind_Whitespace));
         TestResult(TokenMatch(tokens[6], MD_S8Lit("456"), MD_TokenKind_NumericLiteral));
         TestResult(TokenMatch(tokens[7], MD_S8Lit(" "), MD_TokenKind_Whitespace));
-        // TODO(rjf): Enable once numeric literal lexing is fixed
-        //TestResult(TokenMatch(MD_Parse_LexNext(&ctx), MD_S8Lit("123_456"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(tokens[8], MD_S8Lit("123_456"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(tokens[9], MD_S8Lit(" "), MD_TokenKind_Whitespace));
+        TestResult(TokenMatch(tokens[10], MD_S8Lit("abc123"), MD_TokenKind_Identifier));
+        TestResult(TokenMatch(tokens[11], MD_S8Lit(" "), MD_TokenKind_Whitespace));
+        TestResult(TokenMatch(tokens[12], MD_S8Lit("123abc"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(tokens[13], MD_S8Lit(" "), MD_TokenKind_Whitespace));
+        TestResult(TokenMatch(tokens[14], MD_S8Lit("+-*"), MD_TokenKind_Symbol));
     }
     
     Test("Empty Sets")
