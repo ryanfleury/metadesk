@@ -1,7 +1,19 @@
-inspecting error information
-MD_CodeLocFromNode, (MD_Node from MD_Message)
-nil nodes
-tips on generating C
-concat
-PushStringF
-match flags (which are relevant)
+Intro Materials Should Cover:
+arena
+string helpers
+immutable tree model
+nil
+
+Examples:
+[ ] Metadesk parse checker
+[ ] Metadesk reprinter
+[ ] Example of helpers: string helpers, linked lists, map type
+                        printing errors, cmd line, file iter
+[ ] Datadesk-like setup
+[ ] Example type metadata
+[ ] Example of simple expression parser
+[ ] Example of C-like expression parser (with value and type expressions)
+[ ] Example(s) of using overrides
+[ ] Example memory clearing in long-running program
+[ ] Example multi-threaded parsing
+

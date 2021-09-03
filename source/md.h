@@ -665,8 +665,7 @@ typedef enum MD_ParseSetRule
 {
     MD_ParseSetRule_EndOnDelimiter,
     MD_ParseSetRule_Global,
-}
-MD_ParseSetRule;
+} MD_ParseSetRule;
 
 typedef struct MD_ParseResult MD_ParseResult;
 struct MD_ParseResult

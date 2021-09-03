@@ -18,11 +18,6 @@ if [ -d "output_parse/examples" ]; then
 fi
 echo
 
-echo ~~~ Running C Code Generation Example ~~~
-cd $build_path
-./c_code_generation.exe
-echo
-
 echo ~~~ Running Error Generation Example ~~~
 cd $build_path
 ./node_errors.exe $examples_path/node_errors/node_errors.mdesk
