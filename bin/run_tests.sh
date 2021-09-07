@@ -10,6 +10,7 @@ mkdir -p build
 cd build
 ./sanity_tests.exe
 ./unicode_test.exe
+./expression_tests.exe
 
 ###### Restore Path ###########################################################
 cd $og_path

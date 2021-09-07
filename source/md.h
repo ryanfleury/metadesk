@@ -681,11 +681,13 @@ struct MD_ParseResult
 
 typedef enum MD_ExprOperatorKind
 {
-    // TODO(mal): We could improve this naming scheme
+    MD_ExprOperatorKind_Null,
+    // TODO(mal): Improve this naming scheme ?
     MD_ExprOperatorKind_Prefix,
     MD_ExprOperatorKind_Postfix,
     MD_ExprOperatorKind_Binary,
     MD_ExprOperatorKind_BinaryRightAssociative,
+    MD_ExprOperatorKind_COUNT,
 } MD_ExprOperatorKind;
 
 typedef struct MD_ExprOperator MD_ExprOperator;
@@ -715,8 +717,12 @@ struct MD_ExprOperatorList
 typedef struct MD_ExprOperatorTable MD_ExprOperatorTable;
 struct MD_ExprOperatorTable
 {
-    // TODO(allen): @expr_parser fill this in however needed
-    int foo;
+    // TODO(mal): Something faster; arrays indexed by op kind or hash table...
+    MD_ExprOperatorList table[MD_ExprOperatorKind_COUNT];
+
+    MD_ExprOperator *call_op;
+    MD_ExprOperator *subscript_op;
+
     MD_MessageList errors;
 };
 
@@ -826,7 +832,7 @@ struct MD_FileIter
 ((l)->next=(n),(l)=(n),zset((n)->next)))
 #define MD_QueuePop_NZ(f,l,next,zset) ((f)==(l)?\
 (zset(f),zset(l)):\
-(f)=(f)->next)
+((f)=(f)->next))
 #define MD_StackPush_N(f,n,next) ((n)->next=(f),(f)=(n))
 #define MD_StackPop_NZ(f,next,zchk) (zchk(f)?0:(f)=(f)->next)
 

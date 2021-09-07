@@ -2973,7 +2973,7 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 
 //~ Expression Parsing
 
-MD_FUNCTION void
+MD_FUNCTION_IMPL void
 MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
                     MD_u32 op_id, MD_ExprOperatorKind kind,
                     MD_u64 precedence, MD_Node *md_node){
@@ -2986,18 +2986,221 @@ MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
     node->op.md_node = md_node;
 }
 
-MD_FUNCTION MD_ExprOperatorTable
+MD_FUNCTION_IMPL MD_ExprOperatorTable
 MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list){
-    MD_ExprOperatorTable result = {0};
-    // TODO(allen): @expr_parser
+    MD_ExprOperatorTable result = MD_ZERO_STRUCT;
+
+    for(MD_ExprOperatorNode *op_node = list->first; op_node; op_node = op_node->next){
+        MD_ExprOperatorList *list = result.table+op_node->op.kind;
+        MD_ExprOperatorNode *op_node_copy = MD_PushArray(arena, MD_ExprOperatorNode, 1);
+        MD_QueuePush(list->first, list->last, op_node_copy);
+        list->count += 1;
+        op_node_copy->op = op_node->op;
+
+        if(op_node->op.kind == MD_ExprOperatorKind_Postfix && 
+           MD_S8Match(op_node->op.md_node->string, MD_S8Lit("()"), 0)){
+            result.call_op = &op_node_copy->op;
+        }
+        else if(op_node->op.kind == MD_ExprOperatorKind_Binary && 
+           MD_S8Match(op_node->op.md_node->string, MD_S8Lit("[]"), 0)){
+            result.subscript_op = &op_node_copy->op;
+        }
+
+        // TODO(mal): Check: non-repeat operators, same precedence binary ops should share associativity
+    }
+
     return(result);
 }
 
-MD_FUNCTION MD_ExprParseResult
-MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table,
-             MD_Node *first, MD_Node *one_past_last){
-    MD_ExprParseResult result = {0};
-    // TODO(allen): @expr_parser
+typedef struct _MD_ExprParseCtx _MD_ExprParseCtx;
+struct _MD_ExprParseCtx{
+    MD_ExprOperatorTable *op_table;
+    MD_Node *first;
+    MD_Node *one_past_last;
+};
+
+MD_FUNCTION_IMPL MD_ExprParseResult 
+_MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 min_precedence);
+
+MD_FUNCTION_IMPL MD_ExprNode * _MD_Expr_Make(MD_Arena *arena, MD_ExprOperator *op, MD_Node *op_node, 
+                           MD_ExprNode *left, MD_ExprNode *right){
+    MD_ExprNode *result = MD_PushArrayZero(arena, MD_ExprNode, 1);
+    result->is_op = 1;
+    result->op_id = op->op_id;
+    result->md_op_node = op->md_node;
+    result->md_node = op_node;
+    result->left = left;
+    result->right = right;
+    result->left->parent = result;
+    if(result->right){      // TODO(mal): Introduce Nil expr node?
+        result->right->parent = result;
+    }
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_ExprOperator * 
+_MD_ExprOperatorMatch(MD_ExprOperatorTable *table, MD_ExprOperatorKind kind, MD_String8 s){
+    // NOTE(mal): Look for operator on one or all (kind == MD_ExprOperatorKind_Null) tables
+    MD_ExprOperator *result = 0;
+    for(MD_ExprOperatorKind cur_kind = (MD_ExprOperatorKind)(MD_ExprOperatorKind_Null+1);
+        !result && cur_kind < MD_ExprOperatorKind_COUNT; 
+        cur_kind = (MD_ExprOperatorKind)(cur_kind+1)){
+        if(kind == MD_ExprOperatorKind_Null || kind == cur_kind){
+            MD_ExprOperatorList *op_list = table->table+cur_kind;
+            for(MD_ExprOperatorNode *op_node = op_list->first; !result && op_node; op_node = op_node->next)
+            {
+                if(MD_S8Match(op_node->op.md_node->string, s, 0)){
+                    result = &op_node->op;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+MD_FUNCTION_IMPL void _MD_CtxAdvance(_MD_ExprParseCtx *ctx){
+    ctx->first = ctx->first->next;
+}
+
+MD_FUNCTION_IMPL MD_b32 _MD_ExprOperatorConsumed(_MD_ExprParseCtx *ctx, MD_ExprOperatorKind kind, MD_u32 min_precedence,
+                                       MD_ExprOperator **op_out){
+    MD_b32 result = 0;
+    if(!MD_NodeIsNil(ctx->first)){
+        MD_Node *node = ctx->first;
+        MD_ExprOperator *op = _MD_ExprOperatorMatch(ctx->op_table, kind, node->string);
+        if(op && op->precedence >= min_precedence){
+            result = 1;
+            *op_out = op;
+            _MD_CtxAdvance(ctx);
+        }
+    }
+    return result;
+}
+
+MD_FUNCTION_IMPL _MD_ExprParseCtx
+_MD_ExprParse_MakeContext(MD_ExprOperatorTable *op_table, MD_Node *first, MD_Node *one_past_last){
+    _MD_ExprParseCtx result = MD_ZERO_STRUCT;
+    result.op_table = op_table;
+    result.first = first;
+    result.one_past_last = one_past_last;
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_ExprParseResult 
+_MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx){
+    MD_ExprParseResult result = MD_ZERO_STRUCT;
+
+    MD_Node *node = ctx->first;
+    MD_ExprOperator *op = 0;
+
+    if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight){ // NOTE(mal): Parens
+        _MD_CtxAdvance(ctx);
+        _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeContext(ctx->op_table, node->first_child, node->last_child->next);
+        result = _MD_ExprParse_Ctx_MinPrecedence(arena, &sub_ctx, 0);
+    }
+    else if((node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight) ||
+            (node->flags & MD_NodeFlag_HasBraceLeft && node->flags & MD_NodeFlag_HasBraceRight)){
+        _MD_CtxAdvance(ctx);
+        // NOTE(mal): Unparsed leaf sets ({ ... }, [ ... ])
+        result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
+        result.node->md_node = node;
+    }
+    else if(_MD_ExprOperatorConsumed(ctx, MD_ExprOperatorKind_Prefix, 1, &op)){
+        MD_u32 min_precedence = op->precedence + 1;
+        MD_ExprParseResult sub_parse_result = _MD_ExprParse_Ctx_MinPrecedence(arena, ctx, min_precedence);
+        if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null){
+            result.node = _MD_Expr_Make(arena, op, node, sub_parse_result.node, 0);
+        }
+        else{
+            result.errors = sub_parse_result.errors;
+        }
+    }
+    else if(_MD_ExprOperatorConsumed(ctx, MD_ExprOperatorKind_Null, 1, &op)){
+        MD_String8 error_str = MD_S8Fmt(arena, "Expected leaf. Got operator \"%.*s\".", MD_S8VArg(node->string));
+        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_Error, error_str);
+        MD_MessageListPush(&result.errors, error);
+    }
+    else{   // NOTE(mal): leaf
+        _MD_CtxAdvance(ctx);
+        result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
+        result.node->md_node = node;
+    }
+
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_ExprParseResult 
+_MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 min_precedence){
+    MD_ExprParseResult result = MD_ZERO_STRUCT;
+
+    MD_ExprOperator *subscript_op = ctx->op_table->subscript_op;
+
+    result = _MD_ExprParse_Atom(arena, ctx);
+    if(result.errors.max_message_kind == MD_MessageKind_Null){
+        while(!MD_NodeIsNil(ctx->first) && ctx->first != ctx->one_past_last){
+            MD_Node *node = ctx->first;
+            MD_ExprOperator *op;
+
+            if(subscript_op && subscript_op->precedence >= min_precedence &&
+               node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight){
+                _MD_CtxAdvance(ctx);
+
+                // NOTE(mal): Array subscript
+                _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeContext(ctx->op_table, 
+                                                                     node->first_child, node->last_child->next);
+                MD_ExprParseResult sub_parse_result = _MD_ExprParse_Ctx_MinPrecedence(arena, &sub_ctx, 0);
+                if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null){
+                    result.node = _MD_Expr_Make(arena, subscript_op, node, result.node, sub_parse_result.node);
+                }
+                else{
+                    result.errors = sub_parse_result.errors;
+                    break;
+                }
+            }
+            else if(_MD_ExprOperatorConsumed(ctx, MD_ExprOperatorKind_Binary, min_precedence, &op) ||
+                    _MD_ExprOperatorConsumed(ctx, MD_ExprOperatorKind_BinaryRightAssociative, min_precedence, &op)){
+                MD_u32 next_min_precedence = op->precedence + (op->kind == MD_ExprOperatorKind_Binary);
+                MD_ExprParseResult sub_parse_result = _MD_ExprParse_Ctx_MinPrecedence(arena, ctx, next_min_precedence);
+                if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null){
+                    result.node = _MD_Expr_Make(arena, op, node, result.node, sub_parse_result.node);
+                }
+                else{
+                    result.errors = sub_parse_result.errors;
+                    break;
+                }
+            }
+            else if(ctx->op_table->call_op && ctx->op_table->call_op->precedence >= min_precedence &&
+                    node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight){ // NOTE: call
+                _MD_CtxAdvance(ctx);
+                result.node = _MD_Expr_Make(arena, ctx->op_table->call_op, node, result.node, 0);
+            }
+            else if(_MD_ExprOperatorConsumed(ctx, MD_ExprOperatorKind_Postfix, min_precedence, &op)){
+                result.node = _MD_Expr_Make(arena, op, node, result.node, 0);
+            }
+            else{
+                break;  // NOTE: Due to lack of progress
+            }
+        }
+    }
+
+    return result;
+}
+
+MD_FUNCTION_IMPL MD_ExprParseResult
+MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table, MD_Node *first, MD_Node *one_past_last){
+    MD_ExprParseResult result = MD_ZERO_STRUCT;
+
+    _MD_ExprParseCtx ctx = _MD_ExprParse_MakeContext(op_table, first, one_past_last);
+    result = _MD_ExprParse_Ctx_MinPrecedence(arena, &ctx, 0);
+    if(result.errors.max_message_kind == MD_MessageKind_Null){
+        if(ctx.first != ctx.one_past_last){
+            MD_String8 error_str = 
+                MD_S8Fmt(arena, "Partial parse. Expected binary or unary postfix operator."); // TODO(mal): More detail?
+            MD_Message *error = MD_MakeNodeError(arena, ctx.first, MD_MessageKind_Error, error_str);
+            MD_MessageListPush(&result.errors, error);
+        }
+    }
+    
     return(result);
 }
 
