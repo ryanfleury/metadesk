@@ -3071,6 +3071,12 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
             {
                 result.subscript_op = &op_node_copy->op;
             }
+            else if(op.kind == MD_ExprOperatorKind_Prefix && MD_S8Match(op_s, MD_S8Lit("[]"), 0)){
+                result.bracket_set_op = &op_node_copy->op;
+            }
+            else if(op.kind == MD_ExprOperatorKind_Prefix && MD_S8Match(op_s, MD_S8Lit("{}"), 0)){
+                result.brace_set_op = &op_node_copy->op;
+            }
         }
         else
         {
@@ -3158,8 +3164,10 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
         _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeContext(ctx->op_table, node->first_child, node->last_child->next);
         result = _MD_ExprParse_Ctx_MinPrecedence(arena, &sub_ctx, 0);
     }
-    else if((node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight) ||
-            (node->flags & MD_NodeFlag_HasBraceLeft && node->flags & MD_NodeFlag_HasBraceRight))
+    else if((node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight &&
+             ctx->op_table->bracket_set_op) ||
+            (node->flags & MD_NodeFlag_HasBraceLeft && node->flags & MD_NodeFlag_HasBraceRight &&
+             ctx->op_table->brace_set_op))
     {
         _MD_CtxAdvance(ctx);
         // NOTE(mal): Unparsed leaf sets ({ ... }, [ ... ])
@@ -3181,6 +3189,12 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
     else if(_MD_ExprOperatorConsumed(ctx, MD_ExprOperatorKind_Null, 1, &op))
     {
         MD_String8 error_str = MD_S8Fmt(arena, "Expected leaf. Got operator \"%.*s\".", MD_S8VArg(node->string));
+        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_Error, error_str);
+        MD_MessageListPush(&result.errors, error);
+    }
+    else if(node->flags & (MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight | MD_NodeFlag_HasBracketLeft | 
+                           MD_NodeFlag_HasBracketRight | MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight)){
+        MD_String8 error_str = MD_S8Fmt(arena, "Unexpected set.", MD_S8VArg(node->string));
         MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_Error, error_str);
         MD_MessageListPush(&result.errors, error);
     }

@@ -722,6 +722,8 @@ struct MD_ExprOperatorTable
     MD_MessageList errors;
     MD_ExprOperator *call_op;           // TODO: Move elsewhere
     MD_ExprOperator *subscript_op;
+    MD_ExprOperator *bracket_set_op;
+    MD_ExprOperator *brace_set_op;
 };
 
 typedef struct MD_ExprNode MD_ExprNode;
