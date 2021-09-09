@@ -719,11 +719,9 @@ struct MD_ExprOperatorTable
 {
     // TODO(mal): Something faster; arrays indexed by op kind or hash table...
     MD_ExprOperatorList table[MD_ExprOperatorKind_COUNT];
-
-    MD_ExprOperator *call_op;
-    MD_ExprOperator *subscript_op;
-
     MD_MessageList errors;
+    MD_ExprOperator *call_op;           // TODO: Move elsewhere
+    MD_ExprOperator *subscript_op;
 };
 
 typedef struct MD_ExprNode MD_ExprNode;

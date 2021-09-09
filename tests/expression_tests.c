@@ -1,15 +1,5 @@
 //$ exe //
 
-#if 0
-#define ASSERT(expr) {if(!(expr)){fprintf(stderr, "Assertion failed: %s, line %d (%s)\n", __FILE__, __LINE__, #expr); __builtin_debugtrap();}}
-#define HARD_ASSERT(expr) {if(!(expr)){fprintf(stderr, "Assertion failed: %s, line %d (%s)\n", __FILE__, __LINE__, #expr); __builtin_debugtrap();}}
-#define BP ASSERT(!"Break point");
-#define NotTested ASSERT(!"Not tested");
-#define STATIC_ASSERT(expr) U8 MACRO_CONCAT(static_assert_, __COUNTER__)[(expr)?(1):(-1)]
-#define NotImplemented ASSERT(!"Not implemented");
-#endif
-
-
 #include "md.h"
 #include "md.c"
 
@@ -85,7 +75,6 @@ typedef enum{
     Op_COUNT
 } Op;
 #undef X
-
 
 static MD_String8 node_raw_contents(MD_Node *node, MD_b32 exclude_outer){
     MD_String8 result = {0};
@@ -194,7 +183,6 @@ static MD_String8 parenthesize(MD_Arena *arena, OperatorDescription *descs, MD_E
     return result;
 }
 
-
 int main(void){
     OperatorDescription operator_array[Op_COUNT] = {0};
 #define X(name, token, kind_, prec) \
@@ -204,9 +192,54 @@ int main(void){
 #undef X 
 
     arena = MD_ArenaAlloc(1ull << 40);
+
+    /* NOTE: Operator table bake errors */ {
+        MD_ExprOperatorList operator_list = {0};
+        MD_ExprOperatorTable op_table = {0};
+
+        MD_String8 plus = MD_S8Lit("+");
+        MD_String8 minus = MD_S8Lit("-");
+        MD_Node *plus_node = MD_MakeNode(arena, MD_NodeKind_Main, plus, plus, 0);
+        MD_Node *minus_node = MD_MakeNode(arena, MD_NodeKind_Main, minus, minus, 0);
+        MD_Node *plus_node_bis = MD_MakeNode(arena, MD_NodeKind_Main, plus, plus, 0);
+
+        // NOTE: Wrong operator kind
+        operator_list = (MD_ExprOperatorList){0};
+        MD_ExprOperatorPush(arena, &operator_list, Op_Addition, MD_ExprOperatorKind_Null, 1, plus_node);
+        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        MD_Assert(op_table.errors.max_message_kind = MD_MessageKind_Warning && op_table.errors.node_count == 1 && 
+                  op_table.errors.first->node == plus_node);
+
+        // NOTE: Repeat operator
+        operator_list = (MD_ExprOperatorList){0};
+        MD_ExprOperatorPush(arena, &operator_list, Op_Addition, MD_ExprOperatorKind_Binary, 1, plus_node);
+        MD_ExprOperatorPush(arena, &operator_list, Op_Addition, MD_ExprOperatorKind_Binary, 1, plus_node_bis);
+        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        MD_Assert(op_table.errors.max_message_kind = MD_MessageKind_Warning && op_table.errors.node_count == 1 && 
+                  op_table.errors.first->node == plus_node_bis);
+
+        operator_list = (MD_ExprOperatorList){0};
+        // NOTE: Binary-postfix operator conflict
+        MD_ExprOperatorPush(arena, &operator_list, Op_Addition, MD_ExprOperatorKind_Binary, 1, plus_node);
+        MD_ExprOperatorPush(arena, &operator_list, Op_Addition, MD_ExprOperatorKind_Postfix, 1, plus_node_bis);
+        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        MD_Assert(op_table.errors.max_message_kind = MD_MessageKind_Warning && op_table.errors.node_count == 1 && 
+                  op_table.errors.first->node == plus_node_bis);
+
+        operator_list = (MD_ExprOperatorList){0};
+        // NOTE: Same precedence difference associativity conflict
+        MD_ExprOperatorPush(arena, &operator_list, Op_Addition, MD_ExprOperatorKind_Binary, 1, plus_node);
+        MD_ExprOperatorPush(arena, &operator_list, Op_Addition, MD_ExprOperatorKind_BinaryRightAssociative, 
+                            1, minus_node);
+        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        MD_Assert(op_table.errors.max_message_kind = MD_MessageKind_Warning && op_table.errors.node_count == 1 && 
+                  op_table.errors.first->node == minus_node);
+
+    }
+
     MD_ExprOperatorList operator_list = {0};
 
-    for(Op op= Op_Null+1; op < Op_COUNT; ++op){
+    for(Op op = Op_Null+1; op < Op_COUNT; ++op){
         OperatorDescription *desc = operator_array + op;
         MD_Node *node = MD_MakeNode(arena, MD_NodeKind_Main, desc->s, desc->s, 0);
         MD_ExprOperatorPush(arena, &operator_list, op, desc->op.kind, desc->op.precedence, node);
