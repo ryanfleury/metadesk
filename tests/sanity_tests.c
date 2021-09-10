@@ -784,7 +784,9 @@ int main(void)
             MD_String8 code     = MD_S8Lit("@foo @bar @baz a: { b c d e f }");
             MD_String8 expected = MD_S8Lit("@foo\n@bar\n@baz\na:\n{\n b,\n c,\n d,\n e,\n f,\n}");
             MD_ParseResult parse = MD_ParseOneNode(arena, code, 0);
-            MD_String8List actual_strings = MD_DebugStringListFromNode(arena, parse.node, 0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
+            MD_String8List actual_strings = {0};
+            MD_DebugStringListFromNode(arena, &actual_strings, parse.node,
+                                       0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
             MD_String8 actual = MD_S8ListJoin(arena, actual_strings, 0);
             TestResult(MD_S8Match(expected, actual, 0));
         }
@@ -792,7 +794,9 @@ int main(void)
             MD_String8 code     = MD_S8Lit("@foo(1, 2, 3) a: { x y }");
             MD_String8 expected = MD_S8Lit("@foo(1,\n     2,\n     3)\na:\n{\n x,\n y,\n}");
             MD_ParseResult parse = MD_ParseOneNode(arena, code, 0);
-            MD_String8List actual_strings = MD_DebugStringListFromNode(arena, parse.node, 0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
+            MD_String8List actual_strings = {0};
+            MD_DebugStringListFromNode(arena, &actual_strings, parse.node,
+                                       0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
             MD_String8 actual = MD_S8ListJoin(arena, actual_strings, 0);
             TestResult(MD_S8Match(expected, actual, 0));
         }
@@ -800,7 +804,9 @@ int main(void)
             MD_String8 code     = MD_S8Lit("// foo\na");
             MD_String8 expected = MD_S8Lit("/*\n foo\n*/\na");
             MD_ParseResult parse = MD_ParseOneNode(arena, code, 0);
-            MD_String8List actual_strings = MD_DebugStringListFromNode(arena, parse.node, 0, MD_S8Lit(" "), MD_GenerateFlags_Tree|MD_GenerateFlag_Comments);
+            MD_String8List actual_strings = {0};
+            MD_DebugStringListFromNode(arena, &actual_strings, parse.node, 0, MD_S8Lit(" "),
+                                       MD_GenerateFlags_Tree|MD_GenerateFlag_Comments);
             MD_String8 actual = MD_S8ListJoin(arena, actual_strings, 0);
             TestResult(MD_S8Match(expected, actual, 0));
         }

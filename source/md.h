@@ -1140,8 +1140,12 @@ MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTabl
 
 //~ String Generation
 
-MD_FUNCTION MD_String8List MD_DebugStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string, MD_GenerateFlags flags);
-MD_FUNCTION MD_String8List MD_ReconstructedStringListFromNode(MD_Arena *arena, MD_Node *node, int indent, MD_String8 indent_string, MD_GenerateFlags flags);
+MD_FUNCTION void MD_DebugDumpFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
+                                      int indent, MD_String8 indent_string,
+                                      MD_GenerateFlags flags);
+MD_FUNCTION void MD_ReconstructionFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
+                                           int indent, MD_String8 indent_string,
+                                           MD_GenerateFlags flags);
 
 //~ Command Line Argument Helper
 
