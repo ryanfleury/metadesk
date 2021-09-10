@@ -35,7 +35,7 @@ int main(int argument_count, char **arguments)
     
     // parse all files passed to the command line
     MD_Node *list = MD_MakeList(arena);
-    for(int i = 1; i < argument_count; i += 1)
+    for (int i = 1; i < argument_count; i += 1)
     {
         
         // parse the file
@@ -66,7 +66,7 @@ int main(int argument_count, char **arguments)
         //  can easily check the severity of a entire parse by looking at the
         //  `max_message_kind` field on the errors from the parse result. Here
         //  only push the parse result onto our list if there were no errors.
-        if (parse_result.errors.max_message_kind >= MD_MessageKind_Error)
+        if (parse_result.errors.max_message_kind < MD_MessageKind_Error)
         {
             MD_PushNewReference(arena, list, parse_result.node);
         }
@@ -85,9 +85,9 @@ int main(int argument_count, char **arguments)
     //   of roots from the parses we have built. Underneath the surface this
     //   macro automatically resolves the reference at the beginning of each
     //   loop step.
-    for(MD_EachNodeRef(root, list->first_child))
+    for (MD_EachNodeRef(root, list->first_child))
     {
-        for(MD_EachNode(node, root->first_child))
+        for (MD_EachNode(node, root->first_child))
         {
             // @notes The Metadesk library likes to use MD_String8List for
             //  functions that build and return big strings. This simplifies

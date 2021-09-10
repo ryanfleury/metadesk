@@ -18,7 +18,9 @@ Example Programs:
 [ ] Example multi-threaded parsing
 
 Example Metadesk Files:
-[ ] Hello world
+[x] Hello world
+[ ] identifiers, numbers, strings, and symbols
+[ ] sets, seperators, labels, and tags
 
 
 Allen's Final Tweak Notes (September 10th 2021):
