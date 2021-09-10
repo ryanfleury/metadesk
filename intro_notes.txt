@@ -4,9 +4,9 @@ string helpers
 immutable tree model
 nil
 
-Examples:
+Example Programs:
 [ ] Metadesk hello world
-[ ] Metadesk parse checker
+[x] Metadesk parse checker
 [ ] Example of helpers: string helpers, linked lists, map type
                         printing errors, cmd line, file iter
 [x] Datadesk-like setup
@@ -16,4 +16,22 @@ Examples:
 [ ] Example(s) of using overrides
 [ ] Example memory clearing in long-running program
 [ ] Example multi-threaded parsing
+
+Example Metadesk Files:
+[ ] Hello world
+
+
+Allen's Final Tweak Notes (September 10th 2021):
+
+*** MD_EachNodeRef seems bad to me. ***
+
+Using it is equivalent to:
+for (MD_EachNode(it, first_child)
+{
+ MD_Node *node = MD_ResolveFromReference(it); // this line is saved by the macro
+}
+
+Explaning this concept seems more difficult with the extra macro. I think it'd be
+clearer and basically just as maintenance efficient to live without this.
+
 

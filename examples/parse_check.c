@@ -73,13 +73,31 @@ int main(int argument_count, char **arguments)
     }
     
     // print the verbose parse results
+    // @notes The Metadesk library provides a few macros for iterating MD_Node
+    //  lists as shown here. The first parameter to the macro becomes an
+    //  MD_Node pointer in the scope of the for loop that visits each node in
+    //  the list in order. The second parameter is a pointer to the first node
+    //  in the list. Generally we past the `first_child` of a list or parent
+    //  MD_Node, but we don't always have to.
+    //
+    //  MD_EachNode is used to iterate a list of children.
+    //  MD_EachNodeRef is used to iterate a list of references like the list
+    //   of roots from the parses we have built. Underneath the surface this
+    //   macro automatically resolves the reference at the beginning of each
+    //   loop step.
     for(MD_EachNodeRef(root, list->first_child))
     {
         for(MD_EachNode(node, root->first_child))
         {
-            MD_String8List strs =
-                MD_DebugStringListFromNode(arena, node, 0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
-            MD_String8 str = MD_S8ListJoin(arena, strs, 0);
+            // @notes The Metadesk library likes to use MD_String8List for
+            //  functions that build and return big strings. This simplifies
+            //  memory management for big strings, and means a series of string
+            //  builders can be called back to back and gathered into one list.
+            //  When the string needs to be finalized into a single contiguous
+            //  block a user can just call `MD_S8ListJoin` as shown here.
+            MD_String8List stream = {0};
+            MD_DebugStringListFromNode(arena, &stream, node, 0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
+            MD_String8 str = MD_S8ListJoin(arena, stream, 0);
             fwrite(str.str, str.size, 1, stdout);
             fwrite("\n", 1, 1, stdout);
         }
