@@ -605,18 +605,19 @@ struct MD_Node
     MD_String8 raw_string;
     MD_u64 string_hash;
     
-    // Comments.
-    // TODO(rjf): @node_comments these are pretty under-powered... should they
-    // just be nodes, maybe? Would that allow for some cool stuff, like comment
-    // hierarchies?
-    MD_String8 prev_comment;
-    MD_String8 next_comment;
-    
     // Source code location information.
     MD_u64 offset;
     
     // Reference.
     MD_Node *ref_target;
+    
+    
+    // Comments.
+    // @usage prev_comment/next_comment should be considered "hidden". Rely on
+    // the functions MD_PrevCommentFromNode/MD_NextCommentFromNode to access
+    // these. Directly access to these is likely to break in a future version.
+    MD_String8 prev_comment;
+    MD_String8 next_comment;
 };
 
 //~ Code Location Info.
@@ -1090,6 +1091,9 @@ MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string, MD_Ma
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_NodeFromReference(MD_Node *node);
+
+MD_FUNCTION MD_String8 MD_PrevCommentFromNode(MD_Node *node);
+MD_FUNCTION MD_String8 MD_NextCommentFromNode(MD_Node *node);
 
 // NOTE(rjf): For-Loop Helpers
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next

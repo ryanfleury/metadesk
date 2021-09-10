@@ -508,10 +508,10 @@ static MD_Node _md_nil_node =
     MD_ZERO_STRUCT,        // string
     MD_ZERO_STRUCT,        // raw_string
     0xdeadffffffffffull,   // string_hash
-    MD_ZERO_STRUCT,        // prev_comment
-    MD_ZERO_STRUCT,        // next_comment
     0,                     // at
     &_md_nil_node,         // ref_target
+    MD_ZERO_STRUCT,        // prev_comment
+    MD_ZERO_STRUCT,        // next_comment
 };
 
 //~ Arena Functions
@@ -2839,12 +2839,23 @@ MD_TagCountFromNode(MD_Node *node)
 MD_FUNCTION_IMPL MD_Node *
 MD_NodeFromReference(MD_Node *node)
 {
+    MD_u64 safety = 100;
+    for(; safety > 0 && node->kind == MD_NodeKind_Reference;
+        safety -= 1, node = node->ref_target);
     MD_Node *result = node;
-    while(result->kind == MD_NodeKind_Reference)
-    {
-        result = result->ref_target;
-    }
-    return result;
+    return(result);
+}
+
+MD_FUNCTION_IMPL MD_String8
+MD_PrevCommentFromNode(MD_Node *node)
+{
+    return(node->prev_comment);
+}
+
+MD_FUNCTION_IMPL MD_String8
+MD_NextCommentFromNode(MD_Node *node)
+{
+    return(node->next_comment);
 }
 
 //~ Error/Warning Helpers
@@ -3014,12 +3025,12 @@ MD_FUNCTION_IMPL MD_ExprOperatorTable
 MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
 {
     MD_ExprOperatorTable result = MD_ZERO_STRUCT;
-
+    
     for(MD_ExprOperatorNode *op_node = list->first; op_node; op_node = op_node->next)
     {
         MD_ExprOperator op = op_node->op;
         MD_String8 op_s = op.md_node->string;
-
+        
         MD_String8 error_str = MD_ZERO_STRUCT;
         if(op.kind != MD_ExprOperatorKind_Prefix && op.kind != MD_ExprOperatorKind_Postfix &&
            op.kind != MD_ExprOperatorKind_Binary && op.kind != MD_ExprOperatorKind_BinaryRightAssociative)
@@ -3054,7 +3065,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
                 }
             }
         }
-
+        
         if(error_str.size == 0)
         {
             MD_ExprOperatorList *list = result.table+op.kind;
@@ -3062,7 +3073,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
             MD_QueuePush(list->first, list->last, op_node_copy);
             list->count += 1;
             op_node_copy->op = op;
-
+            
             if(op.kind == MD_ExprOperatorKind_Postfix && MD_S8Match(op_s, MD_S8Lit("()"), 0))
             {
                 result.call_op = &op_node_copy->op;
@@ -3084,7 +3095,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
             MD_MessageListPush(&result.errors, error);
         }
     }
-
+    
     return(result);
 }
 
@@ -3100,7 +3111,7 @@ MD_FUNCTION_IMPL MD_ExprParseResult
 _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 min_precedence);
 
 MD_FUNCTION_IMPL MD_ExprNode * _MD_Expr_Make(MD_Arena *arena, MD_ExprOperator *op, MD_Node *op_node, 
-                           MD_ExprNode *left, MD_ExprNode *right)
+                                             MD_ExprNode *left, MD_ExprNode *right)
 {
     MD_ExprNode *result = MD_PushArrayZero(arena, MD_ExprNode, 1);
     result->is_op = 1;
@@ -3123,7 +3134,7 @@ MD_FUNCTION_IMPL void _MD_CtxAdvance(_MD_ExprParseCtx *ctx)
 }
 
 MD_FUNCTION_IMPL MD_b32 _MD_ExprOperatorConsumed(_MD_ExprParseCtx *ctx, MD_ExprOperatorKind kind, MD_u32 min_precedence,
-                                       MD_ExprOperator **op_out)
+                                                 MD_ExprOperator **op_out)
 {
     MD_b32 result = 0;
     if(!MD_NodeIsNil(ctx->first))
@@ -3154,10 +3165,10 @@ MD_FUNCTION_IMPL MD_ExprParseResult
 _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
 {
     MD_ExprParseResult result = MD_ZERO_STRUCT;
-
+    
     MD_Node *node = ctx->first;
     MD_ExprOperator *op = 0;
-
+    
     if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
     { // NOTE(mal): Parens
         _MD_CtxAdvance(ctx);
@@ -3203,7 +3214,7 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
         result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
         result.node->md_node = node;
     }
-
+    
     return result;
 }
 
@@ -3211,9 +3222,9 @@ MD_FUNCTION_IMPL MD_ExprParseResult
 _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 min_precedence)
 {
     MD_ExprParseResult result = MD_ZERO_STRUCT;
-
+    
     MD_ExprOperator *subscript_op = ctx->op_table->subscript_op;
-
+    
     result = _MD_ExprParse_Atom(arena, ctx);
     if(result.errors.max_message_kind == MD_MessageKind_Null)
     {
@@ -3221,12 +3232,12 @@ _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 m
         {
             MD_Node *node = ctx->first;
             MD_ExprOperator *op;
-
+            
             if(subscript_op && subscript_op->precedence >= min_precedence &&
                node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight)
             {
                 _MD_CtxAdvance(ctx);
-
+                
                 // NOTE(mal): Array subscript
                 _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeContext(ctx->op_table, 
                                                                      node->first_child, node->last_child->next);
@@ -3269,7 +3280,7 @@ _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 m
             }
         }
     }
-
+    
     return result;
 }
 
@@ -3277,7 +3288,7 @@ MD_FUNCTION_IMPL MD_ExprParseResult
 MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table, MD_Node *first, MD_Node *one_past_last)
 {
     MD_ExprParseResult result = MD_ZERO_STRUCT;
-
+    
     _MD_ExprParseCtx ctx = _MD_ExprParse_MakeContext(op_table, first, one_past_last);
     result = _MD_ExprParse_Ctx_MinPrecedence(arena, &ctx, 0);
     if(result.errors.max_message_kind == MD_MessageKind_Null)
