@@ -1851,7 +1851,6 @@ MD_ParseWholeFile:
 @doc("Prints a message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
 @see(MD_PrintMessageFmt)
 @see(MD_PrintNodeMessage)
-@see(MD_PrintNodeMessageFmt)
 @func MD_PrintMessage: {
     @doc("The file to print the message to.")
         out: *FILE,
@@ -1867,7 +1866,6 @@ MD_ParseWholeFile:
 @doc("Prints a C format string message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
 @see(MD_PrintMessage)
 @see(MD_PrintNodeMessage)
-@see(MD_PrintNodeMessageFmt)
 @func MD_PrintMessageFmt: {
     @doc("The file to print the message to.")
         out: *FILE,
@@ -1883,7 +1881,6 @@ MD_ParseWholeFile:
 @send(Nodes)
 @see(MD_PrintMessage)
 @see(MD_PrintMessageFmt)
-@see(MD_PrintNodeMessageFmt)
 @doc("Prints a message to @code 'out', corresponding with the source code location of @code 'node'.")
 @func MD_PrintNodeMessage: {
     @doc("The file to print the message to.")
@@ -1894,23 +1891,6 @@ MD_ParseWholeFile:
         kind: MD_MessageKind,
     @doc("The message contents.")
         str: MD_String8,
-};
-
-@send(Nodes)
-@doc("Prints a C format string message to @code 'out', corresponding with the source code location of @code 'node'.")
-@see(MD_PrintMessage)
-@see(MD_PrintMessageFmt)
-@see(MD_PrintNodeMessage)
-@func MD_PrintNodeMessageFmt: {
-    @doc("The file to print the message to.")
-        out: *FILE,
-    @doc("The node for which the message is intended.")
-        node: *MD_Node,
-    @doc("The kind/severity of the message.")
-        kind: MD_MessageKind,
-    @doc("The format string to form the message contents.")
-        fmt: *char,
-    "..."
 };
 
 ////////////////////////////////

@@ -2,6 +2,8 @@
 
 //~ Metadesk Library
 
+// TODO(allen): Welcome & user directory comment here
+
 #ifndef MD_H
 #define MD_H
 
@@ -1117,8 +1119,6 @@ MD_FUNCTION void MD_PrintMessage(FILE *file, MD_CodeLoc loc, MD_MessageKind kind
                                  MD_String8 string);
 MD_FUNCTION void MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind,
                                     char *fmt, ...);
-MD_FUNCTION void MD_PrintNodeMessageFmt(FILE *file, MD_Node *node, MD_MessageKind kind,
-                                        char *fmt, ...);
 #endif
 
 //~ Tree Comparison/Verification

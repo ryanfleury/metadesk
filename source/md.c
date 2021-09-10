@@ -2903,19 +2903,6 @@ MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, char *f
     MD_ReleaseScratch(scratch);
 }
 
-MD_FUNCTION void
-MD_PrintNodeMessageFmt(FILE *file, MD_Node *node, MD_MessageKind kind, char *fmt, ...){
-    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
-    va_list args;
-    va_start(args, fmt);
-    MD_String8 string = MD_S8FmtV(scratch.arena, fmt, args);
-    va_end(args);
-    MD_CodeLoc code_loc = MD_CodeLocFromNode(node);
-    MD_String8 message = MD_FormatMessage(scratch.arena, code_loc, kind, string);
-    fwrite(message.str, message.size, 1, file);
-    MD_ReleaseScratch(scratch);
-}
-
 #endif
 
 //~ Tree Comparison/Verification
