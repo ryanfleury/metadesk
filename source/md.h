@@ -80,7 +80,9 @@
 #endif
 
 
-// NOTE(rjf): Compiler cracking from the 4th dimension
+//~/////////////////////////////////////////////////////////////////////////////
+////////////////////////////// Context Cracking ////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 #if defined(__clang__)
 
@@ -305,19 +307,94 @@
 # define MD_THREAD_LOCAL __thread
 #endif
 
-//~ Common defines
+//~/////////////////////////////////////////////////////////////////////////////
+///////////////////////////// Helpers, Macros, Etc /////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+//~ Linkage Wrappers
 
 #if !defined(MD_FUNCTION)
 # define MD_FUNCTION
 #endif
 #define MD_FUNCTION_IMPL MD_FUNCTION
 
-#define MD_GLOBAL static
+#if !defined(MD_GLOBAL)
+# define MD_GLOBAL static
+#endif
+
+//~ Basic Utilities
+
+#define MD_Assert(c) if (!(c)) { *(volatile MD_u64 *)0 = 0; }
+#define MD_StaticAssert(c,label) MD_u8 MD_static_assert_##label[(c)?(1):(-1)]
+#define MD_ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
+
+#define MD_Min(a,b) (((a)<(b))?(a):(b))
+#define MD_Max(a,b) (((a)>(b))?(a):(b))
+#define MD_ClampBot(a,b) MD_Max(a,b)
+#define MD_ClampTop(a,b) MD_Min(a,b)
+
+//~ Linked List Macros.
+
+// terminator modes
+#define MD_CheckNull(p) ((p)==0)
+#define MD_SetNull(p) ((p)=0)
+#define MD_CheckNil(p) (MD_NodeIsNil(p))
+#define MD_SetNil(p) ((p)=MD_NilNode())
+
+// implementations
+#define MD_QueuePush_NZ(f,l,n,next,zchk,zset) (zchk(f)?\
+(f)=(l)=(n):\
+((l)->next=(n),(l)=(n),zset((n)->next)))
+#define MD_QueuePop_NZ(f,l,next,zset) ((f)==(l)?\
+(zset(f),zset(l)):\
+((f)=(f)->next))
+#define MD_StackPush_N(f,n,next) ((n)->next=(f),(f)=(n))
+#define MD_StackPop_NZ(f,next,zchk) (zchk(f)?0:(f)=(f)->next)
+
+#define MD_DblPushBack_NPZ(f,l,n,next,prev,zchk,zset) \
+(zchk(f)?\
+((f)=(l)=(n),zset((n)->next),zset((n)->prev)):\
+((n)->prev=(l),(l)->next=(n),(l)=(n),zset((n)->next)))
+#define MD_DblRemove_NPZ(f,l,n,next,prev,zset) (((f)==(n)?\
+((f)=(f)->next,zset((f)->prev)):\
+(l)==(n)?\
+((l)=(l)->prev,zset((l)->next)):\
+((n)->next->prev=(n)->prev,\
+(n)->prev->next=(n)->next)))
+
+// compositions
+#define MD_QueuePush(f,l,n) MD_QueuePush_NZ(f,l,n,next,MD_CheckNull,MD_SetNull)
+#define MD_QueuePop(f,l)    MD_QueuePop_NZ(f,l,next,MD_SetNull)
+#define MD_StackPush(f,n)   MD_StackPush_N(f,n,next)
+#define MD_StackPop(f)      MD_StackPop_NZ(f,next,MD_CheckNull)
+#define MD_DblPushBack(f,l,n)  MD_DblPushBack_NPZ(f,l,n,next,prev,MD_CheckNull,MD_SetNull)
+#define MD_DblPushFront(f,l,n) MD_DblPushBack_NPZ(l,f,n,prev,next,MD_CheckNull,MD_SetNull)
+#define MD_DblRemove(f,l,n)    MD_DblRemove_NPZ(f,l,n,next,prev,MD_SetNull)
+
+#define MD_NodeDblPushBack(f,l,n)  MD_DblPushBack_NPZ(f,l,n,next,prev,MD_CheckNil,MD_SetNil)
+#define MD_NodeDblPushFront(f,l,n) MD_DblPushBack_NPZ(l,f,n,prev,next,MD_CheckNil,MD_SetNil)
+#define MD_NodeDblRemove(f,l,n)    MD_DblRemove_NPZ(f,l,n,next,prev,MD_SetNil)
+
+
+//~ Memory Operations
+
+#define MD_MemorySet(p,v,z)    (MD_IMPL_Memset(p,v,z))
+#define MD_MemoryZero(p,z)     (MD_IMPL_Memset(p,0,z))
+#define MD_MemoryZeroStruct(p) (MD_IMPL_Memset(p,0,sizeof(*(p))))
+#define MD_MemoryCopy(d,s,z)   (MD_IMPL_Memmove(d,s,z))
+
+//~ sprintf
+#define STB_SPRINTF_DECORATE(name) md_stbsp_##name
+#include "md_stb_sprintf.h"
+
+//~/////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////// Types /////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+//~ Basic Types
 
 #include <stdint.h>
 #include <stdarg.h>
-#define STB_SPRINTF_DECORATE(name) md_stbsp_##name
-#include "md_stb_sprintf.h"
 
 typedef int8_t   MD_i8;
 typedef int16_t  MD_i16;
@@ -349,7 +426,7 @@ struct MD_ArenaDefault{
 
 #endif
 
-//~ Abstract Arena Type
+//~ Abstract Arena
 
 #if !defined(MD_IMPL_Arena)
 # error Missing implementation for MD_IMPL_Arena
@@ -806,69 +883,11 @@ struct MD_FileIter
     MD_u8 opaque[640];
 };
 
+//~/////////////////////////////////////////////////////////////////////////////
+////////////////////////////////// Functions ///////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-//~ Basic Utilities
-
-#define MD_Assert(c) if (!(c)) { *(volatile MD_u64 *)0 = 0; }
-#define MD_StaticAssert(c,label) MD_u8 MD_static_assert_##label[(c)?(1):(-1)]
-#define MD_ArrayCount(a) (sizeof(a) / sizeof((a)[0]))
-
-#define MD_Min(a,b) (((a)<(b))?(a):(b))
-#define MD_Max(a,b) (((a)>(b))?(a):(b))
-#define MD_ClampBot(a,b) MD_Max(a,b)
-#define MD_ClampTop(a,b) MD_Min(a,b)
-
-//~ Linked List Macros.
-
-// terminator modes
-#define MD_CheckNull(p) ((p)==0)
-#define MD_SetNull(p) ((p)=0)
-#define MD_CheckNil(p) (MD_NodeIsNil(p))
-#define MD_SetNil(p) ((p)=MD_NilNode())
-
-// implementations
-#define MD_QueuePush_NZ(f,l,n,next,zchk,zset) (zchk(f)?\
-(f)=(l)=(n):\
-((l)->next=(n),(l)=(n),zset((n)->next)))
-#define MD_QueuePop_NZ(f,l,next,zset) ((f)==(l)?\
-(zset(f),zset(l)):\
-((f)=(f)->next))
-#define MD_StackPush_N(f,n,next) ((n)->next=(f),(f)=(n))
-#define MD_StackPop_NZ(f,next,zchk) (zchk(f)?0:(f)=(f)->next)
-
-#define MD_DblPushBack_NPZ(f,l,n,next,prev,zchk,zset) \
-(zchk(f)?\
-((f)=(l)=(n),zset((n)->next),zset((n)->prev)):\
-((n)->prev=(l),(l)->next=(n),(l)=(n),zset((n)->next)))
-#define MD_DblRemove_NPZ(f,l,n,next,prev,zset) (((f)==(n)?\
-((f)=(f)->next,zset((f)->prev)):\
-(l)==(n)?\
-((l)=(l)->prev,zset((l)->next)):\
-((n)->next->prev=(n)->prev,\
-(n)->prev->next=(n)->next)))
-
-// compositions
-#define MD_QueuePush(f,l,n) MD_QueuePush_NZ(f,l,n,next,MD_CheckNull,MD_SetNull)
-#define MD_QueuePop(f,l)    MD_QueuePop_NZ(f,l,next,MD_SetNull)
-#define MD_StackPush(f,n)   MD_StackPush_N(f,n,next)
-#define MD_StackPop(f)      MD_StackPop_NZ(f,next,MD_CheckNull)
-#define MD_DblPushBack(f,l,n)  MD_DblPushBack_NPZ(f,l,n,next,prev,MD_CheckNull,MD_SetNull)
-#define MD_DblPushFront(f,l,n) MD_DblPushBack_NPZ(l,f,n,prev,next,MD_CheckNull,MD_SetNull)
-#define MD_DblRemove(f,l,n)    MD_DblRemove_NPZ(f,l,n,next,prev,MD_SetNull)
-
-#define MD_NodeDblPushBack(f,l,n)  MD_DblPushBack_NPZ(f,l,n,next,prev,MD_CheckNil,MD_SetNil)
-#define MD_NodeDblPushFront(f,l,n) MD_DblPushBack_NPZ(l,f,n,prev,next,MD_CheckNil,MD_SetNil)
-#define MD_NodeDblRemove(f,l,n)    MD_DblRemove_NPZ(f,l,n,next,prev,MD_SetNil)
-
-
-//~ Memory Operations
-
-#define MD_MemorySet(p,v,z)    (MD_IMPL_Memset(p,v,z))
-#define MD_MemoryZero(p,z)     (MD_IMPL_Memset(p,0,z))
-#define MD_MemoryZeroStruct(p) (MD_IMPL_Memset(p,0,sizeof(*(p))))
-#define MD_MemoryCopy(d,s,z)   (MD_IMPL_Memmove(d,s,z))
-
-//~ Arena Functions
+//~ Arena
 
 MD_FUNCTION MD_Arena*    MD_ArenaAlloc(MD_u64 cap);
 MD_FUNCTION void         MD_ArenaRelease(MD_Arena *arena);
