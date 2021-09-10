@@ -67,10 +67,21 @@ command_list =
           { "bin/run_tests.sh", .os = "mac" },
         },
     },
+    {
+        .name = "build_examples",
+        .out = "*compilation*",
+        .footer_panel = true,
+        .save_dirty_files = true,
+        .cursor_at_end = false,
+        .cmd =
+        {
+          { "git_bash bin\\build_examples.sh", .os = "win" },
+          { "bin/build_tests.sh", .os = "linux" },
+          { "bin/build_tests.sh", .os = "mac" },
+        },
+    },
 };
 
 fkey_command[1] = "build_tests";
 fkey_command[2] = "run_tests";
-
-fkey_command[8] = "build";
-fkey_command[9] = "build_with_clang";
+fkey_command[3] = "build_examples";
