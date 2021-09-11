@@ -3155,8 +3155,15 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
     
     MD_Node *node = ctx->first;
     MD_ExprOperator *op = 0;
-    
-    if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
+   
+
+    if(MD_NodeIsNil(node))
+    {
+        MD_String8 error_str = MD_S8Fmt(arena, "Unexpected end of expression.");
+        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_Error, error_str);
+        MD_MessageListPush(&result.errors, error);
+    }
+    else if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
     { // NOTE(mal): Parens
         _MD_CtxAdvance(ctx);
         _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeContext(ctx->op_table, node->first_child, node->last_child->next);
