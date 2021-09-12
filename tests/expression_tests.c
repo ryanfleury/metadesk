@@ -5,11 +5,19 @@
 
 MD_Arena *arena = 0;
 
+typedef enum{
+    ExpressionErrorKind_Null,
+    ExpressionErrorKind_MD,
+    ExpressionErrorKind_Expr,
+} ExpressionErrorKind;
+
 typedef struct Expression_QA Expression_QA;
 struct Expression_QA
 {
     char *q;
     char *a;
+    ExpressionErrorKind error_kind;
+    MD_u32 error_offset;
 };
 
 typedef struct OperatorDescription OperatorDescription;
@@ -249,18 +257,63 @@ int main(void){
 
     MD_ExprOperatorTable op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
 
+    // NOTE(mal): I'm trying something different for expression parser tests. Normally one would take the
+    //            output of MD_ExprParse and compare it against the expected output expression tree.
+    //            If instead of that we take the output of MD_ExprParse and translate it back to text while
+    //            adding some extra parens, we can then compare it to the expected parenthisation of the
+    //            original input string. We get most of the topological comparison with a simpler test interface.
     Expression_QA tests[] = {
-        { .q = "a + b + c",     .a = "(a + b) + c"      },
-        { .q = "a + (b + c)",   .a = "a + (b + c)"      },
-        { .q = "-a * b + c",    .a = "((-a) * b) + c"   },
-        { .q = "a * (b + c)",   .a = "a * (b + c)"      },
-        { .q = "a = b + c",     .a = "a = (b + c)"      },
-        { .q = "a(b,c)",        .a = "a(...)"           },
-        { .q = "(a + b)()",     .a = "(a + b)(...)"     },
-        { .q = "sizeof a + b",  .a = "(sizeof a) + b"   },
-        { .q = "[1, 100] * n",  .a = "[...] * n"        },
-        { .q = "a[b+c]",        .a = "a[b + c]"         },
-        { .q = "a++ + b",       .a = "(a++) + b"        },
+        { .q = "a + b + c",     .a = "(a + b) + c"          },
+        { .q = "a + (b + c)",   .a = "a + (b + c)"          },
+        { .q = "a + b + c + d", .a = "((a + b) + c) + d"    },
+        { .q = "-a - -a",       .a = "(-a) - (-a)"          },
+        { .q = "-(a + -b)",     .a = "-(a + (-b))"          },
+        { .q = "-a * b + c",    .a = "((-a) * b) + c"       },
+        { .q = "a * (b + c)",   .a = "a * (b + c)"          },
+        { .q = "a * b + c",     .a = "(a * b) + c"          },
+        { .q = "a = b + c",     .a = "a = (b + c)"          },
+        { .q = "a(b,c)",        .a = "a(...)"               },
+        { .q = "a.b()",         .a = "(a . b)(...)"         },
+        { .q = "sizeof a + b",  .a = "(sizeof a) + b"       },
+        { .q = "[1, 100] * n",  .a = "[...] * n"            },
+        { .q = "a[b+c]",        .a = "a[b + c]"             },
+        { .q = "a + b[c[d]+e]", .a = "a + (b[(c[d]) + e])"  },
+        { .q = "a++ + b",       .a = "(a++) + b"            },
+        { .q = "a.b(c)",        .a = "(a . b)(...)"         },
+        { .q = "a*b.x+c",       .a = "(a * (b . x)) + c"    },
+        { .q = "a*(b.x)+c",     .a = "(a * (b . x)) + c"    },
+        { .q = "a.b*c+d",       .a = "((a . b) * c) + d"    },
+        { .q = "a.b+c*d",       .a = "(a . b) + (c * d)"    },
+
+        { .q = "a + +b",        .a = "a + (+b)"             },
+        { .q = "a + + +b",      .a = "a + (+(+b))"          },
+        { .q = "+ a - -b",      .a = "(+a) - (-b)"          },
+
+        { .q = "!a",            .a = "!a"                   },
+        { .q = "!a + b",        .a = "(!a) + b"             },
+        { .q = "~a",            .a = "~a"                   },
+
+        { .q = "*a+b",          .a = "(*a) + b"             },
+        { .q = "* + +a",        .a = "*(+(+a))"             },
+        { .q = "+ + *a",        .a = "+(+(*a))"             },
+        { .q = "!a",            .a = "!a"                   },
+        { .q = "*f()[10]",      .a = "*((f(...))[10])"      },
+
+        { .q = "a >> b << c",   .a = "(a >> b) << c"        },
+        { .q = "a < b <= c",    .a = "(a < b) <= c"         },
+        { .q = "a > b >= c",    .a = "(a > b) >= c"         },
+        { .q = "a == b >= c",   .a = "a == (b >= c)"        },
+        { .q = "a != b == c",   .a = "(a != b) == c"        },
+        { .q = "a & &b",        .a = "a & (&b)"             },
+
+        { .q = "\"a\" + b + c", .a = "(\"a\" + b) + c"      },
+
+        { .q = "(a",            .a = "",                    ExpressionErrorKind_MD, 0},
+        { .q = "a)",            .a = "",                    ExpressionErrorKind_MD, 1},
+        { .q = "/a",            .a = "",                    ExpressionErrorKind_Expr, 0},
+        { .q = "+ /a",          .a = "",                    ExpressionErrorKind_Expr, 2},
+        { .q = "a+",            .a = "",                    ExpressionErrorKind_Expr, 2},
+        { .q = "a 1",           .a = "",                    ExpressionErrorKind_Expr, 2},
     };
 
     for(MD_u32 i_test = 0; i_test < MD_ArrayCount(tests); i_test+=1){
@@ -269,18 +322,42 @@ int main(void){
         MD_String8 a = MD_S8CString(test.a);
 
         MD_ParseResult parse = MD_ParseWholeString(arena, MD_S8Lit("test"), q);
-        MD_Assert(parse.errors.max_message_kind == MD_MessageKind_Null);
-        MD_ExprParseResult expr_parse = MD_ExprParse(arena, &op_table, parse.node->first_child, MD_NilNode());
-
-        if(expr_parse.errors.max_message_kind){
-            printf("Example %d : \"%.*s\". Got error \"%.*s\"\n", i_test, MD_S8VArg(q),
-                   MD_S8VArg(expr_parse.errors.first[0].string));
+        if(parse.errors.max_message_kind == MD_MessageKind_Null){
+            MD_ExprParseResult expr_parse = MD_ExprParse(arena, &op_table, parse.node->first_child, MD_NilNode());
+            if(expr_parse.errors.max_message_kind == MD_MessageKind_Null){
+                MD_String8 parser_answer = parenthesize(arena, operator_array, expr_parse.node);
+                if(!MD_S8Match(parser_answer, a, 0)){
+                    printf("Example %d : Expected answer for %.*s is %.*s. Got %.*s\n", 
+                           i_test, MD_S8VArg(q), MD_S8VArg(a), MD_S8VArg(parser_answer));
+                }
+            }
+            else{
+                if(test.error_kind == ExpressionErrorKind_Expr){
+                    for(MD_Message *message = expr_parse.errors.first; message; message = message->next){
+                        if(message->node->offset != test.error_offset){
+                            printf("Example %d : \"%.*s\". Expected error on character %d; got character %ld instead\n", 
+                                   i_test, MD_S8VArg(q), test.error_offset, message->node->offset);
+                        }
+                    }
+                }
+                else{
+                    MD_Message *message = expr_parse.errors.first;
+                    printf("Example %d : \"%.*s\". Unexpected Expr parsing error: \"%.*s\"\n", i_test, MD_S8VArg(q),
+                           MD_S8VArg(message->string));
+                }
+            }
         }
         else{
-            MD_String8 parser_answer = parenthesize(arena, operator_array, expr_parse.node);
-            if(expr_parse.errors.max_message_kind || !MD_S8Match(parser_answer, a, 0)){
-                printf("Example %d : Expected answer for %.*s is %.*s. Got %.*s\n", 
-                       i_test, MD_S8VArg(q), MD_S8VArg(a), MD_S8VArg(parser_answer));
+            if(test.error_kind == ExpressionErrorKind_MD){
+                for(MD_Message *message = parse.errors.first; message; message = message->next){
+                    if(message->node->offset != test.error_offset){
+                        printf("Example %d : \"%.*s\". Expected error on character %d; got character %ld instead\n", 
+                               i_test, MD_S8VArg(q), test.error_offset, message->node->offset);
+                    }
+                }
+            }
+            else{
+                printf("Example %d : \"%.*s\". Unexpected MD parsing error\n", i_test, MD_S8VArg(q));
             }
         }
     }
