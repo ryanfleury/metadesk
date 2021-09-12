@@ -3075,6 +3075,7 @@ typedef struct _MD_ExprParseCtx _MD_ExprParseCtx;
 struct _MD_ExprParseCtx
 {
     MD_ExprOperatorTable *op_table;
+    MD_Node *original_first;
     MD_Node *first;
     MD_Node *one_past_last;
 
@@ -3135,6 +3136,7 @@ _MD_ExprParse_MakeContext(MD_ExprOperatorTable *op_table, MD_Node *first, MD_Nod
 {
     _MD_ExprParseCtx result = MD_ZERO_STRUCT;
     result.op_table = op_table;
+    result.original_first = first;
     result.first = first;
     result.one_past_last = one_past_last;
 
@@ -3155,6 +3157,12 @@ _MD_ExprParse_MakeSubcontext(_MD_ExprParseCtx *ctx, MD_Node *first, MD_Node *one
     return result;
 }
 
+MD_FUNCTION_IMPL MD_Message * MD_MakeExprParseError(MD_Arena *arena, MD_String8 str, MD_u64 offset)
+{
+    MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker, MD_S8Lit(""), MD_S8Lit(""), offset);
+    return MD_MakeNodeError(arena, err_node, MD_MessageKind_FatalError, str);
+}
+
 MD_FUNCTION_IMPL MD_ExprParseResult 
 _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
 {
@@ -3165,8 +3173,15 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
 
     if(MD_NodeIsNil(node))
     {
-        MD_String8 error_str = MD_S8Fmt(arena, "Unexpected end of expression.");
-        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_Error, error_str);
+        MD_Node *last_non_null = ctx->original_first;
+        while(!MD_NodeIsNil(last_non_null->next))
+        {
+            last_non_null = last_non_null->next;
+        }
+
+        MD_String8 error_str = MD_S8Lit("Unexpected end of expression.");
+        MD_u64 error_offset = last_non_null->offset + last_non_null->raw_string.size - ctx->original_first->offset;
+        MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
         MD_MessageListPush(&result.errors, error);
     }
     else if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
@@ -3200,13 +3215,15 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
     else if(_MD_ExprOperatorConsumed(ctx, MD_ExprOperatorKind_Null, 1, &op))
     {
         MD_String8 error_str = MD_S8Fmt(arena, "Expected leaf. Got operator \"%.*s\".", MD_S8VArg(node->string));
-        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_Error, error_str);
+        MD_u64 error_offset = node->offset - ctx->original_first->offset;
+        MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
         MD_MessageListPush(&result.errors, error);
     }
     else if(node->flags & (MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight | MD_NodeFlag_HasBracketLeft | 
                            MD_NodeFlag_HasBracketRight | MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight)){
         MD_String8 error_str = MD_S8Fmt(arena, "Unexpected set.", MD_S8VArg(node->string));
-        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_Error, error_str);
+        MD_u64 error_offset = node->offset - ctx->original_first->offset;
+        MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
         MD_MessageListPush(&result.errors, error);
     }
     else{   // NOTE(mal): leaf
@@ -3294,9 +3311,9 @@ MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table, MD_Node *first, MD
     {
         if(ctx.first != ctx.one_past_last)
         {
-            MD_String8 error_str = 
-                MD_S8Fmt(arena, "Partial parse. Expected binary or unary postfix operator."); // TODO(mal): More detail?
-            MD_Message *error = MD_MakeNodeError(arena, ctx.first, MD_MessageKind_Error, error_str);
+            MD_String8 error_str = MD_S8Lit("Partial parse. Expected binary or unary postfix operator.");
+            MD_u64 error_offset = ctx.first->offset - first->offset;
+            MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
             MD_MessageListPush(&result.errors, error);
         }
     }
