@@ -3060,21 +3060,6 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
             MD_QueuePush(list->first, list->last, op_node_copy);
             list->count += 1;
             op_node_copy->op = op;
-            
-            if(op.kind == MD_ExprOperatorKind_Postfix && MD_S8Match(op_s, MD_S8Lit("()"), 0))
-            {
-                result.call_op = &op_node_copy->op;
-            }
-            else if(op.kind == MD_ExprOperatorKind_Binary && MD_S8Match(op_s, MD_S8Lit("[]"), 0))
-            {
-                result.subscript_op = &op_node_copy->op;
-            }
-            else if(op.kind == MD_ExprOperatorKind_Prefix && MD_S8Match(op_s, MD_S8Lit("[]"), 0)){
-                result.bracket_set_op = &op_node_copy->op;
-            }
-            else if(op.kind == MD_ExprOperatorKind_Prefix && MD_S8Match(op_s, MD_S8Lit("{}"), 0)){
-                result.brace_set_op = &op_node_copy->op;
-            }
         }
         else
         {
@@ -3092,6 +3077,13 @@ struct _MD_ExprParseCtx
     MD_ExprOperatorTable *op_table;
     MD_Node *first;
     MD_Node *one_past_last;
+
+    struct{
+        MD_ExprOperator *call_op;
+        MD_ExprOperator *subscript_op;
+        MD_ExprOperator *bracket_set_op;
+        MD_ExprOperator *brace_set_op;
+    } accel;
 };
 
 MD_FUNCTION_IMPL MD_ExprParseResult 
@@ -3145,6 +3137,21 @@ _MD_ExprParse_MakeContext(MD_ExprOperatorTable *op_table, MD_Node *first, MD_Nod
     result.op_table = op_table;
     result.first = first;
     result.one_past_last = one_past_last;
+
+    result.accel.bracket_set_op = _MD_ExprOperatorMatch(op_table, MD_ExprOperatorKind_Prefix,  MD_S8Lit("[]"));
+    result.accel.brace_set_op   = _MD_ExprOperatorMatch(op_table, MD_ExprOperatorKind_Prefix,  MD_S8Lit("{}"));
+    result.accel.call_op        = _MD_ExprOperatorMatch(op_table, MD_ExprOperatorKind_Postfix, MD_S8Lit("()"));
+    result.accel.subscript_op   = _MD_ExprOperatorMatch(op_table, MD_ExprOperatorKind_Binary,  MD_S8Lit("[]"));
+
+    return result;
+}
+
+MD_FUNCTION_IMPL _MD_ExprParseCtx
+_MD_ExprParse_MakeSubcontext(_MD_ExprParseCtx *ctx, MD_Node *first, MD_Node *one_past_last)
+{
+    _MD_ExprParseCtx result = *ctx;
+    result.first = first;
+    result.one_past_last = one_past_last;
     return result;
 }
 
@@ -3155,7 +3162,6 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
     
     MD_Node *node = ctx->first;
     MD_ExprOperator *op = 0;
-   
 
     if(MD_NodeIsNil(node))
     {
@@ -3166,13 +3172,13 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
     else if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
     { // NOTE(mal): Parens
         _MD_CtxAdvance(ctx);
-        _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeContext(ctx->op_table, node->first_child, node->last_child->next);
+        _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeSubcontext(ctx, node->first_child, node->last_child->next);
         result = _MD_ExprParse_Ctx_MinPrecedence(arena, &sub_ctx, 0);
     }
     else if((node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight &&
-             ctx->op_table->bracket_set_op) ||
+             ctx->accel.bracket_set_op) ||
             (node->flags & MD_NodeFlag_HasBraceLeft && node->flags & MD_NodeFlag_HasBraceRight &&
-             ctx->op_table->brace_set_op))
+             ctx->accel.brace_set_op))
     {
         _MD_CtxAdvance(ctx);
         // NOTE(mal): Unparsed leaf sets ({ ... }, [ ... ])
@@ -3217,7 +3223,7 @@ _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 m
 {
     MD_ExprParseResult result = MD_ZERO_STRUCT;
     
-    MD_ExprOperator *subscript_op = ctx->op_table->subscript_op;
+    MD_ExprOperator *subscript_op = ctx->accel.subscript_op;
     
     result = _MD_ExprParse_Atom(arena, ctx);
     if(result.errors.max_message_kind == MD_MessageKind_Null)
@@ -3233,8 +3239,7 @@ _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 m
                 _MD_CtxAdvance(ctx);
                 
                 // NOTE(mal): Array subscript
-                _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeContext(ctx->op_table, 
-                                                                     node->first_child, node->last_child->next);
+                _MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeSubcontext(ctx, node->first_child, node->last_child->next);
                 MD_ExprParseResult sub_parse_result = _MD_ExprParse_Ctx_MinPrecedence(arena, &sub_ctx, 0);
                 if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
                 {
@@ -3259,11 +3264,11 @@ _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 m
                     break;
                 }
             }
-            else if(ctx->op_table->call_op && ctx->op_table->call_op->precedence >= min_precedence &&
+            else if(ctx->accel.call_op && ctx->accel.call_op->precedence >= min_precedence &&
                     node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
             { // NOTE: call
                 _MD_CtxAdvance(ctx);
-                result.node = _MD_Expr_Make(arena, ctx->op_table->call_op, node, result.node, 0);
+                result.node = _MD_Expr_Make(arena, ctx->accel.call_op, node, result.node, 0);
             }
             else if(_MD_ExprOperatorConsumed(ctx, MD_ExprOperatorKind_Postfix, min_precedence, &op))
             {

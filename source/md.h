@@ -797,13 +797,8 @@ struct MD_ExprOperatorList
 typedef struct MD_ExprOperatorTable MD_ExprOperatorTable;
 struct MD_ExprOperatorTable
 {
-    // TODO(mal): Something faster; arrays indexed by op kind or hash table...
-    MD_ExprOperatorList table[MD_ExprOperatorKind_COUNT];
+    MD_ExprOperatorList table[MD_ExprOperatorKind_COUNT]; // TODO(mal): Hash?
     MD_MessageList errors;
-    MD_ExprOperator *call_op;           // TODO: Move elsewhere
-    MD_ExprOperator *subscript_op;
-    MD_ExprOperator *bracket_set_op;
-    MD_ExprOperator *brace_set_op;
 };
 
 typedef struct MD_ExprNode MD_ExprNode;
