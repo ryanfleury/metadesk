@@ -20,7 +20,7 @@ Example Programs:
 Example Metadesk Files:
 [x] Hello world
 [x] identifiers, numbers, strings, and symbols
-[ ] sets, seperators, labels, and tags
+[x] sets, seperators, and tags
 
 
 Allen's Final Tweak Notes (September 10th 2021):

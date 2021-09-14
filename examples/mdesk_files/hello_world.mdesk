@@ -1,18 +1,16 @@
-/* the hello world file */
+////////////////////////////////
+// The Hello World file
 
 hello world!
 "hello world!"
 
-// sets
 (hello world!)
 [hello world!]
 {hello world!}
 
-// sets with labels
 hello: world!
 hello: (world!)
 
-// tags
 @exclaim "hello world"
 @message
 {

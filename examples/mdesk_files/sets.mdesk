@@ -1,0 +1,204 @@
+////////////////////////////////
+// Unlabeled Sets
+
+//(MD_NodeFlag_HasParenLeft|MD_NodeFlag_HasParenRight)
+(foo bar)
+(
+foo
+bar
+)
+()
+
+//(MD_NodeFlag_HasBracketLeft|MD_NodeFlag_HasBracketRight)
+[foo bar]
+
+//(MD_NodeFlag_HasBracketLeft|MD_NodeFlag_HasParenRight)
+[foo bar)
+
+//(MD_NodeFlag_HasParenLeft|MD_NodeFlag_HasBracketRight)
+(foo bar]
+
+//(MD_NodeFlag_HasBraceLeft|MD_NodeFlag_HasBraceRight)
+{foo bar}
+
+/*
+** Mixing { with ) or ] generates an error.
+** Same with ( or [ with }.
+** This is itended to make {} a useful way to delimit a set when extra help
+** via errors from the parser is preferable to flexibility.
+*/
+
+////////////////////////////////
+// Labeled Sets
+
+foo: (bar baz) 123: (foo bar)
+"foo": (bar baz) +++: (foo bar)
+foo: ()
+
+"""
+foo
+""": (bar baz)
+
+foo: [bar]
+foo: [foo)
+foo: (bar]
+foo: {bar}
+
+/*
+** When a set has a label, it's node will have the label as it's string
+** contents, and the children as it's set contnts. The node will have flags
+** for both it's label and it's set properties. For instance the root node 
+** parsed from 
+**                  +++: (foo bar) 
+** has the flags:
+**  MD_NodeFlag_HasParenLeft|MD_NodeFlag_HasParenRight|MD_NodeFlag_Symbol
+*/
+
+////////////////////////////////
+// Nested Sets
+
+{
+  (foo bar)
+  foo: (bar)
+  [a b c]
+  [({})]
+}
+
+////////////////////////////////
+// Undelimited Sets (<no left/right flags>)
+
+// delimited by newline
+foo: bar baz
+
+// starts on the next line, delimited by new line
+foo:
+bar baz
+
+// starts on the next line, consumes entire multi-line string
+foo:
+"""
+bar
+"""
+
+// kind of weird, but you can chain things on so long as a newline
+// never appears outside of a multi-line string to end the set
+foo: """
+bar
+""" baz """
+and-back-to-foo-again
+"""
+
+// nesting undelimited sets
+foo: bar:
+baz: foo_again
+
+// undelimited sets may not contain unlabeled delimited sets
+// the following forms one undelimited set followed by a delimited set
+// the delimited set is a sibling to foo, not a child to foo.
+foo: bar (baz)
+
+// undelimited sets *may* however contain labeled delimited sets
+// now foo is an undelimited set that contains bar, and bar is a
+// delimited set that contains baz
+foo: bar: (baz)
+
+// again things can get weird. Here bar and baz are both delimited
+// sets contained in foo, because at there are no newlines at the
+// level of the foo node until after the baz set.
+foo:
+bar: (
+ a 
+ b
+ c
+) baz: (
+ 1
+ 2
+ 3
+)
+
+////////////////////////////////
+// Seperators
+
+// A separator can be placed after any member of delimited sets.
+// The separator does not effect the shape of the tree but it does
+// attach flags to the nodes before and after it.
+
+(
+ word1
+ //(MD_NodeFlag_IsBeforeComma)
+ word2,
+ //(MD_NodeFlag_IsBeforeComma|MD_NodeFlag_IsAfterComma)
+ word3,
+ //(MD_NodeFlag_IsAfterComma)
+ word4
+)
+
+(
+ word1
+ //(MD_NodeFlag_IsBeforeSemicolon)
+ word2;
+ //(MD_NodeFlag_IsBeforeSemicolon|MD_NodeFlag_IsAfterSemicolon)
+ word3;
+ //(MD_NodeFlag_IsAfterSemicolon)
+ word4
+)
+
+(
+ word1
+ //(MD_NodeFlag_IsBeforeComma)
+ word2,
+ //(MD_NodeFlag_IsBeforeSemicolon|MD_NodeFlag_IsAfterComma)
+ word3;
+ //(MD_NodeFlag_IsAfterSemicolon|MD_NodeFlag_IsBeforeComma)
+ word4,
+)
+
+// A separator ends an undelimited set early. Here the commas and semi-colon
+// split this line into three undelimited sets. The "before" flag goes on the
+// undelimited set, not the child. For instance, here the set foo gets the flag
+// (MD_NodeFlag_IsBeforeComma)
+foo: bar,    baz: foo_again;    foo: bar
+
+
+////////////////////////////////
+// Tags
+
+// tags are made with an @ before identifier
+@foo bar
+
+// tags can be attached to any node
+@foo "string"
+
+// any number of tags can be attached to a node
+@foo @bar @foo @bar baz
+
+// tags can be attached to sets
+@foo (bar baz)
+@foo [bar baz]
+@foo bar: {baz}
+@foo bar: baz
+
+// tags can be attached to nodes inside sets
+@foo (@bar baz)
+@foo bar: @baz foo_again
+
+// tags can have children of their own 
+// set with () and no space after the identifier
+@foo(bar) baz
+@foo(bar) (baz baz)
+@foo(bar bar) foo
+@foo(bar baz) @bar fooz
+
+// the children of a tag can be sets
+@foo({bar baz} [biz boo]) far
+@foo(bar: baz: 123) xyz
+
+// the children of a tag are actually just a set delimited with ()
+@tag(tag_child, 123;
+     "strings etc") node
+
+// the children of a tag can even be tagged
+@tag(tag_child, @number 123) node
+@tag(tag_child, @number(integer) 123) node
+
+
