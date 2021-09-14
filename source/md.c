@@ -2837,7 +2837,7 @@ MD_TagCountFromNode(MD_Node *node)
 }
 
 MD_FUNCTION_IMPL MD_Node *
-MD_NodeFromReference(MD_Node *node)
+MD_ResolveNodeFromReference(MD_Node *node)
 {
     MD_u64 safety = 100;
     for(; safety > 0 && node->kind == MD_NodeKind_Reference;
@@ -3078,7 +3078,7 @@ struct _MD_ExprParseCtx
     MD_Node *original_first;
     MD_Node *first;
     MD_Node *one_past_last;
-
+    
     struct{
         MD_ExprOperator *call_op;
         MD_ExprOperator *subscript_op;
@@ -3139,12 +3139,12 @@ _MD_ExprParse_MakeContext(MD_ExprOperatorTable *op_table, MD_Node *first, MD_Nod
     result.original_first = first;
     result.first = first;
     result.one_past_last = one_past_last;
-
+    
     result.accel.bracket_set_op = _MD_ExprOperatorMatch(op_table, MD_ExprOperatorKind_Prefix,  MD_S8Lit("[]"));
     result.accel.brace_set_op   = _MD_ExprOperatorMatch(op_table, MD_ExprOperatorKind_Prefix,  MD_S8Lit("{}"));
     result.accel.call_op        = _MD_ExprOperatorMatch(op_table, MD_ExprOperatorKind_Postfix, MD_S8Lit("()"));
     result.accel.subscript_op   = _MD_ExprOperatorMatch(op_table, MD_ExprOperatorKind_Binary,  MD_S8Lit("[]"));
-
+    
     return result;
 }
 
@@ -3170,7 +3170,7 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
     
     MD_Node *node = ctx->first;
     MD_ExprOperator *op = 0;
-
+    
     if(MD_NodeIsNil(node))
     {
         MD_Node *last_non_null = ctx->original_first;
@@ -3178,7 +3178,7 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
         {
             last_non_null = last_non_null->next;
         }
-
+        
         MD_String8 error_str = MD_S8Lit("Unexpected end of expression.");
         MD_u64 error_offset = last_non_null->offset + last_non_null->raw_string.size - ctx->original_first->offset;
         MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);

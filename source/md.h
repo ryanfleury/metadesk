@@ -1087,17 +1087,13 @@ MD_FUNCTION MD_Node *  MD_TagArgFromString(MD_Node *node, MD_String8 tag_string,
 MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags);
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
-MD_FUNCTION MD_Node *  MD_NodeFromReference(MD_Node *node);
+MD_FUNCTION MD_Node *  MD_ResolveNodeFromReference(MD_Node *node);
 
 MD_FUNCTION MD_String8 MD_PrevCommentFromNode(MD_Node *node);
 MD_FUNCTION MD_String8 MD_NextCommentFromNode(MD_Node *node);
 
 // NOTE(rjf): For-Loop Helpers
 #define MD_EachNode(it, first) MD_Node *it = (first); !MD_NodeIsNil(it); it = it->next
-#define MD_EachNodeRef(it, first) \
-MD_Node *it##_r = (first), *it = MD_NodeFromReference(it##_r); \
-!MD_NodeIsNil(it##_r); \
-it##_r = it##_r->next, it = MD_NodeFromReference(it##_r)
 
 //~ Error/Warning Helpers
 

@@ -73,7 +73,7 @@ int main(int argument_count, char **arguments)
         Initialize();
         for(MD_EachNode(ref, list->first_child))
         {
-            MD_Node *root = MD_NodeFromReference(ref);
+            MD_Node *root = MD_ResolveNodeFromReference(ref);
             for(MD_EachNode(node, root->first_child))
             {
                 TopLevel(node);

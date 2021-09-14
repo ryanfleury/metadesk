@@ -73,20 +73,23 @@ int main(int argument_count, char **arguments)
     }
     
     // print the verbose parse results
-    // @notes The Metadesk library provides a few macros for iterating MD_Node
-    //  lists as shown here. The first parameter to the macro becomes an
-    //  MD_Node pointer in the scope of the for loop that visits each node in
-    //  the list in order. The second parameter is a pointer to the first node
-    //  in the list. Generally we past the `first_child` of a list or parent
-    //  MD_Node, but we don't always have to.
-    //
-    //  MD_EachNode is used to iterate a list of children.
-    //  MD_EachNodeRef is used to iterate a list of references like the list
-    //   of roots from the parses we have built. Underneath the surface this
-    //   macro automatically resolves the reference at the beginning of each
-    //   loop step.
-    for (MD_EachNodeRef(root, list->first_child))
+    // @notes The Metadesk library provides a macros for iterating chains of
+    //  MD_Node as shown here. The first parameter to the macro names an
+    //  MD_Node pointer in the for loop that iterates through each node in the
+    //  list. The second parameter is a pointer to the first node of the list.
+    //  Generally we past the `first_child` of a list or parent MD_Node, but we
+    // don't always have to.
+    for (MD_EachNode(root_it, list->first_child))
     {
+        
+        // @notes The `list` we have been building does not contain a normal
+        //  MD_Node chain like in the trees returned from the parser. Instead
+        //  it contains a chain of 'reference' nodes, which can point to any
+        //  metadesk node from a previous parse. So our `root_it` is iterating
+        //  a list of reference nodes. Here we resolve the reference node to
+        //  get the root of the parse tree.
+        MD_Node *root = MD_ResolveNodeFromReference(root_it);
+        
         for (MD_EachNode(node, root->first_child))
         {
             // @notes The Metadesk library likes to use MD_String8List for
