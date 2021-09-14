@@ -584,6 +584,7 @@ enum
     MD_NodeFlag_Numeric                 = (1<<14),
     MD_NodeFlag_Identifier              = (1<<15),
     MD_NodeFlag_StringLiteral           = (1<<16),
+    MD_NodeFlag_Symbol                  = (1<<17),
 };
 
 typedef struct MD_Node MD_Node;
@@ -670,7 +671,7 @@ typedef MD_u32 MD_TokenKind;
 enum
 {
     MD_TokenKind_Identifier          = (1<<0),
-    MD_TokenKind_NumericLiteral      = (1<<1),
+    MD_TokenKind_Numeric             = (1<<1),
     MD_TokenKind_StringLiteral       = (1<<2),
     MD_TokenKind_Symbol              = (1<<3),
     MD_TokenKind_Reserved            = (1<<4),
@@ -692,7 +693,7 @@ enum
                                MD_TokenGroup_Whitespace),
     MD_TokenGroup_Regular = ~MD_TokenGroup_Irregular,
     MD_TokenGroup_Label   = (MD_TokenKind_Identifier|
-                             MD_TokenKind_NumericLiteral|
+                             MD_TokenKind_Numeric|
                              MD_TokenKind_StringLiteral|
                              MD_TokenKind_Symbol),
     MD_TokenGroup_Error   = (MD_TokenKind_BrokenComment|

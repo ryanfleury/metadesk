@@ -19,7 +19,7 @@ Example Programs:
 
 Example Metadesk Files:
 [x] Hello world
-[ ] identifiers, numbers, strings, and symbols
+[x] identifiers, numbers, strings, and symbols
 [ ] sets, seperators, labels, and tags
 
 

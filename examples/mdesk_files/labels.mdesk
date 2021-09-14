@@ -1,0 +1,96 @@
+////////////////////////////////
+// Identifiers (MD_NodeFlag_Identifier)
+abc _foo_ x123
+almostAnyCIdentifier // not including $
+
+////////////////////////////////
+// Numerics (MD_NodeFlag_Numeric)
+123 0x123ABC 0b10101 123.456
+0.123 123_456_789
+123abc456xyz
+123e+100
+456E-100
+789e+E-e+E-100100xyz
+
+////////////////////////////////
+// String Literals (MD_NodeFlag_StringLiteral)
+
+//(MD_NodeFlag_StringDoubleQuote)
+"Hello World"
+" 'Hello World` "
+"\"Hello World\""
+"\\\a\b\c\d\e\f\""
+""
+
+//(MD_NodeFlag_StringSingleQuote)
+'Hello World'
+' "Hello World` '
+''
+
+//(MD_NodeFlag_StringTick)
+`Hello World`
+` "Hello World' `
+``
+
+////////////////////////////////
+// Multi-Line String Literals (MD_NodeFlag_StringLiteral|MD_NodeFlag_StringTriplet)
+
+//(MD_NodeFlag_StringDoubleQuote)
+"""
+This string can go on
+for as many lines as I want.
+And it can say things like
+"Hello World"
+or you know, whatever.
+"""
+
+//(MD_NodeFlag_StringSingleQuote)
+'''
+Multi-line strings can start
+with a triplet of any of the
+string markers.
+'''
+
+//(MD_NodeFlag_Tick)
+```
+```
+
+////////////////////////////////
+// Symbols (MD_NodeFlag_Symbol)
++ - * / = & ^ % ! | ? < > . ~
+$
+++ -- ** == && ^^ %% !! || ??
+<< >> .. ~~ $$ -> <- => <= ?.
++= -= *= /= |= &= ^= %= != |=
+...
++- +++++++ ??? !? $! $$$ <->
++-*/=&^%~|?<>.~$
+
+/*
+** A few punctuation characters are not counted with the rest
+** of the symbol characters. These are the 'reserved' characters:
+** ( ) { } [ ] : ; , @ # \
+**
+** And the sequences // and /* start comments so no symbol
+** can start with either of those pairs.
+**
+** Block comments are nested */
+*/
+
+
+////////////////////////////////
+// Identifiers, Numbers, Strings, and Symbols are the different kinds
+// of 'labels' in Metadesk. They can all form main metadesk nodes:
+
+_foo_: { bar123456; _123; }
+
+0: (1.0.1.1, 1.2.0.0)
+
+```
+#include <stdio.h>
+int main(){
+ printf("Hello World\n");
+}
+```: "Hello World"
+
+..: . + .

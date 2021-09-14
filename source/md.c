@@ -619,7 +619,7 @@ MD_CharIsUnreservedSymbol(MD_u8 c)
     return (c == '~' || c == '!' || c == '$' || c == '%' || c == '^' ||
             c == '&' || c == '*' || c == '-' || c == '=' || c == '+' ||
             c == '<' || c == '.' || c == '>' || c == '/' || c == '?' ||
-            c == '|' || c == '\\');
+            c == '|');
 }
 
 MD_FUNCTION_IMPL MD_b32
@@ -1891,7 +1891,7 @@ MD_TokenFromString(MD_String8 string)
                 
             }break;
             
-            // NOTE(allen): Identifiers, Numbers, Operators
+            // NOTE(allen): Identifiers, Numbers, Symbols
             default:
             {
                 if (MD_CharIsAlpha(*at) || *at == '_')
@@ -1905,7 +1905,7 @@ MD_TokenFromString(MD_String8 string)
                 else if (MD_CharIsDigit(*at))
                 {
                     token.node_flags |= MD_NodeFlag_Numeric;
-                    token.kind = MD_TokenKind_NumericLiteral;
+                    token.kind = MD_TokenKind_Numeric;
                     at += 1;
                     
                     for (; at < one_past_last;){
@@ -1932,6 +1932,7 @@ MD_TokenFromString(MD_String8 string)
                 {
                     symbol_lex:
                     
+                    token.node_flags |= MD_NodeFlag_Symbol;
                     token.kind = MD_TokenKind_Symbol;
                     at += 1;
                     MD_TokenizerScan(MD_CharIsUnreservedSymbol(*at));

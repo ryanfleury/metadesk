@@ -104,15 +104,15 @@ int main(void)
         TestResult(TokenMatch(tokens[1], MD_S8Lit(" "), MD_TokenKind_Whitespace));
         TestResult(TokenMatch(tokens[2], MD_S8Lit("def"), MD_TokenKind_Identifier));
         TestResult(TokenMatch(tokens[3], MD_S8Lit(" "), MD_TokenKind_Whitespace));
-        TestResult(TokenMatch(tokens[4], MD_S8Lit("123"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(tokens[4], MD_S8Lit("123"), MD_TokenKind_Numeric));
         TestResult(TokenMatch(tokens[5], MD_S8Lit(" "), MD_TokenKind_Whitespace));
-        TestResult(TokenMatch(tokens[6], MD_S8Lit("456"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(tokens[6], MD_S8Lit("456"), MD_TokenKind_Numeric));
         TestResult(TokenMatch(tokens[7], MD_S8Lit(" "), MD_TokenKind_Whitespace));
-        TestResult(TokenMatch(tokens[8], MD_S8Lit("123_456"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(tokens[8], MD_S8Lit("123_456"), MD_TokenKind_Numeric));
         TestResult(TokenMatch(tokens[9], MD_S8Lit(" "), MD_TokenKind_Whitespace));
         TestResult(TokenMatch(tokens[10], MD_S8Lit("abc123"), MD_TokenKind_Identifier));
         TestResult(TokenMatch(tokens[11], MD_S8Lit(" "), MD_TokenKind_Whitespace));
-        TestResult(TokenMatch(tokens[12], MD_S8Lit("123abc"), MD_TokenKind_NumericLiteral));
+        TestResult(TokenMatch(tokens[12], MD_S8Lit("123abc"), MD_TokenKind_Numeric));
         TestResult(TokenMatch(tokens[13], MD_S8Lit(" "), MD_TokenKind_Whitespace));
         TestResult(TokenMatch(tokens[14], MD_S8Lit("+-*"), MD_TokenKind_Symbol));
     }

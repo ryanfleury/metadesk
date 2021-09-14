@@ -322,7 +322,7 @@ main:
     @doc("This is a string literal that used triplets (three of its boundary characters in a row, on either side) to mark its boundaries, making it multiline.")
         StringTriplet,
     
-    @doc("The label on this node comes from a token with the @code MD_TokenKind_NumericLiteral kind.")
+    @doc("The label on this node comes from a token with the @code MD_TokenKind_Numeric kind.")
         Numeric,
     @doc("The label on this node comes from a token with the @code MD_TokenKind_Identifier kind.")
         Identifier,
