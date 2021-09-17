@@ -3329,7 +3329,6 @@ MD_S8ListPush(arena, out, indent_string);\
 }while(0)
     
     //- rjf: prev-comment
-    // TODO(rjf): @node_comments
     if(flags & MD_GenerateFlag_Comments && node->prev_comment.size != 0)
     {
         MD_PrintIndent(indent);
@@ -3386,7 +3385,6 @@ MD_S8ListPush(arena, out, indent_string);\
     }
     
     //- rjf: node flags
-    // TODO(rjf): @node_comments
     if(flags & MD_GenerateFlag_NodeFlags)
     {
         MD_PrintIndent(indent);
@@ -3461,8 +3459,7 @@ MD_S8ListPush(arena, out, indent_string);\
 
 MD_FUNCTION void
 MD_ReconstructionFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
-                          int indent, MD_String8 indent_string,
-                          MD_GenerateFlags flags)
+                          int indent, MD_String8 indent_string)
 {
     // TODO(rjf): // TODO(rjf): // TODO(rjf): 
     // TODO(rjf): // TODO(rjf): // TODO(rjf): 
@@ -3481,8 +3478,7 @@ MD_S8ListPush(arena, out, indent_string);\
 }while(0)
     
     //- rjf: prev-comment
-    // TODO(rjf): @node_comments
-    if(flags & MD_GenerateFlag_Comments && node->prev_comment.size != 0)
+    if(node->prev_comment.size != 0)
     {
         MD_String8 comment = MD_S8SkipWhitespace(MD_S8ChopWhitespace(node->prev_comment));
         MD_b32 requires_multiline = MD_S8FindSubstring(comment, MD_S8Lit("\n"), 0, 0) < comment.size;
@@ -3507,14 +3503,13 @@ MD_S8ListPush(arena, out, indent_string);\
     }
     
     //- rjf: tags of node
-    if(flags & MD_GenerateFlag_Tags)
     {
         for(MD_EachNode(tag, node->first_tag))
         {
             MD_PrintIndent(indent);
             MD_S8ListPush(arena, out, MD_S8Lit("@"));
             MD_S8ListPush(arena, out, tag->string);
-            if(flags & MD_GenerateFlag_TagArguments && !MD_NodeIsNil(tag->first_child))
+            if(!MD_NodeIsNil(tag->first_child))
             {
                 int tag_arg_indent = indent + 1 + tag->string.size + 1;
                 MD_S8ListPush(arena, out, MD_S8Lit("("));
@@ -3534,7 +3529,7 @@ MD_S8ListPush(arena, out, indent_string);\
                     {
                         child_indent = 0;
                     }
-                    MD_ReconstructionFromNode(arena, out, child, child_indent, MD_S8Lit(" "), flags);
+                    MD_ReconstructionFromNode(arena, out, child, child_indent, MD_S8Lit(" "));
                     if(!MD_NodeIsNil(child->next))
                     {
                         MD_S8ListPush(arena, out, MD_S8Lit(",\n"));
@@ -3566,7 +3561,7 @@ MD_S8ListPush(arena, out, indent_string);\
     }
     
     //- rjf: children list
-    if(flags & MD_GenerateFlag_Children && !MD_NodeIsNil(node->first_child))
+    if(!MD_NodeIsNil(node->first_child))
     {
         if(node->string.size != 0)
         {
@@ -3577,30 +3572,12 @@ MD_S8ListPush(arena, out, indent_string);\
         // rjf: figure out opener/closer symbols
         MD_u8 opener_char = 0;
         MD_u8 closer_char = 0;
-        if(node->flags & MD_NodeFlag_HasParenLeft)
-        {
-            opener_char = '(';
-        }
-        else if(node->flags & MD_NodeFlag_HasBracketLeft)
-        {
-            opener_char = '[';
-        }
-        else if(node->flags & MD_NodeFlag_HasBraceLeft)
-        {
-            opener_char = '{';
-        }
-        if(node->flags & MD_NodeFlag_HasParenRight)
-        {
-            closer_char = ')';
-        }
-        else if(node->flags & MD_NodeFlag_HasBracketRight)
-        {
-            closer_char = ']';
-        }
-        else if(node->flags & MD_NodeFlag_HasBraceRight)
-        {
-            closer_char = '}';
-        }
+        if(node->flags & MD_NodeFlag_HasParenLeft)        { opener_char = '('; }
+        else if(node->flags & MD_NodeFlag_HasBracketLeft) { opener_char = '['; }
+        else if(node->flags & MD_NodeFlag_HasBraceLeft)   { opener_char = '{'; }
+        if(node->flags & MD_NodeFlag_HasParenRight)       { closer_char = ')'; }
+        else if(node->flags & MD_NodeFlag_HasBracketRight){ closer_char = ']'; }
+        else if(node->flags & MD_NodeFlag_HasBraceRight)  { closer_char = '}'; }
         
         MD_b32 multiline = 0;
         for(MD_EachNode(child, node->first_child))
@@ -3634,7 +3611,7 @@ MD_S8ListPush(arena, out, indent_string);\
                 child_indent = indent+1;
             }
             last_line = child_loc.line;
-            MD_ReconstructionFromNode(arena, out, child, child_indent, indent_string, flags);
+            MD_ReconstructionFromNode(arena, out, child, child_indent, indent_string);
         }
         MD_PrintIndent(indent);
         if(closer_char != 0)
@@ -3660,7 +3637,7 @@ MD_S8ListPush(arena, out, indent_string);\
     
     //- rjf: next-comment
     // TODO(rjf): @node_comments
-    if(flags & MD_GenerateFlag_Comments && node->next_comment.size != 0)
+    if(node->next_comment.size != 0)
     {
         MD_String8 comment = MD_S8SkipWhitespace(MD_S8ChopWhitespace(node->next_comment));
         MD_b32 requires_multiline = MD_S8FindSubstring(comment, MD_S8Lit("\n"), 0, 0) < comment.size;

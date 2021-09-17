@@ -1131,8 +1131,7 @@ MD_FUNCTION void MD_DebugDumpFromNode(MD_Arena *arena, MD_String8List *out, MD_N
                                       int indent, MD_String8 indent_string,
                                       MD_GenerateFlags flags);
 MD_FUNCTION void MD_ReconstructionFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
-                                           int indent, MD_String8 indent_string,
-                                           MD_GenerateFlags flags);
+                                           int indent, MD_String8 indent_string);
 
 //~ Command Line Argument Helper
 
