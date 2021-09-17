@@ -2695,10 +2695,10 @@ MD_PushNewReference(MD_Arena *arena, MD_Node *list, MD_Node *target)
 //~ Introspection Helpers
 
 MD_FUNCTION MD_Node *
-MD_NodeFromString(MD_Node *first, MD_Node *one_past_last, MD_String8 string, MD_MatchFlags flags)
+MD_FirstNodeWithString(MD_Node *first, MD_String8 string, MD_MatchFlags flags)
 {
     MD_Node *result = MD_NilNode();
-    for(MD_Node *node = first; !MD_NodeIsNil(node) && node != one_past_last; node = node->next)
+    for(MD_Node *node = first; !MD_NodeIsNil(node); node = node->next)
     {
         if(MD_S8Match(string, node->string, flags))
         {
@@ -2710,13 +2710,13 @@ MD_NodeFromString(MD_Node *first, MD_Node *one_past_last, MD_String8 string, MD_
 }
 
 MD_FUNCTION MD_Node *
-MD_NodeFromIndex(MD_Node *first, MD_Node *one_past_last, int n)
+MD_NodeAtIndex(MD_Node *first, int n)
 {
     MD_Node *result = MD_NilNode();
     if(n >= 0)
     {
         int idx = 0;
-        for(MD_Node *node = first; !MD_NodeIsNil(node) && node != one_past_last; node = node->next, idx += 1)
+        for(MD_Node *node = first; !MD_NodeIsNil(node); node = node->next, idx += 1)
         {
             if(idx == n)
             {
@@ -2729,10 +2729,10 @@ MD_NodeFromIndex(MD_Node *first, MD_Node *one_past_last, int n)
 }
 
 MD_FUNCTION MD_Node *
-MD_NodeFromFlags(MD_Node *first, MD_Node *one_past_last, MD_NodeFlags flags)
+MD_FirstNodeWithFlags(MD_Node *first, MD_NodeFlags flags)
 {
     MD_Node *result = MD_NilNode();
-    for(MD_Node *n = first; n != one_past_last && !MD_NodeIsNil(n); n = n->next)
+    for(MD_Node *n = first; !MD_NodeIsNil(n); n = n->next)
     {
         if(n->flags & flags)
         {
@@ -2765,25 +2765,25 @@ MD_RootFromNode(MD_Node *node)
 MD_FUNCTION MD_Node *
 MD_ChildFromString(MD_Node *node, MD_String8 child_string, MD_MatchFlags flags)
 {
-    return MD_NodeFromString(node->first_child, MD_NilNode(), child_string, flags);
+    return MD_FirstNodeWithString(node->first_child, child_string, flags);
 }
 
 MD_FUNCTION MD_Node *
 MD_TagFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags)
 {
-    return MD_NodeFromString(node->first_tag, MD_NilNode(), tag_string, flags);
+    return MD_FirstNodeWithString(node->first_tag, tag_string, flags);
 }
 
 MD_FUNCTION MD_Node *
 MD_ChildFromIndex(MD_Node *node, int n)
 {
-    return MD_NodeFromIndex(node->first_child, MD_NilNode(), n);
+    return MD_NodeAtIndex(node->first_child, n);
 }
 
 MD_FUNCTION MD_Node *
 MD_TagFromIndex(MD_Node *node, int n)
 {
-    return MD_NodeFromIndex(node->first_tag, MD_NilNode(), n);
+    return MD_NodeAtIndex(node->first_tag, n);
 }
 
 MD_FUNCTION MD_Node *

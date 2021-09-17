@@ -1068,9 +1068,9 @@ MD_FUNCTION MD_Node *MD_PushNewReference(MD_Arena *arena, MD_Node *list, MD_Node
 // These calls are for getting info from nodes, and introspecting
 // on trees that are returned to you by the parser.
 
-MD_FUNCTION MD_Node *  MD_NodeFromString(MD_Node *first, MD_Node *one_past_last, MD_String8 string, MD_MatchFlags flags);
-MD_FUNCTION MD_Node *  MD_NodeFromIndex(MD_Node *first, MD_Node *one_past_last, int n);
-MD_FUNCTION MD_Node *  MD_NodeFromFlags(MD_Node *first, MD_Node *one_past_last, MD_NodeFlags flags);
+MD_FUNCTION MD_Node *  MD_FirstNodeWithString(MD_Node *first, MD_String8 string, MD_MatchFlags flags);
+MD_FUNCTION MD_Node *  MD_NodeAtIndex(MD_Node *first, int n);
+MD_FUNCTION MD_Node *  MD_FirstNodeWithFlags(MD_Node *first, MD_NodeFlags flags);
 MD_FUNCTION int        MD_IndexFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_RootFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_ChildFromString(MD_Node *node, MD_String8 child_string, MD_MatchFlags flags);

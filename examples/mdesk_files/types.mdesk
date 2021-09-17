@@ -1,0 +1,56 @@
+/*
+** Setup as input to the type metadata example
+*/
+
+@type(basic) U32: 4;
+@type(basic) F32: 4;
+@type(basic) V2F32: 8;
+
+@type(struct)
+Circle:
+{
+  r: F32;
+  pos: V2F32;
+}
+
+@type(struct)
+RoundedSegment:
+{
+  r: F32;
+  p1: V2F32;
+  p2: V2F32;
+}
+
+@type(struct)
+RoundedPolygon:
+{
+  r: F32;
+  count: U32;
+  p: @array(count) V2F32;
+}
+
+@type(enum: U32)
+Shape:
+{
+  Circle:  1,
+  Segment: 2,
+  Polygon: 3,
+}
+
+@map(Shape -> `$Type`; complete)
+type_info_from_shape:
+{
+  Circle -> Circle,
+  Segment -> RoundedSegment,
+  Polygon -> RoundedPolygon,
+}
+
+@map(Shape -> U32; default: 0; auto: 64)
+max_slot_from_shape:
+{
+  Polygon -> 12,
+}
+
+
+
+

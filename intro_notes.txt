@@ -8,8 +8,6 @@ Example Programs:
 [x] Metadesk hello world
 [x] Metadesk parse checker
 [x] User error checking
-[ ] Example of helpers: string helpers, linked lists, map type
-                        printing errors, cmd line, file iter
 [x] Datadesk-like setup
 [ ] Example type metadata
 [ ] Example of simple expression parser

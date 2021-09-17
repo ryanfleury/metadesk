@@ -1659,13 +1659,11 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Finds a node in the range defined by @code 'first' and @code 'one_past_last', with the string matching @code 'string' in accordance with @code 'flags', or returns a nil node pointer if it is not found.")
-@see(MD_NodeFromIndex)
+@see(MD_NodeAtIndex)
 @see(MD_S8Match)
-@func MD_NodeFromString: {
+@func MD_FirstNodeWithString: {
     @doc("The first node in the range to search.")
         first: *MD_Node,
-    @doc("One past the last node in the range to search. A nil node, if the entire available range starting with @code 'first' is to be searched.")
-        one_past_last: *MD_Node,
     @doc("The string to search for.")
         string: MD_String8,
     @doc("Controls what is considered a match, when doing string matching.")
@@ -1676,21 +1674,21 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Finds the @code 'n'th node in the range defined by @code 'first' and @code 'one_past_last', or returns a nil node pointer if it is not found. @code '0' would match @code 'first', @code '1' would match @code 'first->next', and so on.")
-@see(MD_NodeFromString)
-@func MD_NodeFromIndex: {
+@see(MD_FirstNodeWithString)
+@func MD_NodeAtIndex: {
     @doc("The first node in the range to search.")
         first: *MD_Node,
-    @doc("One past the last node in the range to search. A nil node, if the entire available range starting with @code 'first' is to be searched.")
-        one_past_last: *MD_Node,
     @doc("The index to search for.")
         n: int,
     @doc("The found node, or a nil node pointer if no node was found.")
         return: *MD_Node,
 };
 
+// TODO(allen): MD_FirstNodeWithFlags
+
 @send(Nodes)
 @doc("Finds the child index of @code 'node', with @code '0' being the first child, @code '1' being the second, and so on.")
-@see(MD_NodeFromIndex)
+@see(MD_NodeAtIndex)
 @func MD_IndexFromNode: {
     node: *MD_Node,
     return: int,
@@ -1707,7 +1705,7 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Finds a child of @code 'node' with a string matching @code 'child_string', where the rules of matching are determined by @code 'flags'.")
-@see(MD_NodeFromString)
+@see(MD_FirstNodeWithString)
 @see(MD_TagFromString)
 @func MD_ChildFromString: {
     @doc("The parent whose children are to be searched.")
@@ -1722,7 +1720,7 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Finds a tag on @code 'node' with a string matching @code 'tag_string', where the rules of matching are determined by @code 'flags'.")
-@see(MD_NodeFromString)
+@see(MD_FirstNodeWithString)
 @see(MD_ChildFromString)
 @func MD_TagFromString: {
     @doc("The parent whose tags are to be searched.")
@@ -1737,7 +1735,7 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Finds a child of @code 'node' with an index matching @code 'n'. Returns a nil node pointer if no such child is found.")
-@see(MD_NodeFromIndex)
+@see(MD_NodeAtIndex)
 @see(MD_IndexFromNode)
 @see(MD_TagFromIndex)
 @func MD_ChildFromIndex: {
@@ -1751,7 +1749,7 @@ MD_ParseWholeFile:
 
 @send(Nodes)
 @doc("Finds a tag on @code 'node' with an index matching @code 'n'. Returns a nil node pointer if no such tag is found.")
-@see(MD_NodeFromIndex)
+@see(MD_NodeAtIndex)
 @see(MD_IndexFromNode)
 @see(MD_ChildFromIndex)
 @func MD_TagFromIndex: {

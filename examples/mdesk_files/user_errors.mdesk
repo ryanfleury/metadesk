@@ -1,3 +1,6 @@
+/*
+** Setup as input to the user-errors example
+*/
 
 @foo @bar Foo:
 {
@@ -5,6 +8,8 @@
   a, b, c,
   1, 2, 3,
 }
+
+[50 + 200]
 
 @baz Blah:
 {

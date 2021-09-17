@@ -19,13 +19,6 @@ static MD_Arena *arena = 0;
 
 int main(int argc, char **argv)
 {
-    char *argv_dummy[] = {
-        0,
-        "W:/metadesk/examples/mdesk_files/user_errors.mdesk"
-    };
-    argc = 2;
-    argv = argv_dummy;
-    
     // setup the global arena
     arena = MD_ArenaAlloc(1ull << 40);
     
