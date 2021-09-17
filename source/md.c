@@ -510,7 +510,6 @@ static MD_Node _md_nil_node =
     0,                     // flags
     MD_ZERO_STRUCT,        // string
     MD_ZERO_STRUCT,        // raw_string
-    0xdeadffffffffffull,   // string_hash
     0,                     // at
     &_md_nil_node,         // ref_target
     MD_ZERO_STRUCT,        // prev_comment
@@ -803,6 +802,7 @@ MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
     MD_u64 needed_bytes = md_stbsp_vsnprintf(0, 0, fmt, args)+1;
     result.str = MD_PushArray(arena, MD_u8, needed_bytes);
     result.size = needed_bytes - 1;
+    result.str[needed_bytes-1] = 0;
     md_stbsp_vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
 }
@@ -820,7 +820,7 @@ MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
 MD_FUNCTION void
 MD_S8ListPush(MD_Arena *arena, MD_String8List *list, MD_String8 string)
 {
-    MD_String8Node *node = MD_PushArray(arena, MD_String8Node, 1);
+    MD_String8Node *node = MD_PushArrayZero(arena, MD_String8Node, 1);
     node->string = string;
     
     MD_QueuePush(list->first, list->last, node);
@@ -922,7 +922,7 @@ MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (list.total_size + join.pre.size +
                    sep_count*join.mid.size + join.post.size);
-    result.str = MD_PushArray(arena, MD_u8, result.size);
+    result.str = MD_PushArrayZero(arena, MD_u8, result.size);
     
     // fill
     MD_u8 *ptr = result.str;
@@ -1005,7 +1005,7 @@ MD_S8Stylize(MD_Arena *arena, MD_String8 string, MD_IdentifierStyle word_style,
     {
         result.size += separator.size*(words.node_count-1);
     }
-    result.str = MD_PushArray(arena, MD_u8, result.size);
+    result.str = MD_PushArrayZero(arena, MD_u8, result.size);
     
     {
         MD_u64 write_pos = 0;
@@ -1234,7 +1234,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS16(MD_Arena *arena, MD_String16 in)
 {
     MD_u64 cap = in.size*3;
-    MD_u8 *str = MD_PushArray(arena, MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArrayZero(arena, MD_u8, cap + 1);
     MD_u16 *ptr = in.str;
     MD_u16 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1254,7 +1254,7 @@ MD_FUNCTION MD_String16
 MD_S16FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size*2;
-    MD_u16 *str = MD_PushArray(arena, MD_u16, cap + 1);
+    MD_u16 *str = MD_PushArrayZero(arena, MD_u16, cap + 1);
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1275,7 +1275,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS32(MD_Arena *arena, MD_String32 in)
 {
     MD_u64 cap = in.size*4;
-    MD_u8 *str = MD_PushArray(arena, MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArrayZero(arena, MD_u8, cap + 1);
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1293,7 +1293,7 @@ MD_FUNCTION MD_String32
 MD_S32FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size;
-    MD_u32 *str = MD_PushArray(arena, MD_u32, cap + 1);
+    MD_u32 *str = MD_PushArrayZero(arena, MD_u32, cap + 1);
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1507,7 +1507,7 @@ MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps)
     
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (MD_u64)(ptr - buffer);
-    result.str = MD_PushArray(arena, MD_u8, result.size);
+    result.str = MD_PushArrayZero(arena, MD_u8, result.size);
     MD_MemoryCopy(result.str, buffer, result.size);
     return(result);
 }
@@ -1594,9 +1594,8 @@ MD_FUNCTION MD_u64
 MD_HashPtr(void *p)
 {
     MD_u64 h = (MD_u64)p;
-    // TODO(rjf): Do we want our own equivalent of UINT64_C?
-    h = (h ^ (h >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
-    h = (h ^ (h >> 27)) * UINT64_C(0x94d049bb133111eb);
+    h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9;
+    h = (h ^ (h >> 27)) * 0x94d049bb133111eb;
     h = h ^ (h >> 31);
     return h;
 }
@@ -1683,7 +1682,7 @@ MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
     MD_MapSlot *result = 0;
     if (map->bucket_count > 0){
         MD_u64 index = key.hash%map->bucket_count;
-        MD_MapSlot *slot = MD_PushArray(arena, MD_MapSlot, 1);
+        MD_MapSlot *slot = MD_PushArrayZero(arena, MD_MapSlot, 1);
         MD_MapBucket *bucket = &map->buckets[index];
         MD_QueuePush(bucket->first, bucket->last, slot);
         slot->key = key;
@@ -2165,10 +2164,10 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
                     if(potential_closer.kind == MD_TokenKind_Reserved)
                     {
                         MD_u8 c = potential_closer.raw_string.str[0];
-                        if (c == ',' || c == ';')
+                        if(c == ',' || c == ';')
                         {
-                            closer_check_off += potential_closer.raw_string.size;
                             off = closer_check_off;
+                            closer_check_off += potential_closer.raw_string.size;
                             break;
                         }
                         else if(c == '}' || c == ']'|| c == ')')
@@ -2970,7 +2969,7 @@ MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
                     MD_u32 op_id, MD_ExprOperatorKind kind,
                     MD_u64 precedence, MD_Node *md_node)
 {
-    MD_ExprOperatorNode *node = MD_PushArray(arena, MD_ExprOperatorNode, 1);
+    MD_ExprOperatorNode *node = MD_PushArrayZero(arena, MD_ExprOperatorNode, 1);
     MD_QueuePush(list->first, list->last, node);
     list->count += 1;
     node->op.op_id = op_id;
@@ -3050,7 +3049,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
         if(error_str.size == 0)
         {
             MD_ExprOperatorList *list = result.table+op.kind;
-            MD_ExprOperatorNode *op_node_copy = MD_PushArray(arena, MD_ExprOperatorNode, 1);
+            MD_ExprOperatorNode *op_node_copy = MD_PushArrayZero(arena, MD_ExprOperatorNode, 1);
             MD_QueuePush(list->first, list->last, op_node_copy);
             list->count += 1;
             op_node_copy->op = op;
@@ -3401,13 +3400,7 @@ MD_S8ListPush(arena, out, indent_string);\
         MD_ReleaseScratch(scratch);
     }
     
-    //- rjf: node string hash
-    if(flags & MD_GenerateFlag_StringHash)
-    {
-        MD_PrintIndent(indent);
-        MD_S8ListPush(arena, out, MD_S8Fmt(arena, "// string hash: 0x%llx\n", node->string_hash));
-    }
-    
+    //- rjf: location
     if(flags & MD_GenerateFlag_Location)
     {
         MD_PrintIndent(indent);
@@ -3725,10 +3718,8 @@ MD_StringListFromArgCV(MD_Arena *arena, int argument_count, char **arguments)
 MD_FUNCTION MD_CmdLine
 MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
 {
-    // TODO(rjf): consider everything as plain unstructured inputs after
-    // a `--` (without a name).
-    
     MD_CmdLine cmdln = MD_ZERO_STRUCT;
+    MD_b32 parsing_only_inputs = 0;
     
     for(MD_String8Node *n = options.first, *next = 0;
         n; n = next)
@@ -3738,7 +3729,11 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
         //- rjf: figure out whether or not this is an option by checking for `-` or `--`
         // from the beginning of the string
         MD_String8 option_name = MD_ZERO_STRUCT;
-        if(MD_S8Match(MD_S8Prefix(n->string, 2), MD_S8Lit("--"), 0))
+        if(MD_S8Match(n->string, MD_S8Lit("--"), 0))
+        {
+            parsing_only_inputs = 1;
+        }
+        else if(MD_S8Match(MD_S8Prefix(n->string, 2), MD_S8Lit("--"), 0))
         {
             option_name = MD_S8Skip(n->string, 2);
         }
@@ -3746,6 +3741,7 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
         {
             option_name = MD_S8Skip(n->string, 1);
         }
+        
         //- rjf: trim off anything after a `:` or `=`, use that as the first value string
         MD_String8 first_value = MD_ZERO_STRUCT;
         MD_b32 has_many_values = 0;
@@ -3766,7 +3762,7 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
         }
         
         //- rjf: gather arguments
-        if(option_name.size != 0)
+        if(option_name.size != 0 && !parsing_only_inputs)
         {
             MD_String8List option_values = MD_ZERO_STRUCT;
             
