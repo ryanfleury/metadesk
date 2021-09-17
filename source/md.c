@@ -1,5 +1,8 @@
 // LICENSE AT END OF FILE (MIT).
 
+#if !defined(MD_C)
+#define MD_C
+
 //~/////////////////////////////////////////////////////////////////////////////
 /////////////////////////// CRT Implementation /////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +32,7 @@
 # define MD_IMPL_LoadEntireFile MD_CRT_LoadEntireFile
 #endif
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_CRT_LoadEntireFile(MD_Arena *arena, MD_String8 filename){
     MD_ArenaTemp scratch = MD_GetScratch(&arena, 1);
     MD_String8 file_contents = MD_ZERO_STRUCT;
@@ -516,23 +519,23 @@ static MD_Node _md_nil_node =
 
 //~ Arena Functions
 
-MD_FUNCTION_IMPL MD_Arena*
+MD_FUNCTION MD_Arena*
 MD_ArenaAlloc(MD_u64 cap){
     return(MD_IMPL_ArenaAlloc(cap));
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_ArenaRelease(MD_Arena *arena){
     MD_IMPL_ArenaRelease(arena);
 }
 
-MD_FUNCTION_IMPL void*
+MD_FUNCTION void*
 MD_ArenaPush(MD_Arena *arena, MD_u64 size){
     void *result = MD_IMPL_ArenaPush(arena, size);
     return(result);
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_ArenaPutBack(MD_Arena *arena, MD_u64 size){
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 new_pos = pos - size;
@@ -540,12 +543,12 @@ MD_ArenaPutBack(MD_Arena *arena, MD_u64 size){
     MD_IMPL_ArenaPopTo(arena, new_pos_clamped);
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_ArenaSetAlign(MD_Arena *arena, MD_u64 boundary){
     MD_IMPL_ArenaSetAutoAlign(arena, boundary);
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary){
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 align_m1 = boundary - 1;
@@ -557,12 +560,12 @@ MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary){
     }
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_ArenaClear(MD_Arena *arena){
     MD_IMPL_ArenaPopTo(arena, MD_IMPL_ArenaHeaderSize);
 }
 
-MD_FUNCTION_IMPL MD_ArenaTemp
+MD_FUNCTION MD_ArenaTemp
 MD_ArenaBeginTemp(MD_Arena *arena){
     MD_ArenaTemp result;
     result.arena = arena;
@@ -570,14 +573,14 @@ MD_ArenaBeginTemp(MD_Arena *arena){
     return(result);
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_ArenaEndTemp(MD_ArenaTemp temp){
     MD_IMPL_ArenaPopTo(temp.arena, temp.pos);
 }
 
 //~ Arena Scratch Pool
 
-MD_FUNCTION_IMPL MD_ArenaTemp
+MD_FUNCTION MD_ArenaTemp
 MD_GetScratch(MD_Arena **conflicts, MD_u64 count){
     MD_Arena *arena = MD_IMPL_GetScratch(conflicts, count);
     MD_ArenaTemp result = MD_ZERO_STRUCT;
@@ -589,31 +592,31 @@ MD_GetScratch(MD_Arena **conflicts, MD_u64 count){
 
 //~ Characters
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_CharIsAlpha(MD_u8 c)
 {
     return MD_CharIsAlphaUpper(c) || MD_CharIsAlphaLower(c);
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_CharIsAlphaUpper(MD_u8 c)
 {
     return c >= 'A' && c <= 'Z';
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_CharIsAlphaLower(MD_u8 c)
 {
     return c >= 'a' && c <= 'z';
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_CharIsDigit(MD_u8 c)
 {
     return (c >= '0' && c <= '9');
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_CharIsUnreservedSymbol(MD_u8 c)
 {
     return (c == '~' || c == '!' || c == '$' || c == '%' || c == '^' ||
@@ -622,7 +625,7 @@ MD_CharIsUnreservedSymbol(MD_u8 c)
             c == '|');
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_CharIsReservedSymbol(MD_u8 c)
 {
     return (c == '{' || c == '}' || c == '(' || c == ')' || c == '\\' ||
@@ -630,25 +633,25 @@ MD_CharIsReservedSymbol(MD_u8 c)
             c == ':' || c == '@');
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_CharIsSpace(MD_u8 c)
 {
     return c == ' ' || c == '\r' || c == '\t' || c == '\f' || c == '\v';
 }
 
-MD_FUNCTION_IMPL MD_u8
+MD_FUNCTION MD_u8
 MD_CharToUpper(MD_u8 c)
 {
     return (c >= 'a' && c <= 'z') ? ('A' + (c - 'a')) : c;
 }
 
-MD_FUNCTION_IMPL MD_u8
+MD_FUNCTION MD_u8
 MD_CharToLower(MD_u8 c)
 {
     return (c >= 'A' && c <= 'Z') ? ('a' + (c - 'A')) : c;
 }
 
-MD_FUNCTION_IMPL MD_u8
+MD_FUNCTION MD_u8
 MD_CharToForwardSlash(MD_u8 c)
 {
     return (c == '\\' ? '/' : c);
@@ -656,7 +659,7 @@ MD_CharToForwardSlash(MD_u8 c)
 
 //~ Strings
 
-MD_FUNCTION_IMPL MD_u64
+MD_FUNCTION MD_u64
 MD_CalculateCStringLength(char *cstr)
 {
     MD_u64 i = 0;
@@ -664,7 +667,7 @@ MD_CalculateCStringLength(char *cstr)
     return i;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8(MD_u8 *str, MD_u64 size)
 {
     MD_String8 string;
@@ -673,7 +676,7 @@ MD_S8(MD_u8 *str, MD_u64 size)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Range(MD_u8 *first, MD_u8 *opl)
 {
     MD_String8 string;
@@ -682,7 +685,7 @@ MD_S8Range(MD_u8 *first, MD_u8 *opl)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Substring(MD_String8 str, MD_u64 min, MD_u64 max)
 {
     if(max > str.size)
@@ -704,31 +707,31 @@ MD_S8Substring(MD_String8 str, MD_u64 min, MD_u64 max)
     return str;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Skip(MD_String8 str, MD_u64 min)
 {
     return MD_S8Substring(str, min, str.size);
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Chop(MD_String8 str, MD_u64 nmax)
 {
     return MD_S8Substring(str, 0, str.size - nmax);
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Prefix(MD_String8 str, MD_u64 size)
 {
     return MD_S8Substring(str, 0, size);
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Suffix(MD_String8 str, MD_u64 size)
 {
     return MD_S8Substring(str, str.size - size, str.size);
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_S8Match(MD_String8 a, MD_String8 b, MD_MatchFlags flags)
 {
     int result = 0;
@@ -756,7 +759,7 @@ MD_S8Match(MD_String8 a, MD_String8 b, MD_MatchFlags flags)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_u64
+MD_FUNCTION MD_u64
 MD_S8FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_MatchFlags flags)
 {
     MD_b32 found = 0;
@@ -780,7 +783,7 @@ MD_S8FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_Ma
     return found_idx;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Copy(MD_Arena *arena, MD_String8 string)
 {
     MD_String8 res;
@@ -791,7 +794,7 @@ MD_S8Copy(MD_Arena *arena, MD_String8 string)
     return(res);
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
 {
     MD_String8 result = MD_ZERO_STRUCT;
@@ -804,7 +807,7 @@ MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
 {
     va_list args;
@@ -814,7 +817,7 @@ MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
     return result;
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_S8ListPush(MD_Arena *arena, MD_String8List *list, MD_String8 string)
 {
     MD_String8Node *node = MD_PushArray(arena, MD_String8Node, 1);
@@ -825,7 +828,7 @@ MD_S8ListPush(MD_Arena *arena, MD_String8List *list, MD_String8 string)
     list->total_size += string.size;
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_S8ListPushFmt(MD_Arena *arena, MD_String8List *list, char *fmt, ...)
 {
     va_list args;
@@ -835,7 +838,7 @@ MD_S8ListPushFmt(MD_Arena *arena, MD_String8List *list, char *fmt, ...)
     MD_S8ListPush(arena, list, string);
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push)
 {
     if(to_push->first)
@@ -856,7 +859,7 @@ MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push)
     MD_MemoryZeroStruct(to_push);
 }
 
-MD_FUNCTION_IMPL MD_String8List
+MD_FUNCTION MD_String8List
 MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count, MD_String8 *splits)
 {
     MD_String8List list = MD_ZERO_STRUCT;
@@ -902,7 +905,7 @@ MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count, MD_String8 *spli
     return list;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
 {
     // setup join parameters
@@ -940,7 +943,7 @@ MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8Stylize(MD_Arena *arena, MD_String8 string, MD_IdentifierStyle word_style,
              MD_String8 separator)
 {
@@ -1076,7 +1079,7 @@ MD_GLOBAL MD_u8 md_utf8_class[32] = {
     1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,2,2,2,2,3,3,4,5,
 };
 
-MD_FUNCTION_IMPL MD_DecodedCodepoint
+MD_FUNCTION MD_DecodedCodepoint
 MD_DecodeCodepointFromUtf8(MD_u8 *str, MD_u64 max)
 {
 #define MD_bitmask1 0x01
@@ -1152,7 +1155,7 @@ MD_DecodeCodepointFromUtf8(MD_u8 *str, MD_u64 max)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_DecodedCodepoint
+MD_FUNCTION MD_DecodedCodepoint
 MD_DecodeCodepointFromUtf16(MD_u16 *out, MD_u64 max)
 {
     MD_DecodedCodepoint result = {~((MD_u32)0), 1};
@@ -1310,7 +1313,7 @@ MD_S32FromS8(MD_Arena *arena, MD_String8 in)
 
 //~ File Name Strings
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_PathChopLastPeriod(MD_String8 string)
 {
     MD_u64 period_pos = MD_S8FindSubstring(string, MD_S8Lit("."), 0, MD_MatchFlag_FindLast);
@@ -1321,7 +1324,7 @@ MD_PathChopLastPeriod(MD_String8 string)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_PathSkipLastSlash(MD_String8 string)
 {
     MD_u64 slash_pos = MD_S8FindSubstring(string, MD_S8Lit("/"), 0,
@@ -1335,7 +1338,7 @@ MD_PathSkipLastSlash(MD_String8 string)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_PathSkipLastPeriod(MD_String8 string)
 {
     MD_u64 period_pos = MD_S8FindSubstring(string, MD_S8Lit("."), 0, MD_MatchFlag_FindLast);
@@ -1347,7 +1350,7 @@ MD_PathSkipLastPeriod(MD_String8 string)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_PathChopLastSlash(MD_String8 string)
 {
     MD_u64 slash_pos = MD_S8FindSubstring(string, MD_S8Lit("/"), 0,
@@ -1360,7 +1363,7 @@ MD_PathChopLastSlash(MD_String8 string)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8SkipWhitespace(MD_String8 string)
 {
     for(MD_u64 i = 0; i < string.size; i += 1)
@@ -1374,7 +1377,7 @@ MD_S8SkipWhitespace(MD_String8 string)
     return string;
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_S8ChopWhitespace(MD_String8 string)
 {
     for(MD_u64 i = string.size-1; i < string.size; i -= 1)
@@ -1390,7 +1393,7 @@ MD_S8ChopWhitespace(MD_String8 string)
 
 //~ Numeric Strings
 
-MD_FUNCTION_IMPL MD_u64
+MD_FUNCTION MD_u64
 MD_U64FromString(MD_String8 string, MD_u32 radix)
 {
     MD_Assert(2 <= radix && radix <= 16);
@@ -1409,7 +1412,7 @@ MD_U64FromString(MD_String8 string, MD_u32 radix)
     return(value);
 }
 
-MD_FUNCTION_IMPL MD_i64
+MD_FUNCTION MD_i64
 MD_CStyleIntFromString(MD_String8 string)
 {
     MD_u64 p = 0;
@@ -1457,7 +1460,7 @@ MD_CStyleIntFromString(MD_String8 string)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_f64
+MD_FUNCTION MD_f64
 MD_F64FromString(MD_String8 string)
 {
     char str[64];
@@ -1471,7 +1474,7 @@ MD_F64FromString(MD_String8 string)
 }
 
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps)
 {
     static char md_int_value_to_char[] = "0123456789abcdef";
@@ -1511,7 +1514,7 @@ MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps)
 
 //~ Enum/Flag Strings
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_StringFromNodeKind(MD_NodeKind kind)
 {
     // NOTE(rjf): @maintenance Must be kept in sync with MD_NodeKind enum.
@@ -1531,7 +1534,7 @@ MD_StringFromNodeKind(MD_NodeKind kind)
     return MD_S8CString(cstrs[kind]);
 }
 
-MD_FUNCTION_IMPL MD_String8List
+MD_FUNCTION MD_String8List
 MD_StringListFromNodeFlags(MD_Arena *arena, MD_NodeFlags flags)
 {
     // NOTE(rjf): @maintenance Must be kept in sync with MD_NodeFlags enum.
@@ -1574,7 +1577,7 @@ MD_StringListFromNodeFlags(MD_Arena *arena, MD_NodeFlags flags)
 
 //~ Map Table Data Structure
 
-MD_FUNCTION_IMPL MD_u64
+MD_FUNCTION MD_u64
 MD_HashStr(MD_String8 string)
 {
     MD_u64 result = 5381;
@@ -1587,7 +1590,7 @@ MD_HashStr(MD_String8 string)
 
 // NOTE(mal): Generic 64-bit hash function (https://nullprogram.com/blog/2018/07/31/)
 //            Reversible, so no collisions. Assumes all bits of the pointer matter.
-MD_FUNCTION_IMPL MD_u64 
+MD_FUNCTION MD_u64 
 MD_HashPtr(void *p)
 {
     MD_u64 h = (MD_u64)p;
@@ -1598,7 +1601,7 @@ MD_HashPtr(void *p)
     return h;
 }
 
-MD_FUNCTION_IMPL MD_Map
+MD_FUNCTION MD_Map
 MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count){
     MD_Map result = {0};
     result.bucket_count = bucket_count;
@@ -1606,7 +1609,7 @@ MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count){
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_Map
+MD_FUNCTION MD_Map
 MD_MapMake(MD_Arena *arena){
     MD_Map result = MD_MapMakeBucketCount(arena, 4093);
     return(result);
@@ -1636,7 +1639,7 @@ MD_MapKeyPtr(void *ptr){
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_MapSlot*
+MD_FUNCTION MD_MapSlot*
 MD_MapLookup(MD_Map *map, MD_MapKey key){
     MD_MapSlot *result = 0;
     if (map->bucket_count > 0){
@@ -1646,7 +1649,7 @@ MD_MapLookup(MD_Map *map, MD_MapKey key){
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_MapSlot*
+MD_FUNCTION MD_MapSlot*
 MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key){
     MD_MapSlot *result = 0;
     if (first_slot != 0){
@@ -1675,7 +1678,7 @@ MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key){
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_MapSlot*
+MD_FUNCTION MD_MapSlot*
 MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
     MD_MapSlot *result = 0;
     if (map->bucket_count > 0){
@@ -1690,7 +1693,7 @@ MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_MapSlot*
+MD_FUNCTION MD_MapSlot*
 MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
     MD_MapSlot *result = MD_MapLookup(map, key);
     if (result != 0){
@@ -1710,7 +1713,7 @@ MD_TokenGroupContainsKind(MD_TokenGroups groups, MD_TokenKind kind)
     return (groups & kind) != 0;
 }
 
-MD_FUNCTION_IMPL MD_Token
+MD_FUNCTION MD_Token
 MD_TokenFromString(MD_String8 string)
 {
     MD_Token token = MD_ZERO_STRUCT;
@@ -1963,7 +1966,7 @@ MD_TokenFromString(MD_String8 string)
     return token;
 }
 
-MD_FUNCTION_IMPL MD_u64
+MD_FUNCTION MD_u64
 MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds)
 {
     MD_u64 result = string.size;
@@ -1981,7 +1984,7 @@ MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_Message*
+MD_FUNCTION MD_Message*
 MD_MakeNodeError(MD_Arena *arena, MD_Node *node, MD_MessageKind kind, MD_String8 str)
 {
     MD_Message *error = MD_PushArrayZero(arena, MD_Message, 1);
@@ -1991,7 +1994,7 @@ MD_MakeNodeError(MD_Arena *arena, MD_Node *node, MD_MessageKind kind, MD_String8
     return error;
 }
 
-MD_FUNCTION_IMPL MD_Message *
+MD_FUNCTION MD_Message *
 MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents, MD_Token token,
                   MD_MessageKind kind, MD_String8 str)
 {
@@ -2000,7 +2003,7 @@ MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents, MD_Token token,
     return MD_MakeNodeError(arena, err_node, kind, str);
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_MessageListPush(MD_MessageList *list, MD_Message *message)
 {
     MD_QueuePush(list->first, list->last, message);
@@ -2011,7 +2014,7 @@ MD_MessageListPush(MD_MessageList *list, MD_Message *message)
     list->node_count += 1;
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
 {
     if(list->last)
@@ -2034,7 +2037,7 @@ MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
     MD_MemoryZeroStruct(to_push);
 }
 
-MD_FUNCTION_IMPL MD_ParseResult
+MD_FUNCTION MD_ParseResult
 MD_ParseResultZero(void)
 {
     MD_ParseResult result = MD_ZERO_STRUCT;
@@ -2042,7 +2045,7 @@ MD_ParseResultZero(void)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_ParseResult
+MD_FUNCTION MD_ParseResult
 MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *parent,
                 MD_ParseSetRule rule)
 {
@@ -2297,7 +2300,7 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
     return result;
 }
 
-MD_FUNCTION_IMPL MD_ParseResult
+MD_FUNCTION MD_ParseResult
 MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
 {
     MD_ParseResult result = MD_ParseResultZero();
@@ -2558,7 +2561,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_ParseResult
+MD_FUNCTION MD_ParseResult
 MD_ParseWholeString(MD_Arena *arena, MD_String8 filename, MD_String8 contents)
 {
     MD_Node *root = MD_MakeNode(arena, MD_NodeKind_File, filename, contents, 0);
@@ -2574,7 +2577,7 @@ MD_ParseWholeString(MD_Arena *arena, MD_String8 filename, MD_String8 contents)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_ParseResult
+MD_FUNCTION MD_ParseResult
 MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename)
 {
     MD_String8 file_contents = MD_LoadEntireFile(arena, filename);
@@ -2592,7 +2595,7 @@ MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename)
 
 //~ Location Conversions
 
-MD_FUNCTION_IMPL MD_CodeLoc
+MD_FUNCTION MD_CodeLoc
 MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u64 offset)
 {
     MD_CodeLoc loc;
@@ -2618,7 +2621,7 @@ MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u64 offset)
     return loc;
 }
 
-MD_FUNCTION_IMPL MD_CodeLoc
+MD_FUNCTION MD_CodeLoc
 MD_CodeLocFromNode(MD_Node *node)
 {
     MD_Node *root = MD_RootFromNode(node);
@@ -2628,16 +2631,16 @@ MD_CodeLocFromNode(MD_Node *node)
 
 //~ Tree/List Building
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_NodeIsNil(MD_Node *node)
 {
     return node == 0 || node == &_md_nil_node || node->kind == MD_NodeKind_Nil;
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_NilNode(void) { return &_md_nil_node; }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_MakeNode(MD_Arena *arena, MD_NodeKind kind, MD_String8 string, MD_String8 raw_string,
             MD_u64 offset)
 {
@@ -2652,7 +2655,7 @@ MD_MakeNode(MD_Arena *arena, MD_NodeKind kind, MD_String8 string, MD_String8 raw
     return node;
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_PushChild(MD_Node *parent, MD_Node *new_child)
 {
     if (!MD_NodeIsNil(new_child))
@@ -2662,7 +2665,7 @@ MD_PushChild(MD_Node *parent, MD_Node *new_child)
     }
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_PushTag(MD_Node *node, MD_Node *tag)
 {
     if (!MD_NodeIsNil(tag))
@@ -2672,7 +2675,7 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
     }
 }
 
-MD_FUNCTION_IMPL MD_Node*
+MD_FUNCTION MD_Node*
 MD_MakeList(MD_Arena *arena)
 {
     MD_String8 empty = {0};
@@ -2680,7 +2683,7 @@ MD_MakeList(MD_Arena *arena)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_Node*
+MD_FUNCTION MD_Node*
 MD_PushNewReference(MD_Arena *arena, MD_Node *list, MD_Node *target)
 {
     MD_Node *n = MD_MakeNode(arena, MD_NodeKind_Reference, target->string, target->raw_string,
@@ -2692,7 +2695,7 @@ MD_PushNewReference(MD_Arena *arena, MD_Node *list, MD_Node *target)
 
 //~ Introspection Helpers
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_NodeFromString(MD_Node *first, MD_Node *one_past_last, MD_String8 string, MD_MatchFlags flags)
 {
     MD_Node *result = MD_NilNode();
@@ -2707,7 +2710,7 @@ MD_NodeFromString(MD_Node *first, MD_Node *one_past_last, MD_String8 string, MD_
     return result;
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_NodeFromIndex(MD_Node *first, MD_Node *one_past_last, int n)
 {
     MD_Node *result = MD_NilNode();
@@ -2726,7 +2729,7 @@ MD_NodeFromIndex(MD_Node *first, MD_Node *one_past_last, int n)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_NodeFromFlags(MD_Node *first, MD_Node *one_past_last, MD_NodeFlags flags)
 {
     MD_Node *result = MD_NilNode();
@@ -2741,7 +2744,7 @@ MD_NodeFromFlags(MD_Node *first, MD_Node *one_past_last, MD_NodeFlags flags)
     return result;
 }
 
-MD_FUNCTION_IMPL int
+MD_FUNCTION int
 MD_IndexFromNode(MD_Node *node)
 {
     int idx = 0;
@@ -2749,7 +2752,7 @@ MD_IndexFromNode(MD_Node *node)
     return idx;
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_RootFromNode(MD_Node *node)
 {
     MD_Node *parent = node;
@@ -2760,38 +2763,38 @@ MD_RootFromNode(MD_Node *node)
     return parent;
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_ChildFromString(MD_Node *node, MD_String8 child_string, MD_MatchFlags flags)
 {
     return MD_NodeFromString(node->first_child, MD_NilNode(), child_string, flags);
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_TagFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags)
 {
     return MD_NodeFromString(node->first_tag, MD_NilNode(), tag_string, flags);
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_ChildFromIndex(MD_Node *node, int n)
 {
     return MD_NodeFromIndex(node->first_child, MD_NilNode(), n);
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_TagFromIndex(MD_Node *node, int n)
 {
     return MD_NodeFromIndex(node->first_child, MD_NilNode(), n);
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_TagArgFromIndex(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags, int n)
 {
     MD_Node *tag = MD_TagFromString(node, tag_string, flags);
     return MD_ChildFromIndex(tag, n);
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags tag_str_flags, MD_String8 arg_string, MD_MatchFlags arg_str_flags)
 {
     MD_Node *tag = MD_TagFromString(node, tag_string, tag_str_flags);
@@ -2799,13 +2802,13 @@ MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags tag_str_
     return arg;
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_NodeHasTag(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags)
 {
     return !MD_NodeIsNil(MD_TagFromString(node, tag_string, flags));
 }
 
-MD_FUNCTION_IMPL MD_i64
+MD_FUNCTION MD_i64
 MD_ChildCountFromNode(MD_Node *node)
 {
     MD_i64 result = 0;
@@ -2816,7 +2819,7 @@ MD_ChildCountFromNode(MD_Node *node)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_i64
+MD_FUNCTION MD_i64
 MD_TagCountFromNode(MD_Node *node)
 {
     MD_i64 result = 0;
@@ -2827,7 +2830,7 @@ MD_TagCountFromNode(MD_Node *node)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_Node *
+MD_FUNCTION MD_Node *
 MD_ResolveNodeFromReference(MD_Node *node)
 {
     MD_u64 safety = 100;
@@ -2837,13 +2840,13 @@ MD_ResolveNodeFromReference(MD_Node *node)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_PrevCommentFromNode(MD_Node *node)
 {
     return(node->prev_comment);
 }
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_NextCommentFromNode(MD_Node *node)
 {
     return(node->next_comment);
@@ -2872,7 +2875,7 @@ MD_FormatMessage(MD_Arena *arena, MD_CodeLoc loc, MD_MessageKind kind, MD_String
     return(result);
 }
 
-#if MD_ENABLE_PRINT_HELPERS
+#if !MD_DISABLE_PRINT_HELPERS
 
 MD_FUNCTION void
 MD_PrintMessage(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, MD_String8 string){
@@ -2898,7 +2901,7 @@ MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, char *f
 
 //~ Tree Comparison/Verification
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 {
     MD_b32 result = 0;
@@ -2939,7 +2942,7 @@ MD_NodeMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 {
     MD_b32 result = MD_NodeMatch(a, b, flags);
@@ -2962,7 +2965,7 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 
 //~ Expression Parsing
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
                     MD_u32 op_id, MD_ExprOperatorKind kind,
                     MD_u64 precedence, MD_Node *md_node)
@@ -2976,7 +2979,7 @@ MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
     node->op.md_node = md_node;
 }
 
-MD_FUNCTION_IMPL MD_ExprOperator *
+MD_FUNCTION MD_ExprOperator *
 _MD_ExprOperatorMatch(MD_ExprOperatorTable *table, MD_ExprOperatorKind kind, MD_String8 s)
 {
     // NOTE(mal): Look for operator on one or all (kind == MD_ExprOperatorKind_Null) tables
@@ -2999,7 +3002,7 @@ _MD_ExprOperatorMatch(MD_ExprOperatorTable *table, MD_ExprOperatorKind kind, MD_
     return result;
 }
 
-MD_FUNCTION_IMPL MD_ExprOperatorTable
+MD_FUNCTION MD_ExprOperatorTable
 MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
 {
     MD_ExprOperatorTable result = MD_ZERO_STRUCT;
@@ -3078,11 +3081,11 @@ struct _MD_ExprParseCtx
     } accel;
 };
 
-MD_FUNCTION_IMPL MD_ExprParseResult 
+MD_FUNCTION MD_ExprParseResult 
 _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 min_precedence);
 
-MD_FUNCTION_IMPL MD_ExprNode * _MD_Expr_Make(MD_Arena *arena, MD_ExprOperator *op, MD_Node *op_node, 
-                                             MD_ExprNode *left, MD_ExprNode *right)
+MD_FUNCTION MD_ExprNode * _MD_Expr_Make(MD_Arena *arena, MD_ExprOperator *op, MD_Node *op_node, 
+                                        MD_ExprNode *left, MD_ExprNode *right)
 {
     MD_ExprNode *result = MD_PushArrayZero(arena, MD_ExprNode, 1);
     result->is_op = 1;
@@ -3099,13 +3102,13 @@ MD_FUNCTION_IMPL MD_ExprNode * _MD_Expr_Make(MD_Arena *arena, MD_ExprOperator *o
     return result;
 }
 
-MD_FUNCTION_IMPL void _MD_CtxAdvance(_MD_ExprParseCtx *ctx)
+MD_FUNCTION void _MD_CtxAdvance(_MD_ExprParseCtx *ctx)
 {
     ctx->first = ctx->first->next;
 }
 
-MD_FUNCTION_IMPL MD_b32 _MD_ExprOperatorConsumed(_MD_ExprParseCtx *ctx, MD_ExprOperatorKind kind, MD_u32 min_precedence,
-                                                 MD_ExprOperator **op_out)
+MD_FUNCTION MD_b32 _MD_ExprOperatorConsumed(_MD_ExprParseCtx *ctx, MD_ExprOperatorKind kind, MD_u32 min_precedence,
+                                            MD_ExprOperator **op_out)
 {
     MD_b32 result = 0;
     if(!MD_NodeIsNil(ctx->first))
@@ -3122,7 +3125,7 @@ MD_FUNCTION_IMPL MD_b32 _MD_ExprOperatorConsumed(_MD_ExprParseCtx *ctx, MD_ExprO
     return result;
 }
 
-MD_FUNCTION_IMPL _MD_ExprParseCtx
+MD_FUNCTION _MD_ExprParseCtx
 _MD_ExprParse_MakeContext(MD_ExprOperatorTable *op_table, MD_Node *first, MD_Node *one_past_last)
 {
     _MD_ExprParseCtx result = MD_ZERO_STRUCT;
@@ -3139,7 +3142,7 @@ _MD_ExprParse_MakeContext(MD_ExprOperatorTable *op_table, MD_Node *first, MD_Nod
     return result;
 }
 
-MD_FUNCTION_IMPL _MD_ExprParseCtx
+MD_FUNCTION _MD_ExprParseCtx
 _MD_ExprParse_MakeSubcontext(_MD_ExprParseCtx *ctx, MD_Node *first, MD_Node *one_past_last)
 {
     _MD_ExprParseCtx result = *ctx;
@@ -3148,13 +3151,13 @@ _MD_ExprParse_MakeSubcontext(_MD_ExprParseCtx *ctx, MD_Node *first, MD_Node *one
     return result;
 }
 
-MD_FUNCTION_IMPL MD_Message * MD_MakeExprParseError(MD_Arena *arena, MD_String8 str, MD_u64 offset)
+MD_FUNCTION MD_Message * MD_MakeExprParseError(MD_Arena *arena, MD_String8 str, MD_u64 offset)
 {
     MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker, MD_S8Lit(""), MD_S8Lit(""), offset);
     return MD_MakeNodeError(arena, err_node, MD_MessageKind_FatalError, str);
 }
 
-MD_FUNCTION_IMPL MD_ExprParseResult 
+MD_FUNCTION MD_ExprParseResult 
 _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
 {
     MD_ExprParseResult result = MD_ZERO_STRUCT;
@@ -3226,7 +3229,7 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
     return result;
 }
 
-MD_FUNCTION_IMPL MD_ExprParseResult 
+MD_FUNCTION MD_ExprParseResult 
 _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 min_precedence)
 {
     MD_ExprParseResult result = MD_ZERO_STRUCT;
@@ -3291,7 +3294,7 @@ _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, _MD_ExprParseCtx *ctx, MD_u32 m
     return result;
 }
 
-MD_FUNCTION_IMPL MD_ExprParseResult
+MD_FUNCTION MD_ExprParseResult
 MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table, MD_Node *first, MD_Node *one_past_last)
 {
     MD_ExprParseResult result = MD_ZERO_STRUCT;
@@ -3314,7 +3317,7 @@ MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table, MD_Node *first, MD
 
 //~ String Generation
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_DebugDumpFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
                      int indent, MD_String8 indent_string, MD_GenerateFlags flags)
 {
@@ -3463,7 +3466,7 @@ MD_S8ListPush(arena, out, indent_string);\
 #undef MD_PrintIndent
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_ReconstructionFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
                           int indent, MD_String8 indent_string,
                           MD_GenerateFlags flags)
@@ -3691,6 +3694,21 @@ MD_S8ListPush(arena, out, indent_string);\
 #undef MD_PrintIndent
 }
 
+
+#if !MD_DISABLE_PRINT_HELPERS
+MD_FUNCTION void
+MD_PrintDebugDumpFromNode(FILE *file, MD_Node *node, MD_GenerateFlags flags){
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+    MD_String8List list = {0};
+    MD_DebugDumpFromNode(scratch.arena, &list, node,
+                         0, MD_S8Lit(" "), flags);
+    MD_String8 string = MD_S8ListJoin(scratch.arena, list, 0);
+    fwrite(string.str, string.size, 1, file);
+    MD_ReleaseScratch(scratch);
+}
+#endif
+
+
 //~ Command Line Argument Helper
 
 MD_FUNCTION MD_String8List
@@ -3860,7 +3878,7 @@ MD_CmdLineI64FromString(MD_CmdLine cmdln, MD_String8 name)
 
 //~ File System
 
-MD_FUNCTION_IMPL MD_String8
+MD_FUNCTION MD_String8
 MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
 {
     MD_String8 result = MD_ZERO_STRUCT;
@@ -3870,7 +3888,7 @@ MD_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
     return(result);
 }
 
-MD_FUNCTION_IMPL MD_b32
+MD_FUNCTION MD_b32
 MD_FileIterBegin(MD_FileIter *it, MD_String8 path)
 {
 #if !defined(MD_IMPL_FileIterBegin)
@@ -3880,7 +3898,7 @@ MD_FileIterBegin(MD_FileIter *it, MD_String8 path)
 #endif
 }
 
-MD_FUNCTION_IMPL MD_FileInfo
+MD_FUNCTION MD_FileInfo
 MD_FileIterNext(MD_Arena *arena, MD_FileIter *it)
 {
 #if !defined(MD_IMPL_FileIterNext)
@@ -3891,13 +3909,15 @@ MD_FileIterNext(MD_Arena *arena, MD_FileIter *it)
 #endif
 }
 
-MD_FUNCTION_IMPL void
+MD_FUNCTION void
 MD_FileIterEnd(MD_FileIter *it)
 {
 #if defined(MD_IMPL_FileIterEnd)
     MD_IMPL_FileIterEnd(it);
 #endif
 }
+
+#endif // MD_C
 
 /*
 Copyright 2021 Dion Systems LLC

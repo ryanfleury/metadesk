@@ -9,33 +9,28 @@
 
 //~ Includes and globals //////////////////////////////////////////////////////
 
-// @notes Print helpers will make it easier to print the errors. This brings in
-//  C's stdio.h. It is possible to use error messages without print helpers,
-//  but a dependency on stdio.h is fine here so we will use it.
-#define MD_ENABLE_PRINT_HELPERS 1
-
 #include "md.h"
 #include "md.c"
 
 // @notes For simple single-threaded memory management in a run-once-and-exit
-//  utility, a single global arena is our prefered setup.
+//  utility, a single global arena is our recommended approach.
 static MD_Arena *arena = 0;
 
 
 //~ main //////////////////////////////////////////////////////////////////////
 
-int main(int argument_count, char **arguments)
+int main(int argc, char **argv)
 {
     // setup the global arena
     // @notes Metadesk arenas do linear reserve-and-commit allocation. This
-    //  code makes an arena with a 1 terabyte reserve which works quite nicely,
-    //  so long as we aren't doing more than a few of them. 
+    //  code makes an arena with a 1 terabyte reserve which works so long as
+    //  we're only doing one or a few arenas.
     arena = MD_ArenaAlloc(1ull << 40);
     
     
     // parse all files passed to the command line
     MD_Node *list = MD_MakeList(arena);
-    for (int i = 1; i < argument_count; i += 1)
+    for (int i = 1; i < argc; i += 1)
     {
         
         // parse the file
@@ -43,7 +38,7 @@ int main(int argument_count, char **arguments)
         //  and then does the whole parse. In a simple utility program like
         //  this metadesk's default implementations for the overrides make
         //  this work.
-        MD_String8 file_name = MD_S8CString(arguments[i]);
+        MD_String8 file_name = MD_S8CString(argv[i]);
         MD_ParseResult parse_result = MD_ParseWholeFile(arena, file_name);
         
         // print metadesk errors
