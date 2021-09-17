@@ -790,6 +790,7 @@ MD_S8Copy(MD_Arena *arena, MD_String8 string)
     res.size = string.size;
     res.str = MD_PushArray(arena, MD_u8, string.size + 1);
     MD_MemoryCopy(res.str, string.str, string.size);
+    res.str[string.size] = 0;
     return(res);
 }
 
@@ -2040,7 +2041,7 @@ MD_FUNCTION MD_ParseResult
 MD_ParseResultZero(void)
 {
     MD_ParseResult result = MD_ZERO_STRUCT;
-    result.node = result.last_node = MD_NilNode();
+    result.node = MD_NilNode();
     return result;
 }
 
@@ -2293,66 +2294,8 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
     }
     
     //- rjf: fill result info
-    result.node = parent->first_child;
-    result.last_node = parent->last_child;
-    result.string_advance= off - offset;
-    
-    return result;
-}
-
-// TODO(rjf): Inline this in the only place it is called
-MD_FUNCTION MD_ParseResult
-_MD_ParseTagList(MD_Arena *arena, MD_String8 string, MD_u64 offset)
-{
-    MD_ParseResult result = MD_ParseResultZero();
-    MD_u64 off = offset;
-    
-    for(;off < string.size;)
-    {
-        //- rjf: parse @ symbol, signifying start of tag
-        off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
-        MD_Token next_token = MD_TokenFromString(MD_S8Skip(string, off));
-        if(next_token.kind != MD_TokenKind_Reserved ||
-           next_token.string.str[0] != '@')
-        {
-            break;
-        }
-        off += next_token.raw_string.size;
-        
-        //- rjf: parse string of tag node
-        MD_Token name = MD_TokenFromString(MD_S8Skip(string, off));
-        MD_u64 name_off = off;
-        if((name.kind & MD_TokenGroup_Label) == 0)
-        {
-            // NOTE(rjf): @error Improper token for tag string
-            MD_String8 error_str = MD_S8Fmt(arena, "\"%.*s\" is not a proper tag label",
-                                            MD_S8VArg(name.raw_string));
-            MD_Message *error = MD_MakeTokenError(arena, string, name, MD_MessageKind_Error, error_str);
-            MD_MessageListPush(&result.errors, error);
-            break;
-        }
-        off += name.raw_string.size;
-        
-        //- rjf: build tag
-        MD_Node *tag = MD_MakeNode(arena, MD_NodeKind_Tag, name.string, name.raw_string, name_off);
-        
-        //- rjf: parse tag arguments
-        MD_Token open_paren = MD_TokenFromString(MD_S8Skip(string, off));
-        MD_ParseResult args_parse = MD_ParseResultZero();
-        if(open_paren.kind == MD_TokenKind_Reserved &&
-           open_paren.string.str[0] == '(')
-        {
-            args_parse = MD_ParseNodeSet(arena, string, off, tag, MD_ParseSetRule_EndOnDelimiter);
-            MD_MessageListConcat(&result.errors, &args_parse.errors);
-        }
-        off += args_parse.string_advance;
-        
-        //- rjf: push tag to result
-        MD_NodeDblPushBack(result.node, result.last_node, tag);
-    }
-    
-    //- rjf: fill result
-    result.string_advance= off - offset;
+    result.node = parent;
+    result.string_advance = off - offset;
     
     return result;
 }
@@ -2402,9 +2345,53 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
     }
     
     //- rjf: parse tag list
-    MD_ParseResult tags_parse = _MD_ParseTagList(arena, string, off);
-    off += tags_parse.string_advance;
-    MD_MessageListConcat(&result.errors, &tags_parse.errors);
+    MD_Node *first_tag = MD_NilNode();
+    MD_Node *last_tag = MD_NilNode();
+    {
+        for(;off < string.size;)
+        {
+            //- rjf: parse @ symbol, signifying start of tag
+            off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
+            MD_Token next_token = MD_TokenFromString(MD_S8Skip(string, off));
+            if(next_token.kind != MD_TokenKind_Reserved ||
+               next_token.string.str[0] != '@')
+            {
+                break;
+            }
+            off += next_token.raw_string.size;
+            
+            //- rjf: parse string of tag node
+            MD_Token name = MD_TokenFromString(MD_S8Skip(string, off));
+            MD_u64 name_off = off;
+            if((name.kind & MD_TokenGroup_Label) == 0)
+            {
+                // NOTE(rjf): @error Improper token for tag string
+                MD_String8 error_str = MD_S8Fmt(arena, "\"%.*s\" is not a proper tag label",
+                                                MD_S8VArg(name.raw_string));
+                MD_Message *error = MD_MakeTokenError(arena, string, name, MD_MessageKind_Error, error_str);
+                MD_MessageListPush(&result.errors, error);
+                break;
+            }
+            off += name.raw_string.size;
+            
+            //- rjf: build tag
+            MD_Node *tag = MD_MakeNode(arena, MD_NodeKind_Tag, name.string, name.raw_string, name_off);
+            
+            //- rjf: parse tag arguments
+            MD_Token open_paren = MD_TokenFromString(MD_S8Skip(string, off));
+            MD_ParseResult args_parse = MD_ParseResultZero();
+            if(open_paren.kind == MD_TokenKind_Reserved &&
+               open_paren.string.str[0] == '(')
+            {
+                args_parse = MD_ParseNodeSet(arena, string, off, tag, MD_ParseSetRule_EndOnDelimiter);
+                MD_MessageListConcat(&result.errors, &args_parse.errors);
+            }
+            off += args_parse.string_advance;
+            
+            //- rjf: push tag to result
+            MD_NodeDblPushBack(first_tag, last_tag, tag);
+        }
+    }
     
     //- rjf: parse node
     MD_Node *parsed_node = MD_NilNode();
@@ -2562,11 +2549,14 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
     result.node = parsed_node;
     if(!MD_NodeIsNil(result.node))
     {
-        result.node->first_tag = tags_parse.node;
-        result.node->last_tag = tags_parse.last_node;
+        result.node->first_tag = first_tag;
+        result.node->last_tag = last_tag;
+        for(MD_Node *tag = first_tag; !MD_NodeIsNil(tag); tag = tag->next)
+        {
+            tag->parent = result.node;
+        }
     }
-    result.last_node = parsed_node;
-    result.string_advance= off - offset;
+    result.string_advance = off - offset;
     
     return result;
 }
@@ -2576,7 +2566,7 @@ MD_ParseWholeString(MD_Arena *arena, MD_String8 filename, MD_String8 contents)
 {
     MD_Node *root = MD_MakeNode(arena, MD_NodeKind_File, filename, contents, 0);
     MD_ParseResult result = MD_ParseNodeSet(arena, contents, 0, root, MD_ParseSetRule_Global);
-    result.node = result.last_node = root;
+    result.node = root;
     for(MD_Message *error = result.errors.first; error != 0; error = error->next)
     {
         if(MD_NodeIsNil(error->node->parent))

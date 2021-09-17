@@ -751,8 +751,6 @@ typedef struct MD_ParseResult MD_ParseResult;
 struct MD_ParseResult
 {
     MD_Node *node;
-    // TODO(rjf): Remove once we're not using it for ParseTagList
-    MD_Node *last_node;
     MD_u64 string_advance;
     MD_MessageList errors;
 };
@@ -1046,6 +1044,8 @@ MD_FUNCTION MD_Message *   MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_c
 MD_FUNCTION void           MD_MessageListPush(MD_MessageList *list, MD_Message *message);
 MD_FUNCTION void           MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push);
 MD_FUNCTION MD_ParseResult MD_ParseResultZero(void);
+MD_FUNCTION MD_ParseResult MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *parent,
+                                           MD_ParseSetRule rule);
 MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset);
 MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_Arena *arena, MD_String8 name, MD_String8 contents);
 
