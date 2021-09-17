@@ -752,8 +752,6 @@ typedef struct MD_ParseResult MD_ParseResult;
 struct MD_ParseResult
 {
     MD_Node *node;
-    // TODO(rjf): Remove once we're not using it for ParseTagList
-    MD_Node *last_node;
     MD_u64 string_advance;
     MD_MessageList errors;
 };
