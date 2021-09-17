@@ -606,14 +606,12 @@ struct MD_Node
     MD_NodeFlags flags;
     MD_String8 string;
     MD_String8 raw_string;
-    MD_u64 string_hash;
     
     // Source code location information.
     MD_u64 offset;
     
     // Reference.
     MD_Node *ref_target;
-    
     
     // Comments.
     // @usage prev_comment/next_comment should be considered "hidden". Rely on
@@ -830,8 +828,7 @@ enum
     MD_GenerateFlag_Comments     = (1<<3),
     MD_GenerateFlag_NodeKind     = (1<<4),
     MD_GenerateFlag_NodeFlags    = (1<<5),
-    MD_GenerateFlag_StringHash   = (1<<6),
-    MD_GenerateFlag_Location     = (1<<7),
+    MD_GenerateFlag_Location     = (1<<6),
     
     MD_GenerateFlags_Tree = (MD_GenerateFlag_Tags |
                              MD_GenerateFlag_TagArguments |

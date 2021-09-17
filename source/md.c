@@ -510,7 +510,6 @@ static MD_Node _md_nil_node =
     0,                     // flags
     MD_ZERO_STRUCT,        // string
     MD_ZERO_STRUCT,        // raw_string
-    0xdeadffffffffffull,   // string_hash
     0,                     // at
     &_md_nil_node,         // ref_target
     MD_ZERO_STRUCT,        // prev_comment
@@ -2165,10 +2164,10 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
                     if(potential_closer.kind == MD_TokenKind_Reserved)
                     {
                         MD_u8 c = potential_closer.raw_string.str[0];
-                        if (c == ',' || c == ';')
+                        if(c == ',' || c == ';')
                         {
-                            closer_check_off += potential_closer.raw_string.size;
                             off = closer_check_off;
+                            closer_check_off += potential_closer.raw_string.size;
                             break;
                         }
                         else if(c == '}' || c == ']'|| c == ')')
@@ -3399,13 +3398,6 @@ MD_S8ListPush(arena, out, indent_string);\
         MD_S8ListPush(arena, out, flag_str);
         MD_S8ListPush(arena, out, MD_S8Lit("\"\n"));
         MD_ReleaseScratch(scratch);
-    }
-    
-    //- rjf: node string hash
-    if(flags & MD_GenerateFlag_StringHash)
-    {
-        MD_PrintIndent(indent);
-        MD_S8ListPush(arena, out, MD_S8Fmt(arena, "// string hash: 0x%llx\n", node->string_hash));
     }
     
     //- rjf: location
