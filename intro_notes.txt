@@ -5,8 +5,9 @@ immutable tree model
 nil
 
 Example Programs:
-[ ] Metadesk hello world
+[x] Metadesk hello world
 [x] Metadesk parse checker
+[x] User error checking
 [ ] Example of helpers: string helpers, linked lists, map type
                         printing errors, cmd line, file iter
 [x] Datadesk-like setup

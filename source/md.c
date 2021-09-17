@@ -2784,7 +2784,7 @@ MD_ChildFromIndex(MD_Node *node, int n)
 MD_FUNCTION MD_Node *
 MD_TagFromIndex(MD_Node *node, int n)
 {
-    return MD_NodeFromIndex(node->first_child, MD_NilNode(), n);
+    return MD_NodeFromIndex(node->first_tag, MD_NilNode(), n);
 }
 
 MD_FUNCTION MD_Node *

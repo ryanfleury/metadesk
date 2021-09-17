@@ -80,8 +80,22 @@ command_list =
           { "bin/build_tests.sh", .os = "mac" },
         },
     },
+    {
+        .name = "run_examples",
+        .out = "*compilation*",
+        .footer_panel = true,
+        .save_dirty_files = true,
+        .cursor_at_end = false,
+        .cmd =
+        {
+          { "git_bash bin\\run_examples.sh", .os = "win" },
+          { "bin/build_tests.sh", .os = "linux" },
+          { "bin/build_tests.sh", .os = "mac" },
+        },
+    },
 };
 
 fkey_command[1] = "build_tests";
 fkey_command[2] = "run_tests";
 fkey_command[3] = "build_examples";
+fkey_command[4] = "run_examples";

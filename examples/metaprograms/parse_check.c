@@ -7,7 +7,7 @@
 **
 */
 
-//~ Includes and globals //////////////////////////////////////////////////////
+//~ includes and globals //////////////////////////////////////////////////////
 
 #include "md.h"
 #include "md.c"
@@ -22,11 +22,9 @@ static MD_Arena *arena = 0;
 int main(int argc, char **argv)
 {
     // setup the global arena
-    // @notes Metadesk arenas do linear reserve-and-commit allocation. This
-    //  code makes an arena with a 1 terabyte reserve which works so long as
-    //  we're only doing one or a few arenas.
+    // @notes This code makes an arena with a 1 terabyte reserve which works as
+    //  long as we only have one or a few arenas.
     arena = MD_ArenaAlloc(1ull << 40);
-    
     
     // parse all files passed to the command line
     MD_Node *list = MD_MakeList(arena);
@@ -94,7 +92,7 @@ int main(int argc, char **argv)
             //  When the string needs to be finalized into a single contiguous
             //  block a user can just call `MD_S8ListJoin` as shown here.
             MD_String8List stream = {0};
-            MD_DebugStringListFromNode(arena, &stream, node, 0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
+            MD_DebugDumpFromNode(arena, &stream, node, 0, MD_S8Lit(" "), MD_GenerateFlags_Tree);
             MD_String8 str = MD_S8ListJoin(arena, stream, 0);
             fwrite(str.str, str.size, 1, stdout);
             fwrite("\n", 1, 1, stdout);
