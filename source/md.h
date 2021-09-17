@@ -506,6 +506,7 @@ enum
 {
     MD_NodeMatchFlag_Tags             = (1<<16),
     MD_NodeMatchFlag_TagArguments     = (1<<17),
+    MD_NodeMatchFlag_NodeFlags        = (1<<18),
 };
 
 typedef struct MD_DecodedCodepoint MD_DecodedCodepoint;

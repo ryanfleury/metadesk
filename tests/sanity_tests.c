@@ -810,6 +810,43 @@ int main(void)
             MD_String8 actual = MD_S8ListJoin(arena, actual_strings, 0);
             TestResult(MD_S8Match(expected, actual, 0));
         }
+        {
+            MD_String8 code = MD_S8Lit("@foo @bar @baz a: { b c d e f }");
+            MD_ParseResult parse1 = MD_ParseOneNode(arena, code, 0);
+            MD_String8List reconstruction_strs = {0};
+            MD_ReconstructionFromNode(arena, &reconstruction_strs, parse1.node, 0, MD_S8Lit(" "));
+            MD_String8 reconstruction = MD_S8ListJoin(arena, reconstruction_strs, 0);
+            MD_ParseResult parse2 = MD_ParseOneNode(arena, reconstruction, 0);
+            TestResult(MD_NodeDeepMatch(parse1.node, parse2.node, MD_NodeMatchFlag_TagArguments|MD_NodeMatchFlag_NodeFlags));
+        }
+        {
+            MD_String8 code = MD_S8Lit("@foo(x: y: z) @bar(a: b: c) @baz(1: 2: 3) abcdefg: { b: 4, c d: 5; e; f, }");
+            MD_ParseResult parse1 = MD_ParseOneNode(arena, code, 0);
+            MD_String8List reconstruction_strs = {0};
+            MD_ReconstructionFromNode(arena, &reconstruction_strs, parse1.node, 0, MD_S8Lit(" "));
+            MD_String8 reconstruction = MD_S8ListJoin(arena, reconstruction_strs, 0);
+            MD_ParseResult parse2 = MD_ParseOneNode(arena, reconstruction, 0);
+            TestResult(MD_NodeDeepMatch(parse1.node, parse2.node, MD_NodeMatchFlag_TagArguments|MD_NodeMatchFlag_NodeFlags));
+        }
+        {
+            MD_String8 code = MD_S8Lit("@foo(x: y: z)\n"
+                                       "@bar(a: b: c)\n"
+                                       "@baz(1: 2: 3)\n"
+                                       "abcdefg:\n"
+                                       "{\n"
+                                       "  b: 4,\n"
+                                       "  c\n"
+                                       "  d: 5;\n"
+                                       "  e;\n"
+                                       "  f,\n"
+                                       "}\n");
+            MD_ParseResult parse1 = MD_ParseOneNode(arena, code, 0);
+            MD_String8List reconstruction_strs = {0};
+            MD_ReconstructionFromNode(arena, &reconstruction_strs, parse1.node, 0, MD_S8Lit(" "));
+            MD_String8 reconstruction = MD_S8ListJoin(arena, reconstruction_strs, 0);
+            MD_ParseResult parse2 = MD_ParseOneNode(arena, reconstruction, 0);
+            TestResult(MD_NodeDeepMatch(parse1.node, parse2.node, MD_NodeMatchFlag_TagArguments|MD_NodeMatchFlag_NodeFlags));
+        }
     }
     
     return 0;
