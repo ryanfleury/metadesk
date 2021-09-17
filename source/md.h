@@ -506,6 +506,7 @@ enum
 {
     MD_NodeMatchFlag_Tags             = (1<<16),
     MD_NodeMatchFlag_TagArguments     = (1<<17),
+    MD_NodeMatchFlag_NodeFlags        = (1<<18),
 };
 
 typedef struct MD_DecodedCodepoint MD_DecodedCodepoint;
@@ -1131,8 +1132,7 @@ MD_FUNCTION void MD_DebugDumpFromNode(MD_Arena *arena, MD_String8List *out, MD_N
                                       int indent, MD_String8 indent_string,
                                       MD_GenerateFlags flags);
 MD_FUNCTION void MD_ReconstructionFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
-                                           int indent, MD_String8 indent_string,
-                                           MD_GenerateFlags flags);
+                                           int indent, MD_String8 indent_string);
 
 //~ Command Line Argument Helper
 
