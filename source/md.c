@@ -3315,8 +3315,8 @@ MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table, MD_Node *first, MD
 //~ String Generation
 
 MD_FUNCTION_IMPL void
-MD_DebugStringListFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
-                           int indent, MD_String8 indent_string, MD_GenerateFlags flags)
+MD_DebugDumpFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
+                     int indent, MD_String8 indent_string, MD_GenerateFlags flags)
 {
 #define MD_PrintIndent(_indent_level) do\
 {\
@@ -3359,7 +3359,7 @@ MD_S8ListPush(arena, out, indent_string);\
                     {
                         child_indent = 0;
                     }
-                    MD_DebugStringListFromNode(arena, out, child, child_indent, MD_S8Lit(" "), flags);
+                    MD_DebugDumpFromNode(arena, out, child, child_indent, MD_S8Lit(" "), flags);
                     if(!MD_NodeIsNil(child->next))
                     {
                         MD_S8ListPush(arena, out, MD_S8Lit(",\n"));
@@ -3440,7 +3440,7 @@ MD_S8ListPush(arena, out, indent_string);\
         MD_S8ListPush(arena, out, MD_S8Lit("{\n"));
         for(MD_EachNode(child, node->first_child))
         {
-            MD_DebugStringListFromNode(arena, out, child, indent+1, indent_string, flags);
+            MD_DebugDumpFromNode(arena, out, child, indent+1, indent_string, flags);
             MD_S8ListPush(arena, out, MD_S8Lit(",\n"));
         }
         MD_PrintIndent(indent);
@@ -3464,9 +3464,9 @@ MD_S8ListPush(arena, out, indent_string);\
 }
 
 MD_FUNCTION_IMPL void
-MD_ReconstructedStringListFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
-                                   int indent, MD_String8 indent_string,
-                                   MD_GenerateFlags flags)
+MD_ReconstructionFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
+                          int indent, MD_String8 indent_string,
+                          MD_GenerateFlags flags)
 {
     // TODO(rjf): // TODO(rjf): // TODO(rjf): 
     // TODO(rjf): // TODO(rjf): // TODO(rjf): 
@@ -3538,7 +3538,7 @@ MD_S8ListPush(arena, out, indent_string);\
                     {
                         child_indent = 0;
                     }
-                    MD_ReconstructedStringListFromNode(arena, out, child, child_indent, MD_S8Lit(" "), flags);
+                    MD_ReconstructionFromNode(arena, out, child, child_indent, MD_S8Lit(" "), flags);
                     if(!MD_NodeIsNil(child->next))
                     {
                         MD_S8ListPush(arena, out, MD_S8Lit(",\n"));
@@ -3638,7 +3638,7 @@ MD_S8ListPush(arena, out, indent_string);\
                 child_indent = indent+1;
             }
             last_line = child_loc.line;
-            MD_ReconstructedStringListFromNode(arena, out, child, child_indent, indent_string, flags);
+            MD_ReconstructionFromNode(arena, out, child, child_indent, indent_string, flags);
         }
         MD_PrintIndent(indent);
         if(closer_char != 0)
