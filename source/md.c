@@ -3718,10 +3718,8 @@ MD_StringListFromArgCV(MD_Arena *arena, int argument_count, char **arguments)
 MD_FUNCTION MD_CmdLine
 MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
 {
-    // TODO(rjf): consider everything as plain unstructured inputs after
-    // a `--` (without a name).
-    
     MD_CmdLine cmdln = MD_ZERO_STRUCT;
+    MD_b32 parsing_only_inputs = 0;
     
     for(MD_String8Node *n = options.first, *next = 0;
         n; n = next)
@@ -3731,7 +3729,11 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
         //- rjf: figure out whether or not this is an option by checking for `-` or `--`
         // from the beginning of the string
         MD_String8 option_name = MD_ZERO_STRUCT;
-        if(MD_S8Match(MD_S8Prefix(n->string, 2), MD_S8Lit("--"), 0))
+        if(MD_S8Match(n->string, MD_S8Lit("--"), 0))
+        {
+            parsing_only_inputs = 1;
+        }
+        else if(MD_S8Match(MD_S8Prefix(n->string, 2), MD_S8Lit("--"), 0))
         {
             option_name = MD_S8Skip(n->string, 2);
         }
@@ -3739,6 +3741,7 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
         {
             option_name = MD_S8Skip(n->string, 1);
         }
+        
         //- rjf: trim off anything after a `:` or `=`, use that as the first value string
         MD_String8 first_value = MD_ZERO_STRUCT;
         MD_b32 has_many_values = 0;
@@ -3759,7 +3762,7 @@ MD_MakeCmdLineFromOptions(MD_Arena *arena, MD_String8List options)
         }
         
         //- rjf: gather arguments
-        if(option_name.size != 0)
+        if(option_name.size != 0 && !parsing_only_inputs)
         {
             MD_String8List option_values = MD_ZERO_STRUCT;
             

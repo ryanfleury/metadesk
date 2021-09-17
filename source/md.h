@@ -7,9 +7,6 @@
 #ifndef MD_H
 #define MD_H
 
-// TODO(rjf): implicitly-delimited sets are not having their separator flags
-// appropriately set
-
 /* NOTE(allen): Notes on overrides/macro options:
 **
 ** Overridable :
