@@ -803,6 +803,7 @@ MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
     MD_u64 needed_bytes = md_stbsp_vsnprintf(0, 0, fmt, args)+1;
     result.str = MD_PushArray(arena, MD_u8, needed_bytes);
     result.size = needed_bytes - 1;
+    result.str[needed_bytes-1] = 0;
     md_stbsp_vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
 }
@@ -820,7 +821,7 @@ MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
 MD_FUNCTION void
 MD_S8ListPush(MD_Arena *arena, MD_String8List *list, MD_String8 string)
 {
-    MD_String8Node *node = MD_PushArray(arena, MD_String8Node, 1);
+    MD_String8Node *node = MD_PushArrayZero(arena, MD_String8Node, 1);
     node->string = string;
     
     MD_QueuePush(list->first, list->last, node);
@@ -922,7 +923,7 @@ MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (list.total_size + join.pre.size +
                    sep_count*join.mid.size + join.post.size);
-    result.str = MD_PushArray(arena, MD_u8, result.size);
+    result.str = MD_PushArrayZero(arena, MD_u8, result.size);
     
     // fill
     MD_u8 *ptr = result.str;
@@ -1005,7 +1006,7 @@ MD_S8Stylize(MD_Arena *arena, MD_String8 string, MD_IdentifierStyle word_style,
     {
         result.size += separator.size*(words.node_count-1);
     }
-    result.str = MD_PushArray(arena, MD_u8, result.size);
+    result.str = MD_PushArrayZero(arena, MD_u8, result.size);
     
     {
         MD_u64 write_pos = 0;
@@ -1234,7 +1235,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS16(MD_Arena *arena, MD_String16 in)
 {
     MD_u64 cap = in.size*3;
-    MD_u8 *str = MD_PushArray(arena, MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArrayZero(arena, MD_u8, cap + 1);
     MD_u16 *ptr = in.str;
     MD_u16 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1254,7 +1255,7 @@ MD_FUNCTION MD_String16
 MD_S16FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size*2;
-    MD_u16 *str = MD_PushArray(arena, MD_u16, cap + 1);
+    MD_u16 *str = MD_PushArrayZero(arena, MD_u16, cap + 1);
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1275,7 +1276,7 @@ MD_FUNCTION MD_String8
 MD_S8FromS32(MD_Arena *arena, MD_String32 in)
 {
     MD_u64 cap = in.size*4;
-    MD_u8 *str = MD_PushArray(arena, MD_u8, cap + 1);
+    MD_u8 *str = MD_PushArrayZero(arena, MD_u8, cap + 1);
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1293,7 +1294,7 @@ MD_FUNCTION MD_String32
 MD_S32FromS8(MD_Arena *arena, MD_String8 in)
 {
     MD_u64 cap = in.size;
-    MD_u32 *str = MD_PushArray(arena, MD_u32, cap + 1);
+    MD_u32 *str = MD_PushArrayZero(arena, MD_u32, cap + 1);
     MD_u8 *ptr = in.str;
     MD_u8 *opl = ptr + in.size;
     MD_u64 size = 0;
@@ -1507,7 +1508,7 @@ MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps)
     
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (MD_u64)(ptr - buffer);
-    result.str = MD_PushArray(arena, MD_u8, result.size);
+    result.str = MD_PushArrayZero(arena, MD_u8, result.size);
     MD_MemoryCopy(result.str, buffer, result.size);
     return(result);
 }
@@ -1594,9 +1595,8 @@ MD_FUNCTION MD_u64
 MD_HashPtr(void *p)
 {
     MD_u64 h = (MD_u64)p;
-    // TODO(rjf): Do we want our own equivalent of UINT64_C?
-    h = (h ^ (h >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
-    h = (h ^ (h >> 27)) * UINT64_C(0x94d049bb133111eb);
+    h = (h ^ (h >> 30)) * 0xbf58476d1ce4e5b9;
+    h = (h ^ (h >> 27)) * 0x94d049bb133111eb;
     h = h ^ (h >> 31);
     return h;
 }
@@ -1683,7 +1683,7 @@ MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
     MD_MapSlot *result = 0;
     if (map->bucket_count > 0){
         MD_u64 index = key.hash%map->bucket_count;
-        MD_MapSlot *slot = MD_PushArray(arena, MD_MapSlot, 1);
+        MD_MapSlot *slot = MD_PushArrayZero(arena, MD_MapSlot, 1);
         MD_MapBucket *bucket = &map->buckets[index];
         MD_QueuePush(bucket->first, bucket->last, slot);
         slot->key = key;
@@ -2970,7 +2970,7 @@ MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
                     MD_u32 op_id, MD_ExprOperatorKind kind,
                     MD_u64 precedence, MD_Node *md_node)
 {
-    MD_ExprOperatorNode *node = MD_PushArray(arena, MD_ExprOperatorNode, 1);
+    MD_ExprOperatorNode *node = MD_PushArrayZero(arena, MD_ExprOperatorNode, 1);
     MD_QueuePush(list->first, list->last, node);
     list->count += 1;
     node->op.op_id = op_id;
@@ -3050,7 +3050,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOperatorList *list)
         if(error_str.size == 0)
         {
             MD_ExprOperatorList *list = result.table+op.kind;
-            MD_ExprOperatorNode *op_node_copy = MD_PushArray(arena, MD_ExprOperatorNode, 1);
+            MD_ExprOperatorNode *op_node_copy = MD_PushArrayZero(arena, MD_ExprOperatorNode, 1);
             MD_QueuePush(list->first, list->last, op_node_copy);
             list->count += 1;
             op_node_copy->op = op;
@@ -3408,6 +3408,7 @@ MD_S8ListPush(arena, out, indent_string);\
         MD_S8ListPush(arena, out, MD_S8Fmt(arena, "// string hash: 0x%llx\n", node->string_hash));
     }
     
+    //- rjf: location
     if(flags & MD_GenerateFlag_Location)
     {
         MD_PrintIndent(indent);
