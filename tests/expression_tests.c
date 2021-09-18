@@ -201,7 +201,7 @@ operator_array[Op_##name].op = (MD_ExprOperator){ .op_id = Op_##name, .kind = MD
     OPERATORS
 #undef X 
     
-    arena = MD_ArenaAlloc(1ull << 40);
+    arena = MD_ArenaAlloc();
     
     /* NOTE: Operator table bake errors */ {
         MD_ExprOperatorList operator_list = {0};

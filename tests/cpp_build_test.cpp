@@ -7,7 +7,7 @@ static MD_Arena *arena = 0;
 
 int main(void)
 {
-    arena = MD_ArenaAlloc(1ull << 40);
+    arena = MD_ArenaAlloc();
     
     printf("%d\n", MD_CPP_VERSION);
     

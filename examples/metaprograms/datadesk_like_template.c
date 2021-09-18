@@ -36,7 +36,7 @@ static void CleanUp(void);           // Runs at the end of generation.
 int main(int argument_count, char **arguments)
 {
     // setup the global arena
-    arena = MD_ArenaAlloc(1ull << 40);
+    arena = MD_ArenaAlloc();
     
     // parse all files passed to the command line
     MD_b32 failed_parse = 0;

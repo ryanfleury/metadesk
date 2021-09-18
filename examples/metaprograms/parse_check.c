@@ -22,9 +22,7 @@ static MD_Arena *arena = 0;
 int main(int argc, char **argv)
 {
     // setup the global arena
-    // @notes This code makes an arena with a 1 terabyte reserve which works as
-    //  long as we only have one or a few arenas.
-    arena = MD_ArenaAlloc(1ull << 40);
+    arena = MD_ArenaAlloc();
     
     // parse all files passed to the command line
     MD_Node *list = MD_MakeList(arena);

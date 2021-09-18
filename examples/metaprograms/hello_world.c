@@ -14,7 +14,7 @@ static MD_Arena *arena = 0;
 int
 main(int argc, char **argv){
     // setup the global arena
-    arena = MD_ArenaAlloc(1ull << 40);
+    arena = MD_ArenaAlloc();
     
     // parse a string
     MD_String8 name = MD_S8Lit("<name>");

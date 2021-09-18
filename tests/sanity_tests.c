@@ -84,7 +84,7 @@ TokenMatch(MD_Token token, MD_String8 string, MD_TokenKind kind)
 
 int main(void)
 {
-    arena = MD_ArenaAlloc(1ull << 40);
+    arena = MD_ArenaAlloc();
     
     Test("Lexer")
     {

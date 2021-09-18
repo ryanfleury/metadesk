@@ -24,13 +24,13 @@
 **
 **  "low level memory" ** OPTIONAL (required for default arena)
 **   #define MD_IMPL_Reserve            (MD_u64) -> void*
-**   #define MD_IMPL_Commit             (void*, MD_u64) -> void
+**   #define MD_IMPL_Commit             (void*, MD_u64) -> MD_b32
 **   #define MD_IMPL_Decommit           (void*, MD_u64) -> void
 **   #define MD_IMPL_Release            (void*, MD_u64) -> void
 **
 **  "arena" ** REQUIRED (default implementation available)
 **   #define MD_IMPL_Arena              <type>
-**   #define MD_IMPL_ArenaAlloc         (MD_u64) -> MD_IMPL_Arena*
+**   #define MD_IMPL_ArenaAlloc         () -> MD_IMPL_Arena*
 **   #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
 **   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> MD_u64
 **   #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, MD_u64) -> void*
@@ -41,7 +41,6 @@
 **  "scratch" ** REQUIRED (default implementation available)
 **   #define MD_IMPL_GetScratch         (MD_IMPL_Arena**, MD_u64) -> MD_IMPL_Arena*
 **  "scratch constants" ** OPTIONAL (required for default scratch)
-**   #define MD_IMPL_ScratchSize        MD_u64 / default 1 gigabyte
 **   #define MD_IMPL_ScratchCount       MD_u64 / default 2
 **
 ** Default Implementation Controls
@@ -332,6 +331,8 @@
 #define MD_ClampBot(a,b) MD_Max(a,b)
 #define MD_ClampTop(a,b) MD_Min(a,b)
 
+#define MD_AlignPow2(x,b) (((x)+((b)-1))&(~((b)-1)))
+
 //~ Linked List Macros.
 
 // terminator modes
@@ -416,6 +417,9 @@ typedef double   MD_f64;
 
 typedef struct MD_ArenaDefault MD_ArenaDefault;
 struct MD_ArenaDefault{
+    MD_ArenaDefault *prev;
+    MD_ArenaDefault *current;
+    MD_u64 base_pos;
     MD_u64 pos;
     MD_u64 cmt;
     MD_u64 cap;
@@ -881,7 +885,7 @@ struct MD_FileIter
 
 //~ Arena
 
-MD_FUNCTION MD_Arena*    MD_ArenaAlloc(MD_u64 cap);
+MD_FUNCTION MD_Arena*    MD_ArenaAlloc(void);
 MD_FUNCTION void         MD_ArenaRelease(MD_Arena *arena);
 
 MD_FUNCTION void*        MD_ArenaPush(MD_Arena *arena, MD_u64 size);

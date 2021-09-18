@@ -16,7 +16,7 @@ void run_test_on_string(MD_String8 string)
 
 int main(void)
 {
-    arena = MD_ArenaAlloc(1ull << 40);
+    arena = MD_ArenaAlloc();
     
     // TODO(allen): throw more at this.
     

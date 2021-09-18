@@ -20,7 +20,7 @@ static MD_Arena *arena = 0;
 int main(int argc, char **argv)
 {
     // setup the global arena
-    arena = MD_ArenaAlloc(1ull << 40);
+    arena = MD_ArenaAlloc();
     
     // parse all files passed to the command line
     MD_Node *list = MD_MakeList(arena);

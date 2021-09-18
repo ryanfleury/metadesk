@@ -181,9 +181,10 @@ MD_WIN32_Reserve(MD_u64 size){
     return(result);
 }
 
-static void
+static MD_b32
 MD_WIN32_Commit(void *ptr, MD_u64 size){
-    VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE);
+    MD_b32 result = (VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) != 0);
+    return(result);
 }
 
 static void
@@ -309,9 +310,10 @@ MD_LINUX_Reserve(MD_u64 size){
     return(result);
 }
 
-static void
+static MD_b32
 MD_LINUX_Commit(void *ptr, MD_u64 size){
-    mprotect(ptr, size, PROT_READ|PROT_WRITE);
+    MD_b32 result = (mprotect(ptr, size, PROT_READ|PROT_WRITE) == 0);
+    return(result);
 }
 
 static void
@@ -333,6 +335,15 @@ MD_LINUX_Release(void *ptr, MD_u64 size){
 
 #if MD_DEFAULT_ARENA
 
+#if !defined(MD_DEFAULT_ARENA_RES_SIZE)
+# define MD_DEFAULT_ARENA_RES_SIZE (64 << 20)
+#endif
+#if !defined(MD_DEFAULT_ARENA_CMT_SIZE)
+# define MD_DEFAULT_ARENA_CMT_SIZE (64 << 10)
+#endif
+
+#define MD_DEFAULT_ARENA_VERY_BIG (MD_DEFAULT_ARENA_RES_SIZE - MD_IMPL_ArenaHeaderSize)/2
+
 //- "low level memory" implementation check
 #if !defined(MD_IMPL_Reserve)
 # error Missing implementation for MD_IMPL_Reserve
@@ -348,66 +359,165 @@ MD_LINUX_Release(void *ptr, MD_u64 size){
 #endif
 
 #define MD_IMPL_ArenaHeaderSize 64
-#define MD_ArenaDefault_CommitSize (1 << 20)
 MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_size_check);
 
 #define MD_IMPL_ArenaAlloc     MD_ArenaDefaultAlloc
 #define MD_IMPL_ArenaRelease   MD_ArenaDefaultRelease
-#define MD_IMPL_ArenaGetPos(a) ((a)->pos)
+#define MD_IMPL_ArenaGetPos    MD_ArenaDefaultGetPos
 #define MD_IMPL_ArenaPush      MD_ArenaDefaultPush
 #define MD_IMPL_ArenaPopTo     MD_ArenaDefaultPopTo
-#define MD_IMPL_ArenaSetAutoAlign(a,b) ((a)->align = (b))
+#define MD_IMPL_ArenaSetAutoAlign MD_ArenaDefaultSetAutoAlign
 
-static MD_Arena*
-MD_ArenaDefaultAlloc(MD_u64 cap){
-    void *mem = MD_IMPL_Reserve(cap);
-    MD_u64 cmt = MD_ClampTop(cap, MD_ArenaDefault_CommitSize);
-    MD_IMPL_Commit(mem, cmt);
-    
-    MD_ArenaDefault *arena = (MD_ArenaDefault*)mem;
-    arena->pos  = MD_IMPL_ArenaHeaderSize;
-    arena->cmt  = cmt;
-    arena->cap  = cap;
-    arena->align = sizeof(void*);
-    return((MD_Arena*)arena);
-}
-
-static void
-MD_ArenaDefaultRelease(MD_Arena *arena_opq){
-    MD_ArenaDefault *arena = (MD_ArenaDefault*)arena_opq;
-    MD_u64 cap = arena->cap;
-    MD_IMPL_Release(arena, cap);
-}
-
-static void*
-MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size){
-    void *result = 0;
-    MD_u8 *buf = (MD_u8*)arena;
-    if (arena->pos + size <= arena->cap){
-        MD_u64 pos = arena->pos;
-        MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, pos);
-        MD_u64 new_pos = pos_clamped + size;
-        MD_u64 align_m1 = arena->align - 1;
-        MD_u64 new_pos_aligned = (new_pos + align_m1)&(~align_m1);
-        MD_u64 new_pos_clamped = MD_ClampTop(new_pos_aligned, arena->cap);
-        result = buf + pos;
-        arena->pos = new_pos_aligned;
-        
-        if (new_pos_clamped > arena->cmt){
-            MD_u64 cmt_amt_raw = new_pos_clamped - arena->cmt;
-            MD_u64 cmt_align_m1 = MD_ArenaDefault_CommitSize - 1;
-            MD_u64 cmt_amt = (cmt_amt_raw + cmt_align_m1)&(~cmt_align_m1);
-            MD_IMPL_Commit(buf + arena->cmt, cmt_amt);
-            arena->cmt += cmt_amt;
-        }
+static MD_ArenaDefault*
+MD_ArenaDefaultAlloc__Size(MD_u64 cmt, MD_u64 res)
+{
+    MD_Assert(MD_IMPL_ArenaHeaderSize < cmt && cmt <= res);
+    MD_u64 cmt_clamped = MD_ClampTop(cmt, res);
+    MD_ArenaDefault *result = 0;
+    void *mem = MD_IMPL_Reserve(res);
+    if (MD_IMPL_Commit(mem, cmt_clamped))
+    {
+        result = (MD_ArenaDefault*)mem;
+        result->prev = 0;
+        result->current = result;
+        result->base_pos = 0;
+        result->pos = MD_IMPL_ArenaHeaderSize;
+        result->cmt = cmt_clamped;
+        result->cap = res;
+        result->align = 8;
     }
     return(result);
 }
 
+static MD_ArenaDefault*
+MD_ArenaDefaultAlloc(void)
+{
+    MD_ArenaDefault *result = MD_ArenaDefaultAlloc__Size(MD_DEFAULT_ARENA_CMT_SIZE,
+                                                         MD_DEFAULT_ARENA_RES_SIZE);
+    return(result);
+}
+
 static void
-MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos){
+MD_ArenaDefaultRelease(MD_ArenaDefault *arena)
+{
+    for (MD_ArenaDefault *node = arena->current, *prev = 0;
+         node != 0;
+         node = prev)
+    {
+        prev = node->prev;
+        MD_IMPL_Release(node, node->cap);
+    }
+}
+
+static MD_u64
+MD_ArenaDefaultGetPos(MD_ArenaDefault *arena)
+{
+    MD_ArenaDefault *current = arena->current;
+    MD_u64 result = current->base_pos + current->pos;
+    return(result);
+}
+
+static void*
+MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size)
+{
+    // try to be fast!
+    MD_ArenaDefault *current = arena->current;
+    MD_u64 align = arena->align;
+    MD_u64 pos = current->pos;
+    MD_u64 pos_aligned = MD_AlignPow2(pos, align);
+    MD_u64 new_pos = pos_aligned + size;
+    void *result = (MD_u8*)current + pos_aligned;
+    current->pos = new_pos;
+    
+    // if it's not going to work do the slow path
+    if (new_pos > current->cmt){
+        result = 0;
+        current->pos = pos;
+        
+        // new chunk if necessary
+        if (new_pos > current->cap)
+        {
+            MD_ArenaDefault *new_arena = 0;
+            if (size > MD_DEFAULT_ARENA_VERY_BIG)
+            {
+                MD_u64 big_size_unrounded = size + MD_IMPL_ArenaHeaderSize;
+                MD_u64 big_size = MD_AlignPow2(big_size_unrounded, (4 << 10));
+                new_arena = MD_ArenaDefaultAlloc__Size(big_size, big_size);
+            }
+            else
+            {
+                new_arena = MD_ArenaDefaultAlloc();
+            }
+            
+            // link in new chunk & recompute new_pos
+            if (new_arena != 0)
+            {
+                new_arena->base_pos = current->base_pos + current->cap;
+                new_arena->prev = current;
+                current = new_arena;
+                pos_aligned = current->pos;
+                new_pos = pos_aligned + size;
+            }
+        }
+        
+        // move ahead if the current chunk has enough reserve
+        if (new_pos <= current->cap)
+        {
+            
+            // extend commit if necessary
+            if (new_pos > current->cmt)
+            {
+                MD_u64 new_cmt_unclamped = MD_AlignPow2(new_pos, MD_DEFAULT_ARENA_CMT_SIZE);
+                MD_u64 new_cmt = MD_ClampTop(new_cmt_unclamped, current->cap);
+                MD_u64 cmt_size = new_cmt - current->cmt;
+                if (MD_IMPL_Commit((MD_u8*)current + current->cmt, cmt_size))
+                {
+                    current->cmt = new_cmt;
+                }
+            }
+            
+            // move ahead if the current chunk has enough commit
+            if (new_pos <= current->cmt)
+            {
+                result = (MD_u8*)current + current->pos;
+                current->pos = new_pos;
+            }
+        }
+    }
+    
+    return(result);
+}
+
+static void
+MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos)
+{
+    // pop chunks in the chain
     MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, pos);
-    arena->pos = pos_clamped;
+    {
+        MD_ArenaDefault *node = arena->current;
+        for (MD_ArenaDefault *prev = 0;
+             node != 0 && node->base_pos >= pos;
+             node = prev)
+        {
+            prev = node->prev;
+            MD_IMPL_Release(node, node->cap);
+        }
+        arena->current = node;
+    }
+    
+    // reset the pos of the current
+    {
+        MD_ArenaDefault *current = arena->current;
+        MD_u64 local_pos_unclamped = pos - current->base_pos;
+        MD_u64 local_pos = MD_ClampBot(local_pos_unclamped, MD_IMPL_ArenaHeaderSize);
+        current->pos = local_pos;
+    }
+}
+
+static void
+MD_ArenaDefaultSetAutoAlign(MD_ArenaDefault *arena, MD_u64 align)
+{
+    arena->align = align;
 }
 
 #endif
@@ -441,9 +551,6 @@ MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos){
 
 #if MD_DEFAULT_SCRATCH
 
-#if !defined(MD_IMPL_ScratchSize)
-# define MD_IMPL_ScratchSize (1llu << 30)
-#endif
 #if !defined(MD_IMPL_ScratchCount)
 # define MD_IMPL_ScratchCount 2llu
 #endif
@@ -460,7 +567,7 @@ MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count){
     if (scratch_pool[0] == 0){
         MD_Arena **arena_ptr = scratch_pool;
         for (MD_u64 i = 0; i < MD_IMPL_ScratchCount; i += 1, arena_ptr += 1){
-            *arena_ptr = MD_ArenaAlloc(MD_IMPL_ScratchSize);
+            *arena_ptr = MD_ArenaAlloc();
         }
     }
     MD_Arena *result = 0;
@@ -519,8 +626,8 @@ static MD_Node _md_nil_node =
 //~ Arena Functions
 
 MD_FUNCTION MD_Arena*
-MD_ArenaAlloc(MD_u64 cap){
-    return(MD_IMPL_ArenaAlloc(cap));
+MD_ArenaAlloc(void){
+    return(MD_IMPL_ArenaAlloc());
 }
 
 MD_FUNCTION void
