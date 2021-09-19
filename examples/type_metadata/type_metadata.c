@@ -161,7 +161,6 @@ main(int argc, char **argv)
         printf("%.*s: map\n", MD_S8VArg(node->string));
     }
     
-    // TODO metadata hand-written portion
     // TODO check types & build member lists
     // TODO check maps & build case lists
     // TODO generate type definitions
