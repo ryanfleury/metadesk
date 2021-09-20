@@ -175,6 +175,8 @@ main(int argc, char **argv)
         }
     }
     
+    // TODO no duplicate member names check
+    
     // build member lists
     for (TypeInfo *type = first_type;
          type != 0;
@@ -310,7 +312,6 @@ main(int argc, char **argv)
         }
     }
     
-    // TODO check types & build member lists
     // TODO check maps & build case lists
     // TODO generate type definitions
     // TODO generate function declarations
