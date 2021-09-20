@@ -1500,21 +1500,99 @@ MD_S8ChopWhitespace(MD_String8 string)
 
 //~ Numeric Strings
 
+MD_GLOBAL MD_u8 md_char_to_value[] = {
+    0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+    0x08,0x09,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+    0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,
+    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
+};
+
+MD_GLOBAL MD_u8 md_char_is_integer[] = {
+    0,0,0,0,0,0,1,1,
+    1,0,0,0,1,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+};
+
+MD_FUNCTION MD_b32
+MD_StringIsU64(MD_String8 string, MD_u32 radix)
+{
+    MD_b32 result = 0;
+    if (string.size > 0)
+    {
+        result = 1;
+        for (MD_u8 *ptr = string.str, *opl = string.str + string.size;
+             ptr < opl;
+             ptr += 1)
+        {
+            MD_u8 c = *ptr;
+            if (!md_char_is_integer[c >> 3])
+            {
+                result = 0;
+                break;
+            }
+            if (md_char_to_value[(c - 0x30)&0x1F] >= radix)
+            {
+                result = 0;
+                break;
+            }
+        }
+    }
+    return(result);
+}
+
+MD_FUNCTION MD_b32
+MD_StringIsCStyleInt(MD_String8 string)
+{
+    MD_u8 *ptr = string.str;
+    MD_u8 *opl = string.str + string.size;
+    
+    // consume sign
+    for (;ptr < opl && (*ptr == '+' || *ptr == '-'); ptr += 1);
+    
+    // radix from prefix
+    MD_u64 radix = 10;
+    if (ptr < opl)
+    {
+        MD_u8 c0 = *ptr;
+        if (c0 == '0')
+        {
+            ptr += 1;
+            radix = 8;
+            if (ptr < opl)
+            {
+                MD_u8 c1 = *ptr;
+                if (c1 == 'x')
+                {
+                    ptr += 1;
+                    radix = 0x10;
+                }
+                else if (c1 == 'b')
+                {
+                    ptr += 1;
+                    radix = 2;
+                }
+            }
+        }
+    }
+    
+    // check integer "digits"
+    MD_String8 digits_substr = MD_S8Range(ptr, opl);
+    MD_b32 result = MD_StringIsU64(digits_substr, radix);
+    
+    return(result);
+}
+
 MD_FUNCTION MD_u64
 MD_U64FromString(MD_String8 string, MD_u32 radix)
 {
     MD_Assert(2 <= radix && radix <= 16);
-    static MD_u8 char_to_value[] = {
-        0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
-        0x08,0x09,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-        0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0xFF,
-        0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-    };
     MD_u64 value = 0;
-    for (MD_u64 i = 0; i < string.size; i += 1){
+    for (MD_u64 i = 0; i < string.size; i += 1)
+    {
         value *= radix;
         MD_u8 c = string.str[i];
-        value += char_to_value[(c - 0x30)&0x1F];
+        value += md_char_to_value[(c - 0x30)&0x1F];
     }
     return(value);
 }
@@ -1526,31 +1604,39 @@ MD_CStyleIntFromString(MD_String8 string)
     
     // consume sign
     MD_i64 sign = +1;
-    if (p < string.size){
+    if (p < string.size)
+    {
         MD_u8 c = string.str[p];
-        if (c == '-'){
+        if (c == '-')
+        {
             sign = -1;
             p += 1;
         }
-        else if (c == '+'){
+        else if (c == '+')
+        {
             p += 1;
         }
     }
     
     // radix from prefix
     MD_u64 radix = 10;
-    if (p < string.size){
+    if (p < string.size)
+    {
         MD_u8 c0 = string.str[p];
-        if (c0 == '0'){
+        if (c0 == '0')
+        {
             p += 1;
             radix = 8;
-            if (p < string.size){
+            if (p < string.size)
+            {
                 MD_u8 c1 = string.str[p];
-                if (c1 == 'x'){
+                if (c1 == 'x')
+                {
                     p += 1;
                     radix = 16;
                 }
-                else if (c1 == 'b'){
+                else if (c1 == 'b')
+                {
                     p += 1;
                     radix = 2;
                 }
@@ -1572,7 +1658,8 @@ MD_F64FromString(MD_String8 string)
 {
     char str[64];
     MD_u64 str_size = string.size;
-    if (str_size > sizeof(str) - 1){
+    if (str_size > sizeof(str) - 1)
+    {
         str_size = sizeof(str) - 1;
     }
     MD_MemoryCopy(str, string.str, str_size);

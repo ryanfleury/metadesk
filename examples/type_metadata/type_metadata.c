@@ -31,10 +31,16 @@ struct TypeInfo
     TypeKind kind;
     MD_Node *node;
     
-    // struct member list
+    // member list
     struct TypeMember *first_member;
     struct TypeMember *last_member;
     int member_count;
+    
+    // enumerant list
+    struct TypeEnumerant *first_enumerant;
+    struct TypeEnumerant *last_enumerant;
+    int enumerant_count;
+    
 };
 
 typedef struct TypeMember TypeMember;
@@ -43,6 +49,14 @@ struct TypeMember
     TypeMember *next;
     MD_Node *node;
     TypeInfo *type;
+};
+
+typedef struct TypeEnumerant TypeEnumerant;
+struct TypeEnumerant
+{
+    TypeEnumerant *next;
+    MD_Node *node;
+    int value;
 };
 
 typedef struct MapInfo MapInfo;
@@ -161,13 +175,14 @@ main(int argc, char **argv)
         }
     }
     
-    // build struct member lists
+    // build member lists
     for (TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
         if (type->kind == TypeKind_Struct)
         {
+            // build the list
             MD_b32 got_list = 1;
             TypeMember *first_member = 0;
             TypeMember *last_member = 0;
@@ -207,6 +222,8 @@ main(int argc, char **argv)
                 {
                     TypeInfo *type_info = (TypeInfo*)type_info_slot->val;
                     
+                    // TODO(allen): handle the array tag
+                    
                     TypeMember *member = MD_PushArray(arena, TypeMember, 1);
                     member->node = member_node;
                     member->type = type_info;
@@ -217,6 +234,7 @@ main(int argc, char **argv)
                 skip_member:;
             }
             
+            // save the list
             if (got_list)
             {
                 type->first_member = first_member;
@@ -226,6 +244,71 @@ main(int argc, char **argv)
         }
     }
     
+    // build enumerant lists
+    for (TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        if (type->kind == TypeKind_Enum)
+        {
+            // build the list
+            MD_b32 got_list = 1;
+            TypeEnumerant *first_enumerant = 0;
+            TypeEnumerant *last_enumerant = 0;
+            int enumerant_count = 0;
+            
+            int next_implicit_value = 0;
+            
+            MD_Node *type_root_node = type->node;
+            for (MD_EachNode(enumerant_node, type_root_node->first_child))
+            {
+                MD_Node *value_node = enumerant_node->first_child;
+                int value = 0;
+                
+                // missing value node?
+                if (MD_NodeIsNil(value_node))
+                {
+                    value = next_implicit_value;
+                    next_implicit_value += 1;
+                }
+                
+                // has value node
+                else
+                {
+                    MD_String8 value_string = value_node->string;
+                    if (!MD_StringIsCStyleInt(value_string))
+                    {
+                        got_list = 0;
+                        goto skip_enumerant;
+                    }
+                    value = (int)MD_CStyleIntFromString(value_string);
+                }
+                
+                // set next implicit value
+                next_implicit_value = value + 1;
+                
+                // save enumerant
+                if (got_list)
+                {
+                    TypeEnumerant *enumerant = MD_PushArray(arena, TypeEnumerant, 1);
+                    enumerant->node = enumerant_node;
+                    enumerant->value = value;
+                    MD_QueuePush(first_enumerant, last_enumerant, enumerant);
+                    enumerant_count += 1;
+                }
+                
+                skip_enumerant:;
+            }
+            
+            // save the list
+            if (got_list)
+            {
+                type->first_enumerant = first_enumerant;
+                type->last_enumerant = last_enumerant;
+                type->enumerant_count = enumerant_count;
+            }
+        }
+    }
     
     // TODO check types & build member lists
     // TODO check maps & build case lists
@@ -256,6 +339,15 @@ main(int argc, char **argv)
             printf("  %.*s: %.*s\n",
                    MD_S8VArg(member->node->string),
                    MD_S8VArg(member->type->node->string));
+        }
+        
+        // print enumerant lists
+        for (TypeEnumerant *enumerant = type->first_enumerant;
+             enumerant != 0;
+             enumerant = enumerant->next){
+            printf("  %.*s: %d\n",
+                   MD_S8VArg(enumerant->node->string),
+                   enumerant->value);
         }
     }
     

@@ -1005,6 +1005,9 @@ MD_FUNCTION MD_String8 MD_S8ChopWhitespace(MD_String8 string);
 
 //~ Numeric Strings
 
+MD_FUNCTION MD_b32     MD_StringIsU64(MD_String8 string, MD_u32 radix);
+MD_FUNCTION MD_b32     MD_StringIsCStyleInt(MD_String8 string);
+
 MD_FUNCTION MD_u64     MD_U64FromString(MD_String8 string, MD_u32 radix);
 MD_FUNCTION MD_i64     MD_CStyleIntFromString(MD_String8 string);
 MD_FUNCTION MD_f64     MD_F64FromString(MD_String8 string);

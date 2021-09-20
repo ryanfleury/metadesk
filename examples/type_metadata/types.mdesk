@@ -32,9 +32,9 @@ RoundedPolygon:
 @type(enum: U32)
 Shape:
 {
-  Circle:  1,
-  Segment: 2,
-  Polygon: 3,
+  Circle: 1,
+  Segment,
+  Polygon,
 }
 
 @map(Shape -> `$Type`; complete)
