@@ -40,7 +40,6 @@ struct TypeInfo
     struct TypeEnumerant *first_enumerant;
     struct TypeEnumerant *last_enumerant;
     int enumerant_count;
-    
 };
 
 typedef struct TypeMember TypeMember;
@@ -49,6 +48,7 @@ struct TypeMember
     TypeMember *next;
     MD_Node *node;
     TypeInfo *type;
+    MD_Node *array_count;
 };
 
 typedef struct TypeEnumerant TypeEnumerant;
@@ -64,6 +64,13 @@ struct MapInfo
 {
     MapInfo *next;
     MD_Node *node;
+    
+    MD_Node *in;
+    MD_Node *out;
+    
+    int is_complete;
+    MD_Node *default_val;
+    MD_Node *auto_val;
 };
 
 
@@ -78,7 +85,93 @@ MapInfo *last_map = 0;
 MD_Map map_map = {0};
 
 
+//~ feature generators ////////////////////////////////////////////////////////
+
+void
+generate_type_definitions(FILE *out, TypeInfo *first_type)
+{
+    for (TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        switch (type->kind)
+        {
+            default:break;
+            
+            case TypeKind_Struct:
+            {
+                MD_String8 struct_name = type->node->string;
+                fprintf(out, "typedef struct %.*s %.*s;\n", MD_S8VArg(struct_name), MD_S8VArg(struct_name));
+                fprintf(out, "struct %.*s\n", MD_S8VArg(struct_name));
+                fprintf(out, "{\n");
+                for (TypeMember *member = type->first_member;
+                     member != 0;
+                     member = member->next)
+                {
+                    MD_String8 type_name = member->type->node->string;
+                    MD_String8 member_name = member->node->string;
+                    int is_array = (!MD_NodeIsNil(member->array_count));
+                    if (is_array)
+                    {
+                        fprintf(out, "%.*s *%.*s;\n", MD_S8VArg(type_name), MD_S8VArg(member_name));
+                    }
+                    else
+                    {
+                        fprintf(out, "%.*s %.*s;\n", MD_S8VArg(type_name), MD_S8VArg(member_name));
+                    }
+                }
+                fprintf(out, "};\n");
+            }break;
+            
+            case TypeKind_Enum:
+            {
+                MD_String8 enum_name = type->node->string;
+                fprintf(out, "enum %.*s\n", MD_S8VArg(enum_name));
+                fprintf(out, "{\n");
+                for (TypeEnumerant *enumerant = type->first_enumerant;
+                     enumerant != 0;
+                     enumerant = enumerant->next)
+                {
+                    MD_String8 member_name = enumerant->node->string;
+                    fprintf(out, "%.*s_%.*s = %d,\n",
+                            MD_S8VArg(enum_name), MD_S8VArg(member_name), enumerant->value);
+                }
+                fprintf(out, "};\n");
+            }break;
+        }
+    }
+}
+
+void
+generate_function_declarations_from_maps(FILE *out, MapInfo *first_map)
+{
+    for (MapInfo *map = first_map;
+         map != 0;
+         map = map->next)
+    {
+        MD_Node *node = map->node;
+        
+        MD_String8 in_type = map->in->string;
+        MD_String8 out_type = map->out->string;
+        if (MD_S8Match(out_type, MD_S8Lit("$Type"), 0))
+        {
+            out_type = MD_S8Lit("TypeInfo*");
+        }
+        
+        fprintf(out, "%.*s %.*s(%.*s v);\n",
+                MD_S8VArg(out_type), MD_S8VArg(node->string), MD_S8VArg(in_type));
+    }
+}
+
 //~ main //////////////////////////////////////////////////////////////////////
+
+MD_Node*
+get_md_child_value(MD_Node *parent, MD_String8 child_name)
+{
+    MD_Node *child = MD_ChildFromString(parent, child_name, 0);
+    MD_Node *result = child->first_child;
+    return(result);
+}
 
 int
 main(int argc, char **argv)
@@ -162,12 +255,37 @@ main(int argc, char **argv)
             }
             
             // gather map
-            MD_Node *map_tag =  MD_TagFromString(node, MD_S8Lit("map"), 0);
+            MD_Node *map_tag = MD_TagFromString(node, MD_S8Lit("map"), 0);
             
             if (!MD_NodeIsNil(map_tag))
             {
-                MapInfo *map_info = MD_PushArray(arena, MapInfo, 1);
+                // NOTE we could use an expression parser here to make this fancier
+                // and check for the 'In -> Out' semicolon delimited syntax more
+                // carefully, this isn't checking it very rigorously. But there are
+                // no other cases we need to expect so far so being a bit sloppy
+                // buys us a lot of simplicity.
+                MD_Node *in = map_tag->first_child;
+                MD_Node *arrow = in->next;
+                MD_Node *out = arrow->next;
+                
+                if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
+                    MD_NodeIsNil(out))
+                {
+                    // TODO(allen): error map type
+                }
+                
+                int is_complete = MD_NodeHasChild(map_tag, MD_S8Lit("complete"), 0);
+                
+                MD_Node *default_val = get_md_child_value(map_tag, MD_S8Lit("default"));
+                MD_Node *auto_val = get_md_child_value(map_tag, MD_S8Lit("auto"));
+                
+                MapInfo *map_info = MD_PushArrayZero(arena, MapInfo, 1);
                 map_info->node = node;
+                map_info->in = in;
+                map_info->out = out;
+                map_info->is_complete = is_complete;
+                map_info->default_val = default_val;
+                map_info->auto_val = auto_val;
                 
                 MD_QueuePush(first_map, last_map, map_info);
                 MD_MapInsert(arena, &map_map, MD_MapKeyStr(node->string), map_info);
@@ -224,11 +342,18 @@ main(int argc, char **argv)
                 {
                     TypeInfo *type_info = (TypeInfo*)type_info_slot->val;
                     
-                    // TODO(allen): handle the array tag
+                    MD_Node *array_count = MD_NilNode();
+                    MD_Node *array_tag = MD_TagFromString(type_name_node, MD_S8Lit("array"), 0);
+                    if (!MD_NodeIsNil(array_tag))
+                    {
+                        array_count = array_tag->first_child;
+                        // TODO(allen): error if array_count is nil
+                    }
                     
                     TypeMember *member = MD_PushArray(arena, TypeMember, 1);
                     member->node = member_node;
                     member->type = type_info;
+                    member->array_count = array_count;
                     MD_QueuePush(first_member, last_member, member);
                     member_count += 1;
                 }
@@ -313,17 +438,42 @@ main(int argc, char **argv)
     }
     
     // TODO check maps & build case lists
-    // TODO generate type definitions
-    // TODO generate function declarations
-    // TODO generate metadata tables
-    // TODO generate function definitions
+    
+    // generate meta types header
+    {
+        FILE *h = fopen("meta_types.h", "wb");
+        fprintf(h, "#if !defined(META_TYEPS_H)\n");
+        fprintf(h, "#define META_TYEPS_H\n");
+        
+        // generate type definitions
+        generate_type_definitions(h, first_type);
+        
+        // generate function declarations
+        generate_function_declarations_from_maps(h, first_map);
+        
+        fprintf(h, "#endif // META_TYEPS_H\n");
+        fclose(h);
+    }
+    
+    // generate meta types code
+    {
+        // open output file
+        FILE *c = fopen("meta_types.c", "wb");
+        
+        // TODO generate metadata tables
+        // TODO generate function definitions
+        
+        // close output file
+        fclose(c);
+    }
     
     // print state
     for (TypeInfo *type = first_type;
          type != 0;
          type = type->next){
         char *kind_string = "ERROR";
-        switch (type->kind){
+        switch (type->kind)
+        {
             default:break;
             case TypeKind_Basic:  kind_string = "basic"; break;
             case TypeKind_Struct: kind_string = "struct"; break;

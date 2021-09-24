@@ -45,7 +45,6 @@ type_info_from_shape:
   Polygon -> RoundedPolygon,
 }
 
-
 @map(Shape -> U32; default: 0; auto: 64)
 max_slot_from_shape:
 {

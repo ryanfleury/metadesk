@@ -3005,9 +3005,15 @@ MD_TagArgFromString(MD_Node *node, MD_String8 tag_string, MD_MatchFlags tag_str_
 }
 
 MD_FUNCTION MD_b32
-MD_NodeHasTag(MD_Node *node, MD_String8 tag_string, MD_MatchFlags flags)
+MD_NodeHasChild(MD_Node *node, MD_String8 string, MD_MatchFlags flags)
 {
-    return !MD_NodeIsNil(MD_TagFromString(node, tag_string, flags));
+    return !MD_NodeIsNil(MD_ChildFromString(node, string, flags));
+}
+
+MD_FUNCTION MD_b32
+MD_NodeHasTag(MD_Node *node, MD_String8 string, MD_MatchFlags flags)
+{
+    return !MD_NodeIsNil(MD_TagFromString(node, string, flags));
 }
 
 MD_FUNCTION MD_i64
