@@ -228,23 +228,28 @@ main(int argc, char **argv)
                 TypeKind kind = TypeKind_Null;
                 MD_Node   *tag_arg_node = type_tag->first_child;
                 MD_String8 tag_arg_str = tag_arg_node->string;
-                if (MD_S8Match(tag_arg_str, MD_S8Lit("basic"), 0)){
+                if (MD_S8Match(tag_arg_str, MD_S8Lit("basic"), 0))
+                {
                     kind = TypeKind_Basic;
                 }
-                else if (MD_S8Match(tag_arg_str, MD_S8Lit("struct"), 0)){
+                else if (MD_S8Match(tag_arg_str, MD_S8Lit("struct"), 0))
+                {
                     kind = TypeKind_Struct;
                 }
-                else if (MD_S8Match(tag_arg_str, MD_S8Lit("enum"), 0)){
+                else if (MD_S8Match(tag_arg_str, MD_S8Lit("enum"), 0))
+                {
                     kind = TypeKind_Enum;
                 }
                 
-                if (kind == TypeKind_Null){
+                if (kind == TypeKind_Null)
+                {
                     MD_CodeLoc loc = MD_CodeLocFromNode(node);
                     MD_PrintMessageFmt(fstream_errors, loc, MD_MessageKind_Error,
                                        "Unrecognized type kind '%.*s'\n",
                                        MD_S8VArg(tag_arg_str));
                 }
-                else{
+                else
+                {
                     TypeInfo *type_info = MD_PushArrayZero(arena, TypeInfo, 1);
                     type_info->kind = kind;
                     type_info->node = node;
@@ -470,7 +475,8 @@ main(int argc, char **argv)
     // print state
     for (TypeInfo *type = first_type;
          type != 0;
-         type = type->next){
+         type = type->next)
+    {
         char *kind_string = "ERROR";
         switch (type->kind)
         {

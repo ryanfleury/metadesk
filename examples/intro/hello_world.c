@@ -12,7 +12,8 @@ static MD_Arena *arena = 0;
 //~ main //////////////////////////////////////////////////////////////////////
 
 int
-main(int argc, char **argv){
+main(int argc, char **argv)
+{
     // setup the global arena
     arena = MD_ArenaAlloc();
     

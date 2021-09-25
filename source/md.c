@@ -33,7 +33,8 @@
 #endif
 
 MD_FUNCTION MD_String8
-MD_CRT_LoadEntireFile(MD_Arena *arena, MD_String8 filename){
+MD_CRT_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
+{
     MD_ArenaTemp scratch = MD_GetScratch(&arena, 1);
     MD_String8 file_contents = MD_ZERO_STRUCT;
     MD_String8 filename_copy = MD_S8Copy(scratch.arena, filename);
@@ -108,7 +109,8 @@ MD_WIN32_FileIterBegin(MD_FileIter *it, MD_String8 path)
     
     //- fill results
     MD_b32 result = !!state;
-    if (result){
+    if (result)
+    {
         MD_WIN32_FileIter *win32_it = (MD_WIN32_FileIter*)it; 
         win32_it->state = state;
         win32_it->first = 1;
@@ -125,18 +127,22 @@ MD_WIN32_FileIterNext(MD_Arena *arena, MD_FileIter *it)
     
     MD_WIN32_FileIter *win32_it = (MD_WIN32_FileIter*)it; 
     WIN32_FIND_DATAW *find_data = &win32_it->find_data;
-    if (win32_it->first){
+    if (win32_it->first)
+    {
         win32_it->first = 0;
         good = 1;
     }
-    else{
+    else
+    {
         good = FindNextFileW(win32_it->state, find_data);
     }
     
     //- convert to MD_FileInfo
     MD_FileInfo result = {0};
-    if (good){
-        if (find_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY){
+    if (good)
+    {
+        if (find_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
             result.flags |= MD_FileFlag_Directory;
         }
         MD_u16 *filename_base = (MD_u16*)find_data->cFileName;
@@ -176,24 +182,28 @@ MD_WIN32_FileIterEnd(MD_FileIter *it)
 #endif
 
 static void*
-MD_WIN32_Reserve(MD_u64 size){
+MD_WIN32_Reserve(MD_u64 size)
+{
     void *result = VirtualAlloc(0, size, MEM_RESERVE, PAGE_READWRITE);
     return(result);
 }
 
 static MD_b32
-MD_WIN32_Commit(void *ptr, MD_u64 size){
+MD_WIN32_Commit(void *ptr, MD_u64 size)
+{
     MD_b32 result = (VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) != 0);
     return(result);
 }
 
 static void
-MD_WIN32_Decommit(void *ptr, MD_u64 size){
+MD_WIN32_Decommit(void *ptr, MD_u64 size)
+{
     VirtualFree(ptr, size, MEM_DECOMMIT);
 }
 
 static void
-MD_WIN32_Release(void *ptr, MD_u64 size){
+MD_WIN32_Release(void *ptr, MD_u64 size)
+{
     VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
@@ -305,25 +315,29 @@ MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 p
 #endif
 
 static void*
-MD_LINUX_Reserve(MD_u64 size){
+MD_LINUX_Reserve(MD_u64 size)
+{
     void *result = mmap(0, size, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, (off_t)0);
     return(result);
 }
 
 static MD_b32
-MD_LINUX_Commit(void *ptr, MD_u64 size){
+MD_LINUX_Commit(void *ptr, MD_u64 size)
+{
     MD_b32 result = (mprotect(ptr, size, PROT_READ|PROT_WRITE) == 0);
     return(result);
 }
 
 static void
-MD_LINUX_Decommit(void *ptr, MD_u64 size){
+MD_LINUX_Decommit(void *ptr, MD_u64 size)
+{
     mprotect(ptr, size, PROT_NONE);
     madvise(ptr, size, MADV_DONTNEED);
 }
 
 static void
-MD_LINUX_Release(void *ptr, MD_u64 size){
+MD_LINUX_Release(void *ptr, MD_u64 size)
+{
     munmap(ptr, size);
 }
 
@@ -430,7 +444,8 @@ MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size)
     current->pos = new_pos;
     
     // if it's not going to work do the slow path
-    if (new_pos > current->cmt){
+    if (new_pos > current->cmt)
+    {
         result = 0;
         current->pos = pos;
         
@@ -562,26 +577,33 @@ MD_ArenaDefaultSetAutoAlign(MD_ArenaDefault *arena, MD_u64 align)
 MD_THREAD_LOCAL MD_Arena *md_thread_scratch_pool[MD_IMPL_ScratchCount] = {0, 0};
 
 static MD_Arena*
-MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count){
+MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count)
+{
     MD_Arena **scratch_pool = md_thread_scratch_pool;
-    if (scratch_pool[0] == 0){
+    if (scratch_pool[0] == 0)
+    {
         MD_Arena **arena_ptr = scratch_pool;
-        for (MD_u64 i = 0; i < MD_IMPL_ScratchCount; i += 1, arena_ptr += 1){
+        for (MD_u64 i = 0; i < MD_IMPL_ScratchCount; i += 1, arena_ptr += 1)
+        {
             *arena_ptr = MD_ArenaAlloc();
         }
     }
     MD_Arena *result = 0;
     MD_Arena **arena_ptr = scratch_pool;
-    for (MD_u64 i = 0; i < MD_IMPL_ScratchCount; i += 1, arena_ptr += 1){
+    for (MD_u64 i = 0; i < MD_IMPL_ScratchCount; i += 1, arena_ptr += 1)
+    {
         MD_Arena *arena = *arena_ptr;
         MD_Arena **conflict_ptr = conflicts;
-        for (MD_u32 j = 0; j < count; j += 1, conflict_ptr += 1){
-            if (arena == *conflict_ptr){
+        for (MD_u32 j = 0; j < count; j += 1, conflict_ptr += 1)
+        {
+            if (arena == *conflict_ptr)
+            {
                 arena = 0;
                 break;
             }
         }
-        if (arena != 0){
+        if (arena != 0)
+        {
             result = arena;
             break;
         }
@@ -628,23 +650,27 @@ static MD_Node _md_nil_node =
 //~ Arena Functions
 
 MD_FUNCTION MD_Arena*
-MD_ArenaAlloc(void){
+MD_ArenaAlloc(void)
+{
     return(MD_IMPL_ArenaAlloc());
 }
 
 MD_FUNCTION void
-MD_ArenaRelease(MD_Arena *arena){
+MD_ArenaRelease(MD_Arena *arena)
+{
     MD_IMPL_ArenaRelease(arena);
 }
 
 MD_FUNCTION void*
-MD_ArenaPush(MD_Arena *arena, MD_u64 size){
+MD_ArenaPush(MD_Arena *arena, MD_u64 size)
+{
     void *result = MD_IMPL_ArenaPush(arena, size);
     return(result);
 }
 
 MD_FUNCTION void
-MD_ArenaPutBack(MD_Arena *arena, MD_u64 size){
+MD_ArenaPutBack(MD_Arena *arena, MD_u64 size)
+{
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 new_pos = pos - size;
     MD_u64 new_pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, new_pos);
@@ -652,28 +678,33 @@ MD_ArenaPutBack(MD_Arena *arena, MD_u64 size){
 }
 
 MD_FUNCTION void
-MD_ArenaSetAlign(MD_Arena *arena, MD_u64 boundary){
+MD_ArenaSetAlign(MD_Arena *arena, MD_u64 boundary)
+{
     MD_IMPL_ArenaSetAutoAlign(arena, boundary);
 }
 
 MD_FUNCTION void
-MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary){
+MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary)
+{
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 align_m1 = boundary - 1;
     MD_u64 new_pos_aligned = (pos + align_m1)&(~align_m1);
-    if (new_pos_aligned > pos){
+    if (new_pos_aligned > pos)
+    {
         MD_u64 amt = new_pos_aligned - pos;
         MD_MemoryZero(MD_IMPL_ArenaPush(arena, amt), amt);
     }
 }
 
 MD_FUNCTION void
-MD_ArenaClear(MD_Arena *arena){
+MD_ArenaClear(MD_Arena *arena)
+{
     MD_IMPL_ArenaPopTo(arena, MD_IMPL_ArenaHeaderSize);
 }
 
 MD_FUNCTION MD_ArenaTemp
-MD_ArenaBeginTemp(MD_Arena *arena){
+MD_ArenaBeginTemp(MD_Arena *arena)
+{
     MD_ArenaTemp result;
     result.arena = arena;
     result.pos   = MD_IMPL_ArenaGetPos(arena);
@@ -681,17 +712,20 @@ MD_ArenaBeginTemp(MD_Arena *arena){
 }
 
 MD_FUNCTION void
-MD_ArenaEndTemp(MD_ArenaTemp temp){
+MD_ArenaEndTemp(MD_ArenaTemp temp)
+{
     MD_IMPL_ArenaPopTo(temp.arena, temp.pos);
 }
 
 //~ Arena Scratch Pool
 
 MD_FUNCTION MD_ArenaTemp
-MD_GetScratch(MD_Arena **conflicts, MD_u64 count){
+MD_GetScratch(MD_Arena **conflicts, MD_u64 count)
+{
     MD_Arena *arena = MD_IMPL_GetScratch(conflicts, count);
     MD_ArenaTemp result = MD_ZERO_STRUCT;
-    if (arena != 0){
+    if (arena != 0)
+    {
         result = MD_ArenaBeginTemp(arena);
     }
     return(result);
@@ -1018,13 +1052,15 @@ MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
 {
     // setup join parameters
     MD_StringJoin join = MD_ZERO_STRUCT;
-    if (join_ptr != 0){
+    if (join_ptr != 0)
+    {
         MD_MemoryCopy(&join, join_ptr, sizeof(join));
     }
     
     // calculate size & allocate
     MD_u64 sep_count = 0;
-    if (list.node_count > 1){
+    if (list.node_count > 1)
+    {
         sep_count = list.node_count - 1;
     }
     MD_String8 result = MD_ZERO_STRUCT;
@@ -1040,7 +1076,8 @@ MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
     {
         MD_MemoryCopy(ptr, node->string.str, node->string.size);
         ptr += node->string.size;
-        if (node != list.last){
+        if (node != list.last)
+        {
             MD_MemoryCopy(ptr, join.mid.str, join.mid.size);
             ptr += join.mid.size;
         }
@@ -1676,21 +1713,26 @@ MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps)
     MD_u8 buffer[10];
     MD_u8 *opl = buffer + 10;
     MD_u8 *ptr = opl;
-    if (x == 0){
+    if (x == 0)
+    {
         ptr -= 1;
         *ptr = '0';
     }
-    else{
-        for (;;){
+    else
+    {
+        for (;;)
+        {
             MD_u32 val = x%16;
             x /= 16;
             MD_u8 c = (MD_u8)md_int_value_to_char[val];
-            if (caps){
+            if (caps)
+            {
                 c = MD_CharToUpper(c);
             }
             ptr -= 1;
             *ptr = c;
-            if (x == 0){
+            if (x == 0)
+            {
                 break;
             }
         }
@@ -1702,8 +1744,9 @@ MD_CStyleHexStringFromU64(MD_Arena *arena, MD_u64 x, MD_b32 caps)
     
     MD_String8 result = MD_ZERO_STRUCT;
     result.size = (MD_u64)(ptr - buffer);
-    result.str = MD_PushArrayZero(arena, MD_u8, result.size);
+    result.str = MD_PushArray(arena, MD_u8, result.size + 1);
     MD_MemoryCopy(result.str, buffer, result.size);
+    result.str[result.size] =0;
     return(result);
 }
 
@@ -1796,7 +1839,8 @@ MD_HashPtr(void *p)
 }
 
 MD_FUNCTION MD_Map
-MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count){
+MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count)
+{
     MD_Map result = {0};
     result.bucket_count = bucket_count;
     result.buckets = MD_PushArrayZero(arena, MD_MapBucket, bucket_count);
@@ -1804,18 +1848,22 @@ MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count){
 }
 
 MD_FUNCTION MD_Map
-MD_MapMake(MD_Arena *arena){
+MD_MapMake(MD_Arena *arena)
+{
     MD_Map result = MD_MapMakeBucketCount(arena, 4093);
     return(result);
 }
 
 MD_FUNCTION MD_MapKey
-MD_MapKeyStr(MD_String8 string){
+MD_MapKeyStr(MD_String8 string)
+{
     MD_MapKey result = {0};
-    if (string.size != 0){
+    if (string.size != 0)
+    {
         result.hash = MD_HashStr(string);
         result.size = string.size;
-        if (string.size > 0){
+        if (string.size > 0)
+        {
             result.ptr = string.str;
         }
     }
@@ -1823,9 +1871,11 @@ MD_MapKeyStr(MD_String8 string){
 }
 
 MD_FUNCTION MD_MapKey
-MD_MapKeyPtr(void *ptr){
+MD_MapKeyPtr(void *ptr)
+{
     MD_MapKey result = {0};
-    if (ptr != 0){
+    if (ptr != 0)
+    {
         result.hash = MD_HashPtr(ptr);
         result.size = 0;
         result.ptr = ptr;
@@ -1834,9 +1884,11 @@ MD_MapKeyPtr(void *ptr){
 }
 
 MD_FUNCTION MD_MapSlot*
-MD_MapLookup(MD_Map *map, MD_MapKey key){
+MD_MapLookup(MD_Map *map, MD_MapKey key)
+{
     MD_MapSlot *result = 0;
-    if (map->bucket_count > 0){
+    if (map->bucket_count > 0)
+    {
         MD_u64 index = key.hash%map->bucket_count;
         result = MD_MapScan(map->buckets[index].first, key);
     }
@@ -1844,24 +1896,32 @@ MD_MapLookup(MD_Map *map, MD_MapKey key){
 }
 
 MD_FUNCTION MD_MapSlot*
-MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key){
+MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key)
+{
     MD_MapSlot *result = 0;
-    if (first_slot != 0){
+    if (first_slot != 0)
+    {
         MD_b32 ptr_kind = (key.size == 0);
         MD_String8 key_string = MD_S8((MD_u8*)key.ptr, key.size);
         for (MD_MapSlot *slot = first_slot;
              slot != 0;
-             slot = slot->next){
-            if (slot->key.hash == key.hash){
-                if (ptr_kind){
-                    if (slot->key.size == 0 && slot->key.ptr == key.ptr){
+             slot = slot->next)
+        {
+            if (slot->key.hash == key.hash)
+            {
+                if (ptr_kind)
+                {
+                    if (slot->key.size == 0 && slot->key.ptr == key.ptr)
+                    {
                         result = slot;
                         break;
                     }
                 }
-                else{
+                else
+                {
                     MD_String8 slot_string = MD_S8((MD_u8*)slot->key.ptr, slot->key.size);
-                    if (MD_S8Match(slot_string, key_string, 0)){
+                    if (MD_S8Match(slot_string, key_string, 0))
+                    {
                         result = slot;
                         break;
                     }
@@ -1873,9 +1933,11 @@ MD_MapScan(MD_MapSlot *first_slot, MD_MapKey key){
 }
 
 MD_FUNCTION MD_MapSlot*
-MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
+MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val)
+{
     MD_MapSlot *result = 0;
-    if (map->bucket_count > 0){
+    if (map->bucket_count > 0)
+    {
         MD_u64 index = key.hash%map->bucket_count;
         MD_MapSlot *slot = MD_PushArrayZero(arena, MD_MapSlot, 1);
         MD_MapBucket *bucket = &map->buckets[index];
@@ -1888,12 +1950,15 @@ MD_MapInsert(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
 }
 
 MD_FUNCTION MD_MapSlot*
-MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val){
+MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val)
+{
     MD_MapSlot *result = MD_MapLookup(map, key);
-    if (result != 0){
+    if (result != 0)
+    {
         result->val = val;
     }
-    else{
+    else
+    {
         result = MD_MapInsert(arena, map, key, val);
     }
     return(result);
@@ -2005,7 +2070,8 @@ MD_TokenFromString(MD_String8 string)
                     for (;;)
                     {
                         // fail condition
-                        if (at >= one_past_last){
+                        if (at >= one_past_last)
+                        {
                             break;
                         }
                         
@@ -2014,7 +2080,8 @@ MD_TokenFromString(MD_String8 string)
                             consecutive_d += 1;
                             at += 1;
                             // close condition
-                            if (consecutive_d == 3){
+                            if (consecutive_d == 3)
+                            {
                                 chop_n = 3;
                                 token.kind = MD_TokenKind_StringLiteral;
                                 break;
@@ -2048,7 +2115,8 @@ MD_TokenFromString(MD_String8 string)
                     for (;at < one_past_last;)
                     {
                         // close condition
-                        if (*at == d){
+                        if (*at == d)
+                        {
                             at += 1;
                             chop_n = 1;
                             token.kind = MD_TokenKind_StringLiteral;
@@ -2056,18 +2124,22 @@ MD_TokenFromString(MD_String8 string)
                         }
                         
                         // fail condition
-                        if (*at == '\n'){
+                        if (*at == '\n')
+                        {
                             break;
                         }
                         
                         // escaping rule
-                        if (at[0] == '\\'){
+                        if (at[0] == '\\')
+                        {
                             at += 1;
-                            if (at < one_past_last && (at[0] == d || at[0] == '\\')){
+                            if (at < one_past_last && (at[0] == d || at[0] == '\\'))
+                            {
                                 at += 1;
                             }
                         }
-                        else{
+                        else
+                        {
                             at += 1;
                         }
                     }
@@ -2106,21 +2178,25 @@ MD_TokenFromString(MD_String8 string)
                     token.kind = MD_TokenKind_Numeric;
                     at += 1;
                     
-                    for (; at < one_past_last;){
+                    for (; at < one_past_last;)
+                    {
                         MD_b32 good = 0;
-                        if (*at == 'e' || *at == 'E'){
+                        if (*at == 'e' || *at == 'E')
+                        {
                             good = 1;
                             at += 1;
-                            if (at < one_past_last &&
-                                (*at == '+' || *at == '-')){
+                            if (at < one_past_last && (*at == '+' || *at == '-'))
+                            {
                                 at += 1;
                             }
                         }
-                        else if (MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.' || *at == '_'){
+                        else if (MD_CharIsAlpha(*at) || MD_CharIsDigit(*at) || *at == '.' || *at == '_')
+                        {
                             good = 1;
                             at += 1;
                         }
-                        if (!good){
+                        if (!good)
+                        {
                             break;
                         }
                     }
@@ -2444,7 +2520,8 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
             {
                 off += MD_LexAdvanceFromSkips(MD_S8Skip(string, off), MD_TokenGroup_Irregular);
                 MD_Token trailing_separator = MD_TokenFromString(MD_S8Skip(string, off));
-                if (trailing_separator.kind == MD_TokenKind_Reserved){
+                if (trailing_separator.kind == MD_TokenKind_Reserved)
+                {
                     MD_u8 c = trailing_separator.string.str[0];
                     if(c == ',')
                     {
@@ -2663,7 +2740,8 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
         {
             off += bad_token.raw_string.size;
             
-            switch (bad_token.kind){
+            switch (bad_token.kind)
+            {
                 case MD_TokenKind_BadCharacter:
                 {
                     MD_String8List bytes = {0};
@@ -3064,9 +3142,11 @@ MD_NextCommentFromNode(MD_Node *node)
 //~ Error/Warning Helpers
 
 MD_FUNCTION MD_String8
-MD_StringFromMessageKind(MD_MessageKind kind){
+MD_StringFromMessageKind(MD_MessageKind kind)
+{
     MD_String8 result = MD_ZERO_STRUCT;
-    switch (kind){
+    switch (kind)
+    {
         default: break;
         case MD_MessageKind_Note:       result = MD_S8Lit("note");        break;
         case MD_MessageKind_Warning:    result = MD_S8Lit("warning");     break;
@@ -3077,7 +3157,8 @@ MD_StringFromMessageKind(MD_MessageKind kind){
 }
 
 MD_FUNCTION MD_String8
-MD_FormatMessage(MD_Arena *arena, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 string){
+MD_FormatMessage(MD_Arena *arena, MD_CodeLoc loc, MD_MessageKind kind, MD_String8 string)
+{
     MD_String8 kind_string = MD_StringFromMessageKind(kind);
     MD_String8 result = MD_S8Fmt(arena, "" MD_FmtCodeLoc " %.*s: %.*s\n",
                                  MD_CodeLocVArg(loc), MD_S8VArg(kind_string), MD_S8VArg(string));
@@ -3087,7 +3168,8 @@ MD_FormatMessage(MD_Arena *arena, MD_CodeLoc loc, MD_MessageKind kind, MD_String
 #if !MD_DISABLE_PRINT_HELPERS
 
 MD_FUNCTION void
-MD_PrintMessage(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, MD_String8 string){
+MD_PrintMessage(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, MD_String8 string)
+{
     MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     MD_String8 message = MD_FormatMessage(scratch.arena, code_loc, kind, string);
     fwrite(message.str, message.size, 1, file);
@@ -3095,7 +3177,8 @@ MD_PrintMessage(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, MD_String8
 }
 
 MD_FUNCTION void
-MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, char *fmt, ...){
+MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, char *fmt, ...)
+{
     MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     va_list args;
     va_start(args, fmt);
@@ -3206,7 +3289,8 @@ _MD_ExprOperatorMatch(MD_ExprOperatorTable *table, MD_ExprOperatorKind kind, MD_
             MD_ExprOperatorList *op_list = table->table+cur_kind;
             for(MD_ExprOperatorNode *op_node = op_list->first; !result && op_node; op_node = op_node->next)
             {
-                if(MD_S8Match(op_node->op.md_node->string, s, 0)){
+                if(MD_S8Match(op_node->op.md_node->string, s, 0))
+                {
                     result = &op_node->op;
                 }
             }
@@ -3427,7 +3511,8 @@ _MD_ExprParse_Atom(MD_Arena *arena, _MD_ExprParseCtx *ctx)
         MD_MessageListPush(&result.errors, error);
     }
     else if(node->flags & (MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight | MD_NodeFlag_HasBracketLeft | 
-                           MD_NodeFlag_HasBracketRight | MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight)){
+                           MD_NodeFlag_HasBracketRight | MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight))
+    {
         MD_String8 error_str = MD_S8Fmt(arena, "Unexpected set.", MD_S8VArg(node->string));
         MD_u64 error_offset = node->offset - ctx->original_first->offset;
         MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
@@ -3904,7 +3989,8 @@ MD_S8ListPush(arena, out, indent_string);\
 
 #if !MD_DISABLE_PRINT_HELPERS
 MD_FUNCTION void
-MD_PrintDebugDumpFromNode(FILE *file, MD_Node *node, MD_GenerateFlags flags){
+MD_PrintDebugDumpFromNode(FILE *file, MD_Node *node, MD_GenerateFlags flags)
+{
     MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     MD_String8List list = {0};
     MD_DebugDumpFromNode(scratch.arena, &list, node,
