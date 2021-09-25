@@ -597,9 +597,11 @@ MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count){
 
 #define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
-#define STB_SPRINTF_IMPLEMENTATION
-#define STB_SPRINTF_DECORATE(name) md_stbsp_##name
+#if !defined(MD_NO_STB_SPRINTF)
+#define MD_STB_SPRINTF_IMPLEMENTATION
+#define MD_STB_SPRINTF_DECORATE(name) md_stbsp_##name
 #include "md_stb_sprintf.h"
+#endif
 
 
 //~ Nil Node Definition
