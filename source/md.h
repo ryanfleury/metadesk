@@ -43,6 +43,9 @@
 **  "scratch constants" ** OPTIONAL (required for default scratch)
 **   #define MD_IMPL_ScratchCount       MD_u64 / default 2
 **
+**  "sprintf" ** OPTIONAL (default implementation available)
+**   #define MD_IMPL_Vsnprintf          (char * buf, int count, char const * fmt, va_list va) -> int
+**
 ** Default Implementation Controls
 **  These controls default to '1' i.e. 'enabled'
 **   #define MD_DEFAULT_MEMSET    -> construct "memset" from CRT
@@ -50,6 +53,7 @@
 **   #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS headers
 **   #define MD_DEFAULT_ARENA     -> construct "arena" from "low level memory"
 **   #define MD_DEFAULT_SCRATCH   -> construct "scratch" from "arena"
+**   #define MD_DEFAULT_SPRINTF   -> construct "vsnprintf" from internal implementaion
 **
 */
 
@@ -71,6 +75,9 @@
 #endif
 #if !defined(MD_DEFAULT_SCRATCH)
 # define MD_DEFAULT_SCRATCH 1
+#endif
+#if !defined(MD_DEFAULT_SPRINTF)
+# define MD_DEFAULT_SPRINTF 1
 #endif
 
 #if !defined(MD_ENABLE_PRINT_HELPERS)
@@ -384,8 +391,9 @@
 #define MD_MemoryCopy(d,s,z)   (MD_IMPL_Memmove(d,s,z))
 
 //~ sprintf
-#if !defined(MD_NO_STB_SPRINTF)
+#if MD_DEFAULT_SPRINTF
 #define STB_SPRINTF_DECORATE(name) md_stbsp_##name
+#define MD_IMPL_Vsnprintf md_stbsp_vsnprintf
 #include "md_stb_sprintf.h"
 #endif
 

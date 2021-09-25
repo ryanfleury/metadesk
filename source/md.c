@@ -597,9 +597,9 @@ MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count){
 
 #define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
-#if !defined(MD_NO_STB_SPRINTF)
-#define MD_STB_SPRINTF_IMPLEMENTATION
-#define MD_STB_SPRINTF_DECORATE(name) md_stbsp_##name
+#if MD_DEFAULT_SPRINTF
+#define STB_SPRINTF_IMPLEMENTATION
+#define STB_SPRINTF_DECORATE(name) md_stbsp_##name
 #include "md_stb_sprintf.h"
 #endif
 
@@ -908,11 +908,11 @@ MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
     MD_String8 result = MD_ZERO_STRUCT;
     va_list args2;
     va_copy(args2, args);
-    MD_u64 needed_bytes = md_stbsp_vsnprintf(0, 0, fmt, args)+1;
+    MD_u64 needed_bytes = MD_IMPL_Vsnprintf(0, 0, fmt, args)+1;
     result.str = MD_PushArray(arena, MD_u8, needed_bytes);
     result.size = needed_bytes - 1;
     result.str[needed_bytes-1] = 0;
-    md_stbsp_vsnprintf((char*)result.str, needed_bytes, fmt, args2);
+    MD_IMPL_Vsnprintf((char*)result.str, needed_bytes, fmt, args2);
     return result;
 }
 
