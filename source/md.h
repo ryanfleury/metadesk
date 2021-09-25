@@ -384,8 +384,10 @@
 #define MD_MemoryCopy(d,s,z)   (MD_IMPL_Memmove(d,s,z))
 
 //~ sprintf
+#if !defined(MD_NO_STB_SPRINTF)
 #define STB_SPRINTF_DECORATE(name) md_stbsp_##name
 #include "md_stb_sprintf.h"
+#endif
 
 //~/////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////// Types /////////////////////////////////////
