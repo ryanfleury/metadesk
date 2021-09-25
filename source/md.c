@@ -364,7 +364,6 @@ MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_si
 #define MD_IMPL_ArenaAlloc     MD_ArenaDefaultAlloc
 #define MD_IMPL_ArenaRelease   MD_ArenaDefaultRelease
 #define MD_IMPL_ArenaGetPos    MD_ArenaDefaultGetPos
-#define MD_IMPL_ArenaGetCap    MD_ArenaDefaultGetCap
 #define MD_IMPL_ArenaPush      MD_ArenaDefaultPush
 #define MD_IMPL_ArenaPopTo     MD_ArenaDefaultPopTo
 #define MD_IMPL_ArenaSetAutoAlign MD_ArenaDefaultSetAutoAlign
@@ -416,12 +415,6 @@ MD_ArenaDefaultGetPos(MD_ArenaDefault *arena)
     MD_ArenaDefault *current = arena->current;
     MD_u64 result = current->base_pos + current->pos;
     return(result);
-}
-
-static MD_u64
-MD_ArenaDefaultGetCap(MD_ArenaDefault *arena)
-{
-    return arena->cap;
 }
 
 static void*
@@ -538,9 +531,6 @@ MD_ArenaDefaultSetAutoAlign(MD_ArenaDefault *arena, MD_u64 align)
 #endif
 #if !defined(MD_IMPL_ArenaGetPos)
 # error Missing implementation for MD_IMPL_ArenaGetPos
-#endif
-#if !defined(MD_IMPL_ArenaGetCap)
-# error Missing implementation for MD_IMPL_ArenaGetCap
 #endif
 #if !defined(MD_IMPL_ArenaPush)
 # error Missing implementation for MD_IMPL_ArenaPush
@@ -671,9 +661,8 @@ MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary){
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 align_m1 = boundary - 1;
     MD_u64 new_pos_aligned = (pos + align_m1)&(~align_m1);
-    MD_u64 new_pos_clamped = MD_ClampTop(new_pos_aligned, MD_IMPL_ArenaGetCap(arena));
-    if (new_pos_clamped > pos){
-        MD_u64 amt = new_pos_clamped - pos;
+    if (new_pos_aligned > pos){
+        MD_u64 amt = new_pos_aligned - pos;
         MD_MemoryZero(MD_IMPL_ArenaPush(arena, amt), amt);
     }
 }
