@@ -531,12 +531,10 @@ gen_equip_map_cases(void)
             
             MD_Node *map_root_node = map->node;
             
-            for (MD_Node *case_node = map_root_node->first_child, *next = 0;
+            for (MD_Node *case_node = map_root_node->first_child;
                  !MD_NodeIsNil(case_node);
-                 case_node = next)
+                 case_node = MD_FirstNodeWithFlags(case_node->next, MD_NodeFlag_IsAfterComma))
             {
-                MD_Node *next = MD_FirstNodeWithFlags(case_node, MD_NodeFlag_IsAfterComma);
-                
                 // extract in & out
                 MD_Node *in = case_node;
                 MD_Node *arrow = in->next;
