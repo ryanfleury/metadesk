@@ -733,8 +733,7 @@ gen_function_declarations_from_maps(FILE *out)
     {
         if (map->types_are_good)
         {
-            MD_Node *node = map->node;
-            
+            // TODO deduplicate
             MD_String8 in_type = map->in->node->string;
             MD_String8 out_type = {0};
             if (map->out_is_type_info_ptr)
@@ -747,7 +746,7 @@ gen_function_declarations_from_maps(FILE *out)
             }
             
             fprintf(out, "%.*s %.*s(%.*s v);\n",
-                    MD_S8VArg(out_type), MD_S8VArg(node->string), MD_S8VArg(in_type));
+                    MD_S8VArg(out_type), MD_S8VArg(map->node->string), MD_S8VArg(in_type));
         }
     }
     
@@ -903,6 +902,68 @@ gen_type_info_definitions_from_types(FILE *out)
     MD_ReleaseScratch(scratch);
 }
 
+void
+gen_function_definitions_from_maps(FILE *out)
+{
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+    
+    MD_PrintGenNoteCComment(out);
+    
+    for (GEN_MapInfo *map = first_map;
+         map != 0;
+         map = map->next)
+    {
+        if (map->types_are_good)
+        {
+            // TODO deduplicate
+            MD_String8 in_type = map->in->node->string;
+            MD_String8 out_type = {0};
+            if (map->out_is_type_info_ptr)
+            {
+                out_type = MD_S8Lit("TypeInfo*");
+            }
+            else
+            {
+                out_type = map->out->node->string;
+            }
+            
+            fprintf(out, "%.*s\n", MD_S8VArg(out_type));
+            fprintf(out, "%.*s(%.*s v)\n", MD_S8VArg(map->node->string), MD_S8VArg(in_type));
+            fprintf(out, "{\n");
+            // TODO implement default
+            // TODO implement auto
+            fprintf(out, "%.*s result;\n", MD_S8VArg(out_type));
+            fprintf(out, "memset(&result, 0, sizeof(result));\n");
+            fprintf(out, "switch (v)\n");
+            fprintf(out, "{\n");
+            for (GEN_MapCase *map_case = map->first_case;
+                 map_case != 0;
+                 map_case = map_case->next)
+            {
+                MD_String8 in_expr = map_case->in_enumerant->node->string;
+                MD_String8 out_expr = map_case->out->string;
+                MD_String8 val_expr = out_expr;
+                if (map->out_is_type_info_ptr)
+                {
+                    val_expr = MD_S8Fmt(scratch.arena, "&%.*s_type_info", MD_S8VArg(out_expr));
+                }
+                
+                fprintf(out, "case %.*s_%.*s:\n", MD_S8VArg(in_type), MD_S8VArg(in_expr));
+                fprintf(out, "{\n");
+                fprintf(out, "result = %.*s;\n", MD_S8VArg(val_expr));
+                fprintf(out, "}break;\n");
+            }
+            fprintf(out, "}\n");
+            fprintf(out, "return(result);\n");
+            fprintf(out, "}\n");
+        }
+    }
+    
+    fprintf(out, "\n");
+    
+    MD_ReleaseScratch(scratch);
+}
+
 
 //~ main //////////////////////////////////////////////////////////////////////
 
@@ -957,6 +1018,7 @@ main(int argc, char **argv)
     gen_equip_map_in_out_types();
     gen_equip_map_cases();
     gen_check_duplicate_cases();
+    // TODO check 'complete'
     
     // generate header file
     {
@@ -978,8 +1040,7 @@ main(int argc, char **argv)
         gen_struct_member_tables_from_types(c);
         gen_enum_member_tables_from_types(c);
         gen_type_info_definitions_from_types(c);
-        
-        // TODO generate function definitions
+        gen_function_definitions_from_maps(c);
         
         // close output file
         fclose(c);
@@ -1029,5 +1090,15 @@ main(int argc, char **argv)
     {
         MD_Node *node = map->node;
         printf("%.*s: map\n", MD_S8VArg(node->string));
+        
+        // print case list
+        for (GEN_MapCase *map_case = map->first_case;
+             map_case != 0;
+             map_case = map_case->next)
+        {
+            printf("  %.*s -> %.*s\n",
+                   MD_S8VArg(map_case->in_enumerant->node->string),
+                   MD_S8VArg(map_case->out->string));
+        }
     }
 }

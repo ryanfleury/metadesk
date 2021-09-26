@@ -8,6 +8,7 @@
 
 //~ setup base types //////////////////////////////////////////////////////////
 #include <stdint.h>
+#include <string.h>
 typedef uint32_t U32;
 typedef float F32;
 typedef struct V2F32 V2F32;

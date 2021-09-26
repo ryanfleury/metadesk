@@ -113,6 +113,7 @@ void gen_type_info_declarations_from_types(FILE *out);
 void gen_struct_member_tables_from_types(FILE *out);
 void gen_enum_member_tables_from_types(FILE *out);
 void gen_type_info_definitions_from_types(FILE *out);
+void gen_function_definitions_from_maps(FILE *out);
 
 
 #endif //TYPE_METADATA_H
