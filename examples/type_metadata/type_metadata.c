@@ -499,9 +499,10 @@ gen_equip_map_cases(void)
          map != 0;
          map = map->next)
     {
-        
         if (map->types_are_good)
         {
+            
+            // get in type
             GEN_TypeInfo *in_type = map->in;
             
             // build the list
@@ -562,6 +563,42 @@ gen_equip_map_cases(void)
                 map->first_case = first_case;
                 map->last_case = last_case;
                 map->case_count = case_count;
+            }
+        }
+    }
+}
+
+void
+gen_check_duplicate_cases(void)
+{
+    for (GEN_MapInfo *map = first_map;
+         map != 0;
+         map = map->next)
+    {
+        
+        for (GEN_MapCase *node = map->first_case;
+             node != 0;
+             node = node->next)
+        {
+            MD_String8 name = node->in->string;
+            for (GEN_MapCase *check = map->first_case;
+                 check != 0;
+                 check = check->next)
+            {
+                if (node == check)
+                {
+                    break;
+                }
+                if (MD_S8Match(name, check->in->string, 0))
+                {
+                    MD_CodeLoc my_loc = MD_CodeLocFromNode(node->in);
+                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in);
+                    MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
+                                       "'%.*s' is already defined", MD_S8VArg(name));
+                    MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
+                                       "see previous definition of '%.*s'", MD_S8VArg(name));
+                    break;
+                }
             }
         }
     }
@@ -887,6 +924,7 @@ main(int argc, char **argv)
     gen_equip_enum_members();
     gen_equip_map_in_out_types();
     gen_equip_map_cases();
+    gen_check_duplicate_cases();
     
     // generate header file
     {

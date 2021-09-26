@@ -18,9 +18,11 @@ examps=examples
 ###### Script #################################################################
 echo ~~~ Type Info Example ~~~
 $bin_path/bld_core.sh show_ctx
+echo
 
 echo ~~~ Building Metaprogram ~~~
 $bin_path/bld_core.sh unit type_metadata $examps/type_metadata/type_metadata.c
+echo
 
 echo ~~~ Running Metaprogram ~~~
 cd $examps/type_metadata/generated
@@ -33,7 +35,6 @@ $bin_path/bld_core.sh unit type_info $examps/type_metadata/type_info_final_progr
 else
 echo !!! Skipping Program !!!
 fi
-
 echo
 
 ###### Restore Path ###########################################################
