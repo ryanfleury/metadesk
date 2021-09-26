@@ -63,6 +63,24 @@ gen_type_resolve_error(MD_Node *reference)
                        "could not resolve type name '%.*s'", MD_S8VArg(reference->string));
 }
 
+GEN_TypeEnumerant*
+gen_enumerant_from_name(GEN_TypeInfo *enum_type, MD_String8 name)
+{
+    GEN_TypeEnumerant *result = 0;
+    for (GEN_TypeEnumerant *enumerant = enum_type->first_enumerant;
+         enumerant != 0;
+         enumerant = enumerant->next)
+    {
+        if (MD_S8Match(name, enumerant->node->string, 0))
+        {
+            result = enumerant;
+            break;
+        }
+    }
+    return(result);
+}
+
+
 //~ analyzers /////////////////////////////////////////////////////////////////
 
 void
@@ -533,8 +551,9 @@ gen_equip_map_cases(void)
                     goto skip_case;
                 }
                 
-                // check that in is a value of in_type
-                if (!MD_NodeHasChild(in_type->node, in->string, 0))
+                // get enumerant from in_type
+                GEN_TypeEnumerant *in_enumerant = gen_enumerant_from_name(in_type, in->string);
+                if (in_enumerant == 0)
                 {
                     MD_CodeLoc loc = MD_CodeLocFromNode(in);
                     MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
@@ -548,7 +567,7 @@ gen_equip_map_cases(void)
                 if (got_list)
                 {
                     GEN_MapCase *map_case = MD_PushArray(arena, GEN_MapCase, 1);
-                    map_case->in = in;
+                    map_case->in_enumerant = in_enumerant;
                     map_case->out = out;
                     MD_QueuePush(first_case, last_case, map_case);
                     case_count += 1;
@@ -580,7 +599,8 @@ gen_check_duplicate_cases(void)
              node != 0;
              node = node->next)
         {
-            MD_String8 name = node->in->string;
+            GEN_TypeEnumerant *enumerant = node->in_enumerant;
+            MD_String8 name = enumerant->node->string;
             for (GEN_MapCase *check = map->first_case;
                  check != 0;
                  check = check->next)
@@ -589,14 +609,26 @@ gen_check_duplicate_cases(void)
                 {
                     break;
                 }
-                if (MD_S8Match(name, check->in->string, 0))
+                if (enumerant == check->in_enumerant)
                 {
-                    MD_CodeLoc my_loc = MD_CodeLocFromNode(node->in);
-                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in);
+                    MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
+                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
                     MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
                                        "'%.*s' is already defined", MD_S8VArg(name));
                     MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
                                        "see previous definition of '%.*s'", MD_S8VArg(name));
+                    break;
+                }
+                if (enumerant->value == check->in_enumerant->value)
+                {
+                    MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
+                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
+                    MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
+                                       "'%.*s' has value %d which is already defined",
+                                       MD_S8VArg(name), enumerant->value);
+                    MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
+                                       "see previous definition '%.*s'",
+                                       MD_S8VArg(check->in_enumerant->node->string));
                     break;
                 }
             }

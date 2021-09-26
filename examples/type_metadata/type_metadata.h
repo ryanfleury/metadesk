@@ -81,16 +81,19 @@ typedef struct GEN_MapCase GEN_MapCase;
 struct GEN_MapCase
 {
     GEN_MapCase *next;
-    MD_Node *in;
+    GEN_TypeEnumerant *in_enumerant;
     MD_Node *out;
 };
 
 
 //~ helpers ///////////////////////////////////////////////////////////////////
 MD_Node* gen_get_child_value(MD_Node *parent, MD_String8 child_name);
+
 GEN_TypeInfo* gen_resolve_type_info_from_string(MD_String8 name);
 GEN_TypeInfo* gen_resolve_type_info_from_referencer(MD_Node *reference);
 void          gen_type_resolve_error(MD_Node *reference);
+
+GEN_TypeEnumerant* gen_enumerant_from_name(GEN_TypeInfo *enum_type, MD_String8 name);
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 void gen_gather_types_and_maps(MD_Node *list);
