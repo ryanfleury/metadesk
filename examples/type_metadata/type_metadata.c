@@ -88,8 +88,10 @@ MD_Map map_map = {0};
 //~ feature generators ////////////////////////////////////////////////////////
 
 void
-generate_type_definitions(FILE *out, TypeInfo *first_type)
+generate_type_definitions_from_types(FILE *out, TypeInfo *first_type)
 {
+    MD_PrintGenNoteCComment(out);
+    
     for (TypeInfo *type = first_type;
          type != 0;
          type = type->next)
@@ -140,11 +142,15 @@ generate_type_definitions(FILE *out, TypeInfo *first_type)
             }break;
         }
     }
+    
+    fprintf(out, "\n");
 }
 
 void
 generate_function_declarations_from_maps(FILE *out, MapInfo *first_map)
 {
+    MD_PrintGenNoteCComment(out);
+    
     for (MapInfo *map = first_map;
          map != 0;
          map = map->next)
@@ -161,7 +167,84 @@ generate_function_declarations_from_maps(FILE *out, MapInfo *first_map)
         fprintf(out, "%.*s %.*s(%.*s v);\n",
                 MD_S8VArg(out_type), MD_S8VArg(node->string), MD_S8VArg(in_type));
     }
+    
+    fprintf(out, "\n");
 }
+
+void
+generate_type_info_declarations_from_types(FILE *out, TypeInfo *first_type)
+{
+    MD_PrintGenNoteCComment(out);
+    
+    for (TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        MD_String8 name = type->node->string;
+        fprintf(out, "extern TypeInfo %.*s_type_info;\n", MD_S8VArg(name));
+    }
+    
+    fprintf(out, "\n");
+}
+
+void
+generate_struct_member_tables_from_types(FILE *out, TypeInfo *first_type)
+{
+    MD_PrintGenNoteCComment(out);
+    
+    for (TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        if (type->kind == TypeKind_Struct)
+        {
+            MD_String8 type_name = type->node->string;
+            int member_count = type->member_count;
+            
+            fprintf(out, "TypeInfoMember %.*s_members[%d] = {\n", MD_S8VArg(type_name), member_count);
+            for (TypeMember *member = type->first_member;
+                 member != 0;
+                 member = member->next)
+            {
+                MD_String8 member_name = member->node->string;
+                MD_String8 member_type_name = member->type->node->string;
+                
+                int array_count_member_index = -1;
+                if (!MD_NodeIsNil(member->array_count))
+                {
+                    array_count_member_index = MD_IndexFromNode(member->array_count);
+                }
+                
+                fprintf(out, "{\"%.*s\", %d, %d, &%.*s_type_info},\n",
+                        MD_S8VArg(member_name), (int)member_name.size,
+                        array_count_member_index, MD_S8VArg(member_type_name));
+            }
+            
+            fprintf(out, "};\n");
+        }
+    }
+    
+    fprintf(out, "\n");
+}
+
+void
+generate_enum_member_tables_from_types(FILE *out, TypeInfo *first_type)
+{
+    MD_PrintGenNoteCComment(out);
+    
+    for (TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        if (type->kind == TypeKind_Enum)
+        {
+            
+        }
+    }
+    
+    fprintf(out, "\n");
+}
+
 
 //~ main //////////////////////////////////////////////////////////////////////
 
@@ -187,7 +270,7 @@ main(int argc, char **argv)
     arena = MD_ArenaAlloc();
     
     // output stream routing
-    FILE *fstream_errors = stderr;
+    FILE *error_file = stderr;
     
     // parse all files passed to the command line
     MD_Node *list = MD_MakeList(arena);
@@ -203,7 +286,7 @@ main(int argc, char **argv)
              message = message->next)
         {
             MD_CodeLoc code_loc = MD_CodeLocFromNode(message->node);
-            MD_PrintMessage(fstream_errors, code_loc, message->kind, message->string);
+            MD_PrintMessage(error_file, code_loc, message->kind, message->string);
         }
         
         // save to parse results list
@@ -244,7 +327,7 @@ main(int argc, char **argv)
                 if (kind == TypeKind_Null)
                 {
                     MD_CodeLoc loc = MD_CodeLocFromNode(node);
-                    MD_PrintMessageFmt(fstream_errors, loc, MD_MessageKind_Error,
+                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
                                        "Unrecognized type kind '%.*s'\n",
                                        MD_S8VArg(tag_arg_str));
                 }
@@ -272,18 +355,31 @@ main(int argc, char **argv)
                 MD_Node *in = map_tag->first_child;
                 MD_Node *arrow = in->next;
                 MD_Node *out = arrow->next;
-                
-                if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
-                    MD_NodeIsNil(out))
                 {
-                    // TODO: error map type
+                    MD_Node *error_at = 0;
+                    if (MD_NodeIsNil(in))
+                    {
+                        error_at = map_tag;
+                    }
+                    else if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
+                             MD_NodeIsNil(out))
+                    {
+                        error_at = in;
+                    }
+                    if (error_at != 0)
+                    {
+                        MD_CodeLoc loc = MD_CodeLocFromNode(error_at);
+                        MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                        MD_S8Lit("Map's type should be specified like: `In -> Out`"));
+                    }
                 }
                 
+                // check for named children in the map tag
                 int is_complete = MD_NodeHasChild(map_tag, MD_S8Lit("complete"), 0);
-                
                 MD_Node *default_val = get_md_child_value(map_tag, MD_S8Lit("default"));
                 MD_Node *auto_val = get_md_child_value(map_tag, MD_S8Lit("auto"));
                 
+                // save a new map
                 MapInfo *map_info = MD_PushArrayZero(arena, MapInfo, 1);
                 map_info->node = node;
                 map_info->in = in;
@@ -322,7 +418,7 @@ main(int argc, char **argv)
                 if (MD_NodeIsNil(type_name_node))
                 {
                     MD_CodeLoc loc = MD_CodeLocFromNode(member_node);
-                    MD_PrintMessage(fstream_errors, loc, MD_MessageKind_Error,
+                    MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
                                     MD_S8Lit("Missing type name for member"));
                     got_list = 0;
                     goto skip_member;
@@ -336,7 +432,7 @@ main(int argc, char **argv)
                 if (type_info_slot == 0)
                 {
                     MD_CodeLoc loc = MD_CodeLocFromNode(type_name_node);
-                    MD_PrintMessageFmt(fstream_errors, loc, MD_MessageKind_Error,
+                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
                                        "Could not resolve type name '%.*s'", MD_S8VArg(type_name));
                     got_list = 0;
                     goto skip_member;
@@ -351,10 +447,23 @@ main(int argc, char **argv)
                     MD_Node *array_tag = MD_TagFromString(type_name_node, MD_S8Lit("array"), 0);
                     if (!MD_NodeIsNil(array_tag))
                     {
-                        array_count = array_tag->first_child;
-                        if (MD_NodeIsNil(array_count))
+                        MD_Node *array_count_referencer = array_tag->first_child;
+                        if (array_count_referencer->string.size == 0)
                         {
-                            // TODO: error array count
+                            MD_CodeLoc loc = MD_CodeLocFromNode(array_tag);
+                            MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                            MD_S8Lit("array tags must specify a parameter for their count"));
+                        }
+                        else
+                        {
+                            array_count = MD_ChildFromString(type_root_node, array_count_referencer->string, 0);
+                            if (MD_NodeIsNil(array_count))
+                            {
+                                MD_CodeLoc loc = MD_CodeLocFromNode(array_count_referencer);
+                                MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                                   "'%.*s' is not a member of %.*s",
+                                                   MD_S8VArg(array_count_referencer->string), MD_S8VArg(type_name));
+                            }
                         }
                     }
                     
@@ -450,16 +559,19 @@ main(int argc, char **argv)
     // generate meta types header
     {
         FILE *h = fopen("meta_types.h", "wb");
-        fprintf(h, "#if !defined(META_TYEPS_H)\n");
-        fprintf(h, "#define META_TYEPS_H\n");
+        fprintf(h, "#if !defined(META_TYPES_H)\n");
+        fprintf(h, "#define META_TYPES_H\n");
         
         // generate type definitions
-        generate_type_definitions(h, first_type);
+        generate_type_definitions_from_types(h, first_type);
         
         // generate function declarations
         generate_function_declarations_from_maps(h, first_map);
         
-        fprintf(h, "#endif // META_TYEPS_H\n");
+        // generate metadata declarations
+        generate_type_info_declarations_from_types(h, first_type);
+        
+        fprintf(h, "#endif // META_TYPES_H\n");
         fclose(h);
     }
     
@@ -468,7 +580,10 @@ main(int argc, char **argv)
         // open output file
         FILE *c = fopen("meta_types.c", "wb");
         
-        // TODO generate metadata tables
+        // generate metadata tables
+        generate_struct_member_tables_from_types(c, first_type);
+        generate_enum_member_tables_from_types(c, first_type);
+        
         // TODO generate function definitions
         
         // close output file

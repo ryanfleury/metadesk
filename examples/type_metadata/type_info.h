@@ -30,12 +30,12 @@ struct TypeInfo
     {
         // basic
         int size;
-        
-        // struct: array of TypeInfoMember
-        // enum: array of TypeInfoEnumerant
+        // struct,enum
         int child_count;
-        void *children;
     };
+    // struct: TypeInfoMember*
+    // enum: TypeInfoMember*
+    void *children;
 };
 
 typedef struct TypeInfoMember TypeInfoMember;
@@ -43,7 +43,7 @@ struct TypeInfoMember
 {
     char *name;
     int name_length;
-    int array_count;
+    int array_count_member_index;
     TypeInfo *type;
 };
 
