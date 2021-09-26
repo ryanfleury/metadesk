@@ -500,55 +500,69 @@ gen_equip_map_cases(void)
          map = map->next)
     {
         
-        // build the list
-        MD_b32 got_list = 1;
-        GEN_MapCase *first_case = 0;
-        GEN_MapCase *last_case = 0;
-        int case_count = 0;
-        
-        MD_Node *map_root_node = map->node;
-        
-        for (MD_Node *case_node = map_root_node->first_child, *next = 0;
-             !MD_NodeIsNil(case_node);
-             case_node = next)
+        if (map->types_are_good)
         {
-            MD_Node *next = MD_FirstNodeWithFlags(case_node, MD_NodeFlag_IsAfterComma);
+            GEN_TypeInfo *in_type = map->in;
             
-            // extract in & out
-            MD_Node *in = case_node;
-            MD_Node *arrow = in->next;
-            MD_Node *out = arrow->next;
-            if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
-                MD_NodeIsNil(out))
+            // build the list
+            MD_b32 got_list = 1;
+            GEN_MapCase *first_case = 0;
+            GEN_MapCase *last_case = 0;
+            int case_count = 0;
+            
+            MD_Node *map_root_node = map->node;
+            
+            for (MD_Node *case_node = map_root_node->first_child, *next = 0;
+                 !MD_NodeIsNil(case_node);
+                 case_node = next)
             {
-                MD_CodeLoc loc = MD_CodeLocFromNode(in);
-                MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
-                                MD_S8Lit("a map's case should be specified like: `in -> out,`"));
-                got_list = 0;
-                goto skip_case;
+                MD_Node *next = MD_FirstNodeWithFlags(case_node, MD_NodeFlag_IsAfterComma);
+                
+                // extract in & out
+                MD_Node *in = case_node;
+                MD_Node *arrow = in->next;
+                MD_Node *out = arrow->next;
+                if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
+                    MD_NodeIsNil(out))
+                {
+                    MD_CodeLoc loc = MD_CodeLocFromNode(in);
+                    MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                    MD_S8Lit("a map's case should be specified like: `in -> out,`"));
+                    got_list = 0;
+                    goto skip_case;
+                }
+                
+                // check that in is a value of in_type
+                if (!MD_NodeHasChild(in_type->node, in->string, 0))
+                {
+                    MD_CodeLoc loc = MD_CodeLocFromNode(in);
+                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                       "'%.*s' is not a value in the enum '%.*s'",
+                                       MD_S8VArg(in->string), MD_S8VArg(in_type->node->string));
+                    got_list = 0;
+                    goto skip_case;
+                }
+                
+                // save case
+                if (got_list)
+                {
+                    GEN_MapCase *map_case = MD_PushArray(arena, GEN_MapCase, 1);
+                    map_case->in = in;
+                    map_case->out = out;
+                    MD_QueuePush(first_case, last_case, map_case);
+                    case_count += 1;
+                }
+                
+                skip_case:;
             }
             
-            // TODO check in is a value of in type
-            
-            // save case
+            // save the list
             if (got_list)
             {
-                GEN_MapCase *map_case = MD_PushArray(arena, GEN_MapCase, 1);
-                map_case->in = in;
-                map_case->out = out;
-                MD_QueuePush(first_case, last_case, map_case);
-                case_count += 1;
+                map->first_case = first_case;
+                map->last_case = last_case;
+                map->case_count = case_count;
             }
-            
-            skip_case:;
-        }
-        
-        // save the list
-        if (got_list)
-        {
-            map->first_case = first_case;
-            map->last_case = last_case;
-            map->case_count = case_count;
         }
     }
 }
