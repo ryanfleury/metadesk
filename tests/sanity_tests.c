@@ -94,7 +94,8 @@ int main(void)
         MD_Token *token = tokens;
         MD_Token *token_opl = tokens + MD_ArrayCount(tokens);
         MD_u64 pos = 0;
-        for (; pos < string.size && token < token_opl; ){
+        for (; pos < string.size && token < token_opl; )
+        {
             *token = MD_TokenFromString(MD_S8Skip(string, pos));
             pos += token->raw_string.size;
             token += 1;
@@ -443,26 +444,32 @@ int main(void)
         };
         
         MD_MapKey keys[MD_ArrayCount(key_strings)*2];
-        for (MD_u64 i = 0; i < MD_ArrayCount(key_strings); i += 1){
+        for (MD_u64 i = 0; i < MD_ArrayCount(key_strings); i += 1)
+        {
             keys[i] = MD_MapKeyStr(key_strings[i]);
         }
-        for (MD_u64 i = MD_ArrayCount(key_strings); i < MD_ArrayCount(keys); i += 1){
+        for (MD_u64 i = MD_ArrayCount(key_strings); i < MD_ArrayCount(keys); i += 1)
+        {
             keys[i] = MD_MapKeyPtr((void *)i);
         }
         
         {
             MD_Map map = MD_MapMake(arena);
-            for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1){
+            for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1)
+            {
                 MD_MapInsert(arena, &map, keys[i], (void *)i);
             }
-            for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1){
+            for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1)
+            {
                 MD_MapSlot *slot = MD_MapLookup(&map, keys[i]);
                 TestResult(slot && slot->val == (void *)i);
             }
-            for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1){
+            for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1)
+            {
                 MD_MapOverwrite(arena, &map, keys[i], (void *)(i + 10));
             }
-            for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1){
+            for (MD_u64 i = 0; i < MD_ArrayCount(keys); i += 1)
+            {
                 MD_MapSlot *slot = MD_MapLookup(&map, keys[i]);
                 TestResult(slot && slot->val == (void *)(i + 10));
             }
@@ -481,7 +488,8 @@ int main(void)
         };
         
         MD_Node *nodes[MD_ArrayCount(samples)];
-        for (int i = 0; i < MD_ArrayCount(samples); i += 1){
+        for (int i = 0; i < MD_ArrayCount(samples); i += 1)
+        {
             MD_ParseResult result = MD_ParseOneNode(arena, samples[i], 0);
             nodes[i] = result.node;
         }
@@ -715,7 +723,8 @@ int main(void)
         };
         
         MD_String8 *string = test_strings;
-        for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
+        for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1)
+        {
             MD_ParseResult result = MD_ParseWholeString(arena, file_name, *string);
             TestResult((result.errors.first == 0) &&
                        (result.node->first_child == result.node->last_child) &&
@@ -740,7 +749,8 @@ int main(void)
         };
         
         MD_String8 *string = test_strings;
-        for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1){
+        for (int i = 0; i < MD_ArrayCount(test_strings); i += 1, string += 1)
+        {
             MD_ParseResult result = MD_ParseWholeString(arena, file_name, *string);
             TestResult((result.errors.first == 0) &&
                        (result.node->first_child == result.node->last_child) &&

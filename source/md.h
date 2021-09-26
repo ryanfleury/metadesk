@@ -33,7 +33,6 @@
 **   #define MD_IMPL_ArenaAlloc         () -> MD_IMPL_Arena*
 **   #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
 **   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> MD_u64
-**   #define MD_IMPL_ArenaGetCap        (MD_IMPL_Arena*) -> MD_u64
 **   #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, MD_u64) -> void*
 **   #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, MD_u64) -> void
 **   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, MD_u64) -> void

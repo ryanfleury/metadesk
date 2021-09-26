@@ -492,7 +492,8 @@ main(int argc, char **argv)
         // print member lists
         for (TypeMember *member = type->first_member;
              member != 0;
-             member = member->next){
+             member = member->next)
+        {
             printf("  %.*s: %.*s\n",
                    MD_S8VArg(member->node->string),
                    MD_S8VArg(member->type->node->string));
@@ -501,7 +502,8 @@ main(int argc, char **argv)
         // print enumerant lists
         for (TypeEnumerant *enumerant = type->first_enumerant;
              enumerant != 0;
-             enumerant = enumerant->next){
+             enumerant = enumerant->next)
+        {
             printf("  %.*s: %d\n",
                    MD_S8VArg(enumerant->node->string),
                    enumerant->value);
@@ -510,7 +512,8 @@ main(int argc, char **argv)
     
     for (MapInfo *map = first_map;
          map != 0;
-         map = map->next){
+         map = map->next)
+    {
         MD_Node *node = map->node;
         printf("%.*s: map\n", MD_S8VArg(node->string));
     }

@@ -86,24 +86,29 @@ typedef enum{
 } Op;
 #undef X
 
-static MD_String8 node_raw_contents(MD_Node *node, MD_b32 exclude_outer){
+static MD_String8 node_raw_contents(MD_Node *node, MD_b32 exclude_outer)
+{
     MD_String8 result = {0};
     
     MD_u64 beg = node->offset;
-    if(exclude_outer && !MD_NodeIsNil(node->first_child)){
+    if(exclude_outer && !MD_NodeIsNil(node->first_child))
+    {
         beg = node->first_child->offset;
     }
     
-    MD_u64 end = beg; {
+    MD_u64 end = beg;
+    {
         MD_Node *last_descendant = node;
-        while(!MD_NodeIsNil(last_descendant->last_child)){
+        for(;!MD_NodeIsNil(last_descendant->last_child);)
+        {
             last_descendant = last_descendant->last_child;
         }
         end = last_descendant->offset + last_descendant->raw_string.size;
     }
     
     MD_Node *root = node;
-    while(!MD_NodeIsNil(root->parent)){
+    for(;!MD_NodeIsNil(root->parent);)
+    {
         root = root->parent;
     }
     
@@ -112,80 +117,100 @@ static MD_String8 node_raw_contents(MD_Node *node, MD_b32 exclude_outer){
 }
 
 static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *descs, MD_String8List *l, 
-                                       MD_ExprNode *node, MD_b32 exclude_outer_parens){
-    if(node->is_op){
-        if(!exclude_outer_parens){
+                                       MD_ExprNode *node, MD_b32 exclude_outer_parens)
+{
+    if(node->is_op)
+    {
+        if(!exclude_outer_parens)
+        {
             MD_S8ListPush(arena, l, MD_S8Lit("("));
         }
         
         MD_ExprOperator *op = &descs[node->op_id].op;
-        if(op->kind == MD_ExprOperatorKind_Binary || op->kind == MD_ExprOperatorKind_BinaryRightAssociative){
+        if(op->kind == MD_ExprOperatorKind_Binary || op->kind == MD_ExprOperatorKind_BinaryRightAssociative)
+        {
             
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
             
             MD_b32 is_subscript = (node->op_id == Op_ArraySubscript);
-            if(is_subscript){
+            if(is_subscript)
+            {
                 MD_S8ListPush(arena, l, MD_S8Lit("["));
                 parenthesize_exclude_outer(arena, descs, l, node->right, 1);
                 MD_S8ListPush(arena, l, MD_S8Lit("]"));
             }
-            else{
+            else
+            {
                 MD_S8ListPush(arena, l, MD_S8Lit(" "));
                 MD_S8ListPush(arena, l, node->md_node->string);
                 MD_S8ListPush(arena, l, MD_S8Lit(" "));
                 parenthesize_exclude_outer(arena, descs, l, node->right, 0);
             }
         }
-        else if(op->kind == MD_ExprOperatorKind_Prefix){
+        else if(op->kind == MD_ExprOperatorKind_Prefix)
+        {
             MD_S8ListPush(arena, l, node->md_node->string);
             MD_u8 last_op_c = MD_S8Suffix(node->md_node->string, 1).str[0];
             
-            if(MD_CharIsAlpha(last_op_c) || MD_CharIsDigit(last_op_c)){ // NOTE: Keyword prefix operator (e.g. sizeof)
+            if(MD_CharIsAlpha(last_op_c) || MD_CharIsDigit(last_op_c))
+            { // NOTE: Keyword prefix operator (e.g. sizeof)
                 MD_S8ListPush(arena, l, MD_S8Lit(" "));
             }
             
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
         }
-        else if(op->kind == MD_ExprOperatorKind_Postfix){
+        else if(op->kind == MD_ExprOperatorKind_Postfix)
+        {
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
             
             MD_b32 is_call = (node->op_id == Op_Call);
-            if(is_call){
+            if(is_call)
+            {
                 MD_S8ListPush(arena, l, MD_S8Lit("(...)"));
             }
-            else{
+            else
+            {
                 MD_S8ListPush(arena, l, node->md_node->string);
             }
         }
-        else{
+        else
+        {
             MD_S8ListPush(arena, l, MD_S8Lit("--- Can't print expression ---"));
         }
         
-        if(!exclude_outer_parens){
+        if(!exclude_outer_parens)
+        {
             MD_S8ListPush(arena, l, MD_S8Lit(")"));
         }
     }
-    else{
-        if(MD_NodeIsNil(node->md_node->first_child)){
+    else
+    {
+        if(MD_NodeIsNil(node->md_node->first_child))
+        {
             MD_S8ListPush(arena, l, node_raw_contents(node->md_node, 0));
         }
-        else{
+        else
+        {
             if(node->md_node->flags & MD_NodeFlag_HasBracketLeft && 
-               node->md_node->flags & MD_NodeFlag_HasBracketRight){
+               node->md_node->flags & MD_NodeFlag_HasBracketRight)
+            {
                 MD_S8ListPush(arena, l, MD_S8Lit("[...]"));
             }
             else if(node->md_node->flags & MD_NodeFlag_HasBraceLeft && 
-                    node->md_node->flags & MD_NodeFlag_HasBraceRight){
+                    node->md_node->flags & MD_NodeFlag_HasBraceRight)
+            {
                 MD_S8ListPush(arena, l, MD_S8Lit("{...}"));
             }
-            else{
+            else
+            {
                 MD_S8ListPush(arena, l, MD_S8Lit("???"));
             }
         }
     }
 }
 
-static MD_String8 parenthesize(MD_Arena *arena, OperatorDescription *descs, MD_ExprNode *node){
+static MD_String8 parenthesize(MD_Arena *arena, OperatorDescription *descs, MD_ExprNode *node)
+{
     MD_String8 result = {0};
     MD_String8List l = {0};
     parenthesize_exclude_outer(arena, descs, &l, node, 1);
@@ -193,7 +218,8 @@ static MD_String8 parenthesize(MD_Arena *arena, OperatorDescription *descs, MD_E
     return result;
 }
 
-int main(void){
+int main(void)
+{
     OperatorDescription operator_array[Op_COUNT] = {0};
 #define X(name, token, kind_, prec) \
 operator_array[Op_##name].s = MD_S8Lit(token); \
@@ -203,7 +229,8 @@ operator_array[Op_##name].op = (MD_ExprOperator){ .op_id = Op_##name, .kind = MD
     
     arena = MD_ArenaAlloc();
     
-    /* NOTE: Operator table bake errors */ {
+    /* NOTE: Operator table bake errors */ 
+    {
         MD_ExprOperatorList operator_list = {0};
         MD_ExprOperatorTable op_table = {0};
         
@@ -249,7 +276,8 @@ operator_array[Op_##name].op = (MD_ExprOperator){ .op_id = Op_##name, .kind = MD
     
     MD_ExprOperatorList operator_list = {0};
     
-    for(Op op = Op_Null+1; op < Op_COUNT; ++op){
+    for(Op op = Op_Null+1; op < Op_COUNT; ++op)
+    {
         OperatorDescription *desc = operator_array + op;
         MD_Node *node = MD_MakeNode(arena, MD_NodeKind_Main, desc->s, desc->s, 0);
         MD_ExprOperatorPush(arena, &operator_list, op, desc->op.kind, desc->op.precedence, node);
@@ -316,47 +344,61 @@ operator_array[Op_##name].op = (MD_ExprOperator){ .op_id = Op_##name, .kind = MD
         { .q = "a 1",           .a = "",                    ExpressionErrorKind_Expr, 2},
     };
     
-    for(MD_u32 i_test = 0; i_test < MD_ArrayCount(tests); i_test+=1){
+    for(MD_u32 i_test = 0; i_test < MD_ArrayCount(tests); i_test+=1)
+    {
         Expression_QA test = tests[i_test];
         MD_String8 q = MD_S8CString(test.q);
         MD_String8 a = MD_S8CString(test.a);
         
         MD_ParseResult parse = MD_ParseWholeString(arena, MD_S8Lit("test"), q);
-        if(parse.errors.max_message_kind == MD_MessageKind_Null){
+        if(parse.errors.max_message_kind == MD_MessageKind_Null)
+        {
             MD_ExprParseResult expr_parse = MD_ExprParse(arena, &op_table, parse.node->first_child, MD_NilNode());
-            if(expr_parse.errors.max_message_kind == MD_MessageKind_Null){
+            if(expr_parse.errors.max_message_kind == MD_MessageKind_Null)
+            {
                 MD_String8 parser_answer = parenthesize(arena, operator_array, expr_parse.node);
-                if(!MD_S8Match(parser_answer, a, 0)){
+                if(!MD_S8Match(parser_answer, a, 0))
+                {
                     printf("Example %d : Expected answer for %.*s is %.*s. Got %.*s\n", 
                            i_test, MD_S8VArg(q), MD_S8VArg(a), MD_S8VArg(parser_answer));
                 }
             }
-            else{
-                if(test.error_kind == ExpressionErrorKind_Expr){
-                    for(MD_Message *message = expr_parse.errors.first; message; message = message->next){
-                        if(message->node->offset != test.error_offset){
+            else
+            {
+                if(test.error_kind == ExpressionErrorKind_Expr)
+                {
+                    for(MD_Message *message = expr_parse.errors.first; message; message = message->next)
+                    {
+                        if(message->node->offset != test.error_offset)
+                        {
                             printf("Example %d : \"%.*s\". Expected error on character %d; got character %ld instead\n", 
                                    i_test, MD_S8VArg(q), test.error_offset, (long)message->node->offset);
                         }
                     }
                 }
-                else{
+                else
+                {
                     MD_Message *message = expr_parse.errors.first;
                     printf("Example %d : \"%.*s\". Unexpected Expr parsing error: \"%.*s\"\n", i_test, MD_S8VArg(q),
                            MD_S8VArg(message->string));
                 }
             }
         }
-        else{
-            if(test.error_kind == ExpressionErrorKind_MD){
-                for(MD_Message *message = parse.errors.first; message; message = message->next){
-                    if(message->node->offset != test.error_offset){
+        else
+        {
+            if(test.error_kind == ExpressionErrorKind_MD)
+            {
+                for(MD_Message *message = parse.errors.first; message; message = message->next)
+                {
+                    if(message->node->offset != test.error_offset)
+                    {
                         printf("Example %d : \"%.*s\". Expected error on character %d; got character %ld instead\n", 
                                i_test, MD_S8VArg(q), test.error_offset, (long)message->node->offset);
                     }
                 }
             }
-            else{
+            else
+            {
                 printf("Example %d : \"%.*s\". Unexpected MD parsing error\n", i_test, MD_S8VArg(q));
             }
         }
