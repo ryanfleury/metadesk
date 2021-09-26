@@ -80,6 +80,22 @@ struct GEN_MapInfo
 };
 
 
+//~ helpers ///////////////////////////////////////////////////////////////////
+MD_Node* gen_get_md_child_value(MD_Node *parent, MD_String8 child_name);
+
+//~ analyzers /////////////////////////////////////////////////////////////////
+void gen_gather_types_and_maps(MD_Node *list);
+void gen_gather_struct_members(void);
+
+//~ generators ////////////////////////////////////////////////////////////////
+void gen_type_definitions_from_types(FILE *out, GEN_TypeInfo *first_type);
+void gen_function_declarations_from_maps(FILE *out, GEN_MapInfo *first_map);
+void gen_type_info_declarations_from_types(FILE *out, GEN_TypeInfo *first_type);
+void gen_struct_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type);
+void gen_enum_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type);
+void gen_type_info_definitions_from_types(FILE *out, GEN_TypeInfo *first_type);
+
+
 //~ node maps /////////////////////////////////////////////////////////////////
 
 GEN_TypeInfo *first_type = 0;
@@ -91,7 +107,285 @@ GEN_MapInfo *last_map = 0;
 MD_Map map_map = {0};
 
 
-//~ feature generators ////////////////////////////////////////////////////////
+//~ helpers ///////////////////////////////////////////////////////////////////
+
+MD_Node*
+gen_get_md_child_value(MD_Node *parent, MD_String8 child_name)
+{
+    MD_Node *child = MD_ChildFromString(parent, child_name, 0);
+    MD_Node *result = child->first_child;
+    return(result);
+}
+
+
+//~ analyzers /////////////////////////////////////////////////////////////////
+
+void
+gen_gather_types_and_maps(MD_Node *list)
+{
+    for(MD_EachNode(ref, list->first_child))
+    {
+        MD_Node *root = MD_ResolveNodeFromReference(ref);
+        for(MD_EachNode(node, root->first_child))
+        {
+            // gather type
+            MD_Node *type_tag =  MD_TagFromString(node, MD_S8Lit("type"), 0);
+            
+            if (!MD_NodeIsNil(type_tag))
+            {
+                GEN_TypeKind kind = GEN_TypeKind_Null;
+                MD_Node   *tag_arg_node = type_tag->first_child;
+                MD_String8 tag_arg_str = tag_arg_node->string;
+                if (MD_S8Match(tag_arg_str, MD_S8Lit("basic"), 0))
+                {
+                    kind = GEN_TypeKind_Basic;
+                }
+                else if (MD_S8Match(tag_arg_str, MD_S8Lit("struct"), 0))
+                {
+                    kind = GEN_TypeKind_Struct;
+                }
+                else if (MD_S8Match(tag_arg_str, MD_S8Lit("enum"), 0))
+                {
+                    kind = GEN_TypeKind_Enum;
+                }
+                
+                if (kind == GEN_TypeKind_Null)
+                {
+                    MD_CodeLoc loc = MD_CodeLocFromNode(node);
+                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                       "Unrecognized type kind '%.*s'\n",
+                                       MD_S8VArg(tag_arg_str));
+                }
+                else
+                {
+                    GEN_TypeInfo *type_info = MD_PushArrayZero(arena, GEN_TypeInfo, 1);
+                    type_info->kind = kind;
+                    type_info->node = node;
+                    
+                    MD_QueuePush(first_type, last_type, type_info);
+                    MD_MapInsert(arena, &type_map, MD_MapKeyStr(node->string), type_info);
+                }
+            }
+            
+            // gather map
+            MD_Node *map_tag = MD_TagFromString(node, MD_S8Lit("map"), 0);
+            
+            if (!MD_NodeIsNil(map_tag))
+            {
+                // NOTE we could use an expression parser here to make this fancier
+                // and check for the 'In -> Out' semicolon delimited syntax more
+                // carefully, this isn't checking it very rigorously. But there are
+                // no other cases we need to expect so far so being a bit sloppy
+                // buys us a lot of simplicity.
+                MD_Node *in = map_tag->first_child;
+                MD_Node *arrow = in->next;
+                MD_Node *out = arrow->next;
+                {
+                    MD_Node *error_at = 0;
+                    if (MD_NodeIsNil(in))
+                    {
+                        error_at = map_tag;
+                    }
+                    else if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
+                             MD_NodeIsNil(out))
+                    {
+                        error_at = in;
+                    }
+                    if (error_at != 0)
+                    {
+                        MD_CodeLoc loc = MD_CodeLocFromNode(error_at);
+                        MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                        MD_S8Lit("Map's type should be specified like: `In -> Out`"));
+                    }
+                }
+                
+                // check for named children in the map tag
+                int is_complete = MD_NodeHasChild(map_tag, MD_S8Lit("complete"), 0);
+                MD_Node *default_val = gen_get_md_child_value(map_tag, MD_S8Lit("default"));
+                MD_Node *auto_val = gen_get_md_child_value(map_tag, MD_S8Lit("auto"));
+                
+                // save a new map
+                GEN_MapInfo *map_info = MD_PushArrayZero(arena, GEN_MapInfo, 1);
+                map_info->node = node;
+                map_info->in = in;
+                map_info->out = out;
+                map_info->is_complete = is_complete;
+                map_info->default_val = default_val;
+                map_info->auto_val = auto_val;
+                
+                MD_QueuePush(first_map, last_map, map_info);
+                MD_MapInsert(arena, &map_map, MD_MapKeyStr(node->string), map_info);
+            }
+        }
+    }
+}
+
+void
+gen_gather_struct_members(void)
+{
+    for (GEN_TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        if (type->kind == GEN_TypeKind_Struct)
+        {
+            // build the list
+            MD_b32 got_list = 1;
+            GEN_TypeMember *first_member = 0;
+            GEN_TypeMember *last_member = 0;
+            int member_count = 0;
+            
+            MD_Node *type_root_node = type->node;
+            for (MD_EachNode(member_node, type_root_node->first_child))
+            {
+                MD_Node *type_name_node = member_node->first_child;
+                
+                // missing type node?
+                if (MD_NodeIsNil(type_name_node))
+                {
+                    MD_CodeLoc loc = MD_CodeLocFromNode(member_node);
+                    MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                    MD_S8Lit("Missing type name for member"));
+                    got_list = 0;
+                    goto skip_member;
+                }
+                
+                // has type node:
+                MD_String8 type_name = type_name_node->string;
+                MD_MapSlot *type_info_slot = (MD_MapSlot*)MD_MapLookup(&type_map, MD_MapKeyStr(type_name));
+                
+                // could not resolve type?
+                if (type_info_slot == 0)
+                {
+                    MD_CodeLoc loc = MD_CodeLocFromNode(type_name_node);
+                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                       "Could not resolve type name '%.*s'", MD_S8VArg(type_name));
+                    got_list = 0;
+                    goto skip_member;
+                }
+                
+                // resolved type:
+                if (got_list)
+                {
+                    GEN_TypeInfo *type_info = (GEN_TypeInfo*)type_info_slot->val;
+                    
+                    MD_Node *array_count = MD_NilNode();
+                    MD_Node *array_tag = MD_TagFromString(type_name_node, MD_S8Lit("array"), 0);
+                    if (!MD_NodeIsNil(array_tag))
+                    {
+                        MD_Node *array_count_referencer = array_tag->first_child;
+                        if (array_count_referencer->string.size == 0)
+                        {
+                            MD_CodeLoc loc = MD_CodeLocFromNode(array_tag);
+                            MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                            MD_S8Lit("array tags must specify a parameter for their count"));
+                        }
+                        else
+                        {
+                            array_count = MD_ChildFromString(type_root_node, array_count_referencer->string, 0);
+                            if (MD_NodeIsNil(array_count))
+                            {
+                                MD_CodeLoc loc = MD_CodeLocFromNode(array_count_referencer);
+                                MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                                   "'%.*s' is not a member of %.*s",
+                                                   MD_S8VArg(array_count_referencer->string), MD_S8VArg(type_name));
+                            }
+                        }
+                    }
+                    
+                    GEN_TypeMember *member = MD_PushArray(arena, GEN_TypeMember, 1);
+                    member->node = member_node;
+                    member->type = type_info;
+                    member->array_count = array_count;
+                    MD_QueuePush(first_member, last_member, member);
+                    member_count += 1;
+                }
+                
+                skip_member:;
+            }
+            
+            // save the list
+            if (got_list)
+            {
+                type->first_member = first_member;
+                type->last_member = last_member;
+                type->member_count = member_count;
+            }
+        }
+    }
+}
+
+void
+gen_gather_enum_members(void)
+{
+    for (GEN_TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        if (type->kind == GEN_TypeKind_Enum)
+        {
+            
+            // build the list
+            MD_b32 got_list = 1;
+            GEN_TypeEnumerant *first_enumerant = 0;
+            GEN_TypeEnumerant *last_enumerant = 0;
+            int enumerant_count = 0;
+            
+            int next_implicit_value = 0;
+            
+            MD_Node *type_root_node = type->node;
+            for (MD_EachNode(enumerant_node, type_root_node->first_child))
+            {
+                MD_Node *value_node = enumerant_node->first_child;
+                int value = 0;
+                
+                // missing value node?
+                if (MD_NodeIsNil(value_node))
+                {
+                    value = next_implicit_value;
+                    next_implicit_value += 1;
+                }
+                
+                // has value node
+                else
+                {
+                    MD_String8 value_string = value_node->string;
+                    if (!MD_StringIsCStyleInt(value_string))
+                    {
+                        got_list = 0;
+                        goto skip_enumerant;
+                    }
+                    value = (int)MD_CStyleIntFromString(value_string);
+                }
+                
+                // set next implicit value
+                next_implicit_value = value + 1;
+                
+                // save enumerant
+                if (got_list)
+                {
+                    GEN_TypeEnumerant *enumerant = MD_PushArray(arena, GEN_TypeEnumerant, 1);
+                    enumerant->node = enumerant_node;
+                    enumerant->value = value;
+                    MD_QueuePush(first_enumerant, last_enumerant, enumerant);
+                    enumerant_count += 1;
+                }
+                
+                skip_enumerant:;
+            }
+            
+            // save the list
+            if (got_list)
+            {
+                type->first_enumerant = first_enumerant;
+                type->last_enumerant = last_enumerant;
+                type->enumerant_count = enumerant_count;
+            }
+        }
+    }
+}
+
+//~ generators ////////////////////////////////////////////////////////////////
 
 void
 gen_type_definitions_from_types(FILE *out, GEN_TypeInfo *first_type)
@@ -329,14 +623,6 @@ gen_type_info_definitions_from_types(FILE *out, GEN_TypeInfo *first_type)
 
 //~ main //////////////////////////////////////////////////////////////////////
 
-MD_Node*
-get_md_child_value(MD_Node *parent, MD_String8 child_name)
-{
-    MD_Node *child = MD_ChildFromString(parent, child_name, 0);
-    MD_Node *result = child->first_child;
-    return(result);
-}
-
 int
 main(int argc, char **argv)
 {
@@ -379,266 +665,19 @@ main(int argc, char **argv)
     map_map = MD_MapMake(arena);
     
     // gather types & maps
-    for(MD_EachNode(ref, list->first_child))
-    {
-        MD_Node *root = MD_ResolveNodeFromReference(ref);
-        for(MD_EachNode(node, root->first_child))
-        {
-            // gather type
-            MD_Node *type_tag =  MD_TagFromString(node, MD_S8Lit("type"), 0);
-            
-            if (!MD_NodeIsNil(type_tag))
-            {
-                GEN_TypeKind kind = GEN_TypeKind_Null;
-                MD_Node   *tag_arg_node = type_tag->first_child;
-                MD_String8 tag_arg_str = tag_arg_node->string;
-                if (MD_S8Match(tag_arg_str, MD_S8Lit("basic"), 0))
-                {
-                    kind = GEN_TypeKind_Basic;
-                }
-                else if (MD_S8Match(tag_arg_str, MD_S8Lit("struct"), 0))
-                {
-                    kind = GEN_TypeKind_Struct;
-                }
-                else if (MD_S8Match(tag_arg_str, MD_S8Lit("enum"), 0))
-                {
-                    kind = GEN_TypeKind_Enum;
-                }
-                
-                if (kind == GEN_TypeKind_Null)
-                {
-                    MD_CodeLoc loc = MD_CodeLocFromNode(node);
-                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                                       "Unrecognized type kind '%.*s'\n",
-                                       MD_S8VArg(tag_arg_str));
-                }
-                else
-                {
-                    GEN_TypeInfo *type_info = MD_PushArrayZero(arena, GEN_TypeInfo, 1);
-                    type_info->kind = kind;
-                    type_info->node = node;
-                    
-                    MD_QueuePush(first_type, last_type, type_info);
-                    MD_MapInsert(arena, &type_map, MD_MapKeyStr(node->string), type_info);
-                }
-            }
-            
-            // gather map
-            MD_Node *map_tag = MD_TagFromString(node, MD_S8Lit("map"), 0);
-            
-            if (!MD_NodeIsNil(map_tag))
-            {
-                // NOTE we could use an expression parser here to make this fancier
-                // and check for the 'In -> Out' semicolon delimited syntax more
-                // carefully, this isn't checking it very rigorously. But there are
-                // no other cases we need to expect so far so being a bit sloppy
-                // buys us a lot of simplicity.
-                MD_Node *in = map_tag->first_child;
-                MD_Node *arrow = in->next;
-                MD_Node *out = arrow->next;
-                {
-                    MD_Node *error_at = 0;
-                    if (MD_NodeIsNil(in))
-                    {
-                        error_at = map_tag;
-                    }
-                    else if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
-                             MD_NodeIsNil(out))
-                    {
-                        error_at = in;
-                    }
-                    if (error_at != 0)
-                    {
-                        MD_CodeLoc loc = MD_CodeLocFromNode(error_at);
-                        MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
-                                        MD_S8Lit("Map's type should be specified like: `In -> Out`"));
-                    }
-                }
-                
-                // check for named children in the map tag
-                int is_complete = MD_NodeHasChild(map_tag, MD_S8Lit("complete"), 0);
-                MD_Node *default_val = get_md_child_value(map_tag, MD_S8Lit("default"));
-                MD_Node *auto_val = get_md_child_value(map_tag, MD_S8Lit("auto"));
-                
-                // save a new map
-                GEN_MapInfo *map_info = MD_PushArrayZero(arena, GEN_MapInfo, 1);
-                map_info->node = node;
-                map_info->in = in;
-                map_info->out = out;
-                map_info->is_complete = is_complete;
-                map_info->default_val = default_val;
-                map_info->auto_val = auto_val;
-                
-                MD_QueuePush(first_map, last_map, map_info);
-                MD_MapInsert(arena, &map_map, MD_MapKeyStr(node->string), map_info);
-            }
-        }
-    }
+    gen_gather_types_and_maps(list);
     
     // TODO no duplicate member names check
     
     // TODO basic type sizes
     
     // build member lists
-    for (GEN_TypeInfo *type = first_type;
-         type != 0;
-         type = type->next)
-    {
-        if (type->kind == GEN_TypeKind_Struct)
-        {
-            // build the list
-            MD_b32 got_list = 1;
-            GEN_TypeMember *first_member = 0;
-            GEN_TypeMember *last_member = 0;
-            int member_count = 0;
-            
-            MD_Node *type_root_node = type->node;
-            for (MD_EachNode(member_node, type_root_node->first_child))
-            {
-                MD_Node *type_name_node = member_node->first_child;
-                
-                // missing type node?
-                if (MD_NodeIsNil(type_name_node))
-                {
-                    MD_CodeLoc loc = MD_CodeLocFromNode(member_node);
-                    MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
-                                    MD_S8Lit("Missing type name for member"));
-                    got_list = 0;
-                    goto skip_member;
-                }
-                
-                // has type node:
-                MD_String8 type_name = type_name_node->string;
-                MD_MapSlot *type_info_slot = (MD_MapSlot*)MD_MapLookup(&type_map, MD_MapKeyStr(type_name));
-                
-                // could not resolve type?
-                if (type_info_slot == 0)
-                {
-                    MD_CodeLoc loc = MD_CodeLocFromNode(type_name_node);
-                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                                       "Could not resolve type name '%.*s'", MD_S8VArg(type_name));
-                    got_list = 0;
-                    goto skip_member;
-                }
-                
-                // resolved type:
-                if (got_list)
-                {
-                    GEN_TypeInfo *type_info = (GEN_TypeInfo*)type_info_slot->val;
-                    
-                    MD_Node *array_count = MD_NilNode();
-                    MD_Node *array_tag = MD_TagFromString(type_name_node, MD_S8Lit("array"), 0);
-                    if (!MD_NodeIsNil(array_tag))
-                    {
-                        MD_Node *array_count_referencer = array_tag->first_child;
-                        if (array_count_referencer->string.size == 0)
-                        {
-                            MD_CodeLoc loc = MD_CodeLocFromNode(array_tag);
-                            MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
-                                            MD_S8Lit("array tags must specify a parameter for their count"));
-                        }
-                        else
-                        {
-                            array_count = MD_ChildFromString(type_root_node, array_count_referencer->string, 0);
-                            if (MD_NodeIsNil(array_count))
-                            {
-                                MD_CodeLoc loc = MD_CodeLocFromNode(array_count_referencer);
-                                MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                                                   "'%.*s' is not a member of %.*s",
-                                                   MD_S8VArg(array_count_referencer->string), MD_S8VArg(type_name));
-                            }
-                        }
-                    }
-                    
-                    GEN_TypeMember *member = MD_PushArray(arena, GEN_TypeMember, 1);
-                    member->node = member_node;
-                    member->type = type_info;
-                    member->array_count = array_count;
-                    MD_QueuePush(first_member, last_member, member);
-                    member_count += 1;
-                }
-                
-                skip_member:;
-            }
-            
-            // save the list
-            if (got_list)
-            {
-                type->first_member = first_member;
-                type->last_member = last_member;
-                type->member_count = member_count;
-            }
-        }
-    }
+    gen_gather_struct_members();
     
     // TODO check enum base types
     
     // build enumerant lists
-    for (GEN_TypeInfo *type = first_type;
-         type != 0;
-         type = type->next)
-    {
-        if (type->kind == GEN_TypeKind_Enum)
-        {
-            
-            // build the list
-            MD_b32 got_list = 1;
-            GEN_TypeEnumerant *first_enumerant = 0;
-            GEN_TypeEnumerant *last_enumerant = 0;
-            int enumerant_count = 0;
-            
-            int next_implicit_value = 0;
-            
-            MD_Node *type_root_node = type->node;
-            for (MD_EachNode(enumerant_node, type_root_node->first_child))
-            {
-                MD_Node *value_node = enumerant_node->first_child;
-                int value = 0;
-                
-                // missing value node?
-                if (MD_NodeIsNil(value_node))
-                {
-                    value = next_implicit_value;
-                    next_implicit_value += 1;
-                }
-                
-                // has value node
-                else
-                {
-                    MD_String8 value_string = value_node->string;
-                    if (!MD_StringIsCStyleInt(value_string))
-                    {
-                        got_list = 0;
-                        goto skip_enumerant;
-                    }
-                    value = (int)MD_CStyleIntFromString(value_string);
-                }
-                
-                // set next implicit value
-                next_implicit_value = value + 1;
-                
-                // save enumerant
-                if (got_list)
-                {
-                    GEN_TypeEnumerant *enumerant = MD_PushArray(arena, GEN_TypeEnumerant, 1);
-                    enumerant->node = enumerant_node;
-                    enumerant->value = value;
-                    MD_QueuePush(first_enumerant, last_enumerant, enumerant);
-                    enumerant_count += 1;
-                }
-                
-                skip_enumerant:;
-            }
-            
-            // save the list
-            if (got_list)
-            {
-                type->first_enumerant = first_enumerant;
-                type->last_enumerant = last_enumerant;
-                type->enumerant_count = enumerant_count;
-            }
-        }
-    }
+    gen_gather_enum_members();
     
     // TODO check maps & build case lists
     
