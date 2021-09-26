@@ -276,7 +276,7 @@ main(int argc, char **argv)
                 if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
                     MD_NodeIsNil(out))
                 {
-                    // TODO(allen): error map type
+                    // TODO: error map type
                 }
                 
                 int is_complete = MD_NodeHasChild(map_tag, MD_S8Lit("complete"), 0);
@@ -352,7 +352,10 @@ main(int argc, char **argv)
                     if (!MD_NodeIsNil(array_tag))
                     {
                         array_count = array_tag->first_child;
-                        // TODO(allen): error if array_count is nil
+                        if (MD_NodeIsNil(array_count))
+                        {
+                            // TODO: error array count
+                        }
                     }
                     
                     TypeMember *member = MD_PushArray(arena, TypeMember, 1);

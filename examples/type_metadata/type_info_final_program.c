@@ -6,8 +6,8 @@
 **
 */
 
-#include "generated/type_info_meta.h"
-#include "generated/type_info_meta.c"
+#include "generated/meta_types.h"
+#include "generated/meta_types.c"
 
 #include <stdio.h>
 

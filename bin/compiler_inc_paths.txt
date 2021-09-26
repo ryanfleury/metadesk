@@ -1,0 +1,2 @@
+###### Examples ###############################################################
+type_info_final_program.c>examples/type_metadata

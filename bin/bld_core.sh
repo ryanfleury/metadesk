@@ -186,21 +186,29 @@ function bld_compile {
   ###### finith in file #####################################################
   local final_in_file=$root_path/$in_file
   
-  ###### finish options #####################################################
-  local src_opts=($(bld_opts_from_src $final_in_file))
-  local all_opts=($(bld_dedup ${opts[@]} ${src_opts[@]}))
-  
-  ###### diagnostics ########################################################
-  local diagnostics=$(bld_has_opt diagnostics ${all_opts[@]})
-  
   ###### out file name ######################################################
   local file_base=${final_in_file##*/}
   local file_base_no_ext=${file_base%.*}
   local out_file="$file_base_no_ext$dot_ext_obj"
   
+  ###### finish options #####################################################
+  local src_opts=($(bld_opts_from_src $final_in_file))
+  local all_opts=($(bld_dedup $file_base ${opts[@]} ${src_opts[@]}))
+  
+  ###### diagnostics ########################################################
+  local diagnostics=$(bld_has_opt diagnostics ${all_opts[@]})
+  
   ###### get real flags #####################################################
   local flags_file=$bin_path/compiler_flags.txt
-  local flags=$(bld_flags_from_opts $flags_file ${all_opts[@]})
+  local flags=($(bld_flags_from_opts $flags_file ${all_opts[@]}))
+  
+  ###### get inc paths ######################################################
+  local paths_file=$bin_path/compiler_inc_paths.txt
+  local paths=($(bld_flags_from_opts $paths_file ${all_opts[@]}))
+  local incs=()
+  for ((i=0; i<${#paths[@]}; i+=1)); do
+    incs+=("-I$root_path/${paths[i]}")
+  done
   
   ###### move to output folder ##############################################
   mkdir -p "$build_path"
@@ -211,7 +219,7 @@ function bld_compile {
   rm -f "$out_file_base.obj"
   
   ###### get flags ##########################################################
-  local all_flags="-c -I$src_path ${flags}"
+  local all_flags="-c -I$src_path ${incs[@]} ${flags[@]}"
   
   ###### diagnostic output ##################################################
   if [ "$diagnostics" == "1" ]; then
