@@ -202,19 +202,18 @@ generate_struct_member_tables_from_types(FILE *out, TypeInfo *first_type)
             int member_count = type->member_count;
             
             fprintf(out, "TypeInfoMember %.*s_members[%d] = {\n", MD_S8VArg(type_name), member_count);
+            
             for (TypeMember *member = type->first_member;
                  member != 0;
                  member = member->next)
             {
                 MD_String8 member_name = member->node->string;
                 MD_String8 member_type_name = member->type->node->string;
-                
                 int array_count_member_index = -1;
                 if (!MD_NodeIsNil(member->array_count))
                 {
                     array_count_member_index = MD_IndexFromNode(member->array_count);
                 }
-                
                 fprintf(out, "{\"%.*s\", %d, %d, &%.*s_type_info},\n",
                         MD_S8VArg(member_name), (int)member_name.size,
                         array_count_member_index, MD_S8VArg(member_type_name));
@@ -238,7 +237,23 @@ generate_enum_member_tables_from_types(FILE *out, TypeInfo *first_type)
     {
         if (type->kind == TypeKind_Enum)
         {
+            MD_String8 type_name = type->node->string;
+            int enumerant_count = type->enumerant_count;
             
+            fprintf(out, "TypeInfoEnumerant %.*s_members[%d] = {\n",
+                    MD_S8VArg(type_name), enumerant_count);
+            for (TypeEnumerant *enumerant = type->first_enumerant;
+                 enumerant != 0;
+                 enumerant = enumerant->next)
+            {
+                MD_String8 enumerant_name = enumerant->node->string;
+                int value = enumerant->value;
+                fprintf(out, "{\"%.*s\", %d, %d},\n",
+                        MD_S8VArg(enumerant_name), (int)enumerant_name.size,
+                        value);
+            }
+            
+            fprintf(out, "};\n");
         }
     }
     
