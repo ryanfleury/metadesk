@@ -14,59 +14,61 @@
 
 static MD_Arena *arena = 0;
 
+FILE *error_file = 0;
+
 //~ types /////////////////////////////////////////////////////////////////////
 
-typedef enum TypeKind
+typedef enum GEN_TypeKind
 {
-    TypeKind_Null,
-    TypeKind_Basic,
-    TypeKind_Struct,
-    TypeKind_Enum,
-} TypeKind;
+    GEN_TypeKind_Null,
+    GEN_TypeKind_Basic,
+    GEN_TypeKind_Struct,
+    GEN_TypeKind_Enum,
+} GEN_TypeKind;
 
-typedef struct TypeInfo TypeInfo;
-struct TypeInfo
+typedef struct GEN_TypeInfo GEN_TypeInfo;
+struct GEN_TypeInfo
 {
-    TypeInfo *next;
-    TypeKind kind;
+    GEN_TypeInfo *next;
+    GEN_TypeKind kind;
     MD_Node *node;
     
     // basic
     int size;
     
     // structs
-    struct TypeMember *first_member;
-    struct TypeMember *last_member;
+    struct GEN_TypeMember *first_member;
+    struct GEN_TypeMember *last_member;
     int member_count;
     
     // enums
-    struct TypeEnumerant *first_enumerant;
-    struct TypeEnumerant *last_enumerant;
+    struct GEN_TypeEnumerant *first_enumerant;
+    struct GEN_TypeEnumerant *last_enumerant;
     int enumerant_count;
-    TypeInfo *underlying_type;
+    GEN_TypeInfo *underlying_type;
 };
 
-typedef struct TypeMember TypeMember;
-struct TypeMember
+typedef struct GEN_TypeMember GEN_TypeMember;
+struct GEN_TypeMember
 {
-    TypeMember *next;
+    GEN_TypeMember *next;
     MD_Node *node;
-    TypeInfo *type;
+    GEN_TypeInfo *type;
     MD_Node *array_count;
 };
 
-typedef struct TypeEnumerant TypeEnumerant;
-struct TypeEnumerant
+typedef struct GEN_TypeEnumerant GEN_TypeEnumerant;
+struct GEN_TypeEnumerant
 {
-    TypeEnumerant *next;
+    GEN_TypeEnumerant *next;
     MD_Node *node;
     int value;
 };
 
-typedef struct MapInfo MapInfo;
-struct MapInfo
+typedef struct GEN_MapInfo GEN_MapInfo;
+struct GEN_MapInfo
 {
-    MapInfo *next;
+    GEN_MapInfo *next;
     MD_Node *node;
     
     MD_Node *in;
@@ -80,23 +82,23 @@ struct MapInfo
 
 //~ node maps /////////////////////////////////////////////////////////////////
 
-TypeInfo *first_type = 0;
-TypeInfo *last_type = 0;
+GEN_TypeInfo *first_type = 0;
+GEN_TypeInfo *last_type = 0;
 MD_Map type_map = {0};
 
-MapInfo *first_map = 0;
-MapInfo *last_map = 0;
+GEN_MapInfo *first_map = 0;
+GEN_MapInfo *last_map = 0;
 MD_Map map_map = {0};
 
 
 //~ feature generators ////////////////////////////////////////////////////////
 
 void
-generate_type_definitions_from_types(FILE *out, TypeInfo *first_type)
+gen_type_definitions_from_types(FILE *out, GEN_TypeInfo *first_type)
 {
     MD_PrintGenNoteCComment(out);
     
-    for (TypeInfo *type = first_type;
+    for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
@@ -104,13 +106,13 @@ generate_type_definitions_from_types(FILE *out, TypeInfo *first_type)
         {
             default:break;
             
-            case TypeKind_Struct:
+            case GEN_TypeKind_Struct:
             {
                 MD_String8 struct_name = type->node->string;
                 fprintf(out, "typedef struct %.*s %.*s;\n", MD_S8VArg(struct_name), MD_S8VArg(struct_name));
                 fprintf(out, "struct %.*s\n", MD_S8VArg(struct_name));
                 fprintf(out, "{\n");
-                for (TypeMember *member = type->first_member;
+                for (GEN_TypeMember *member = type->first_member;
                      member != 0;
                      member = member->next)
                 {
@@ -129,12 +131,12 @@ generate_type_definitions_from_types(FILE *out, TypeInfo *first_type)
                 fprintf(out, "};\n");
             }break;
             
-            case TypeKind_Enum:
+            case GEN_TypeKind_Enum:
             {
                 MD_String8 enum_name = type->node->string;
                 fprintf(out, "typedef enum %.*s\n", MD_S8VArg(enum_name));
                 fprintf(out, "{\n");
-                for (TypeEnumerant *enumerant = type->first_enumerant;
+                for (GEN_TypeEnumerant *enumerant = type->first_enumerant;
                      enumerant != 0;
                      enumerant = enumerant->next)
                 {
@@ -151,11 +153,11 @@ generate_type_definitions_from_types(FILE *out, TypeInfo *first_type)
 }
 
 void
-generate_function_declarations_from_maps(FILE *out, MapInfo *first_map)
+gen_function_declarations_from_maps(FILE *out, GEN_MapInfo *first_map)
 {
     MD_PrintGenNoteCComment(out);
     
-    for (MapInfo *map = first_map;
+    for (GEN_MapInfo *map = first_map;
          map != 0;
          map = map->next)
     {
@@ -176,11 +178,11 @@ generate_function_declarations_from_maps(FILE *out, MapInfo *first_map)
 }
 
 void
-generate_type_info_declarations_from_types(FILE *out, TypeInfo *first_type)
+gen_type_info_declarations_from_types(FILE *out, GEN_TypeInfo *first_type)
 {
     MD_PrintGenNoteCComment(out);
     
-    for (TypeInfo *type = first_type;
+    for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
@@ -192,22 +194,22 @@ generate_type_info_declarations_from_types(FILE *out, TypeInfo *first_type)
 }
 
 void
-generate_struct_member_tables_from_types(FILE *out, TypeInfo *first_type)
+gen_struct_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type)
 {
     MD_PrintGenNoteCComment(out);
     
-    for (TypeInfo *type = first_type;
+    for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
-        if (type->kind == TypeKind_Struct)
+        if (type->kind == GEN_TypeKind_Struct)
         {
             MD_String8 type_name = type->node->string;
             int member_count = type->member_count;
             
             fprintf(out, "TypeInfoMember %.*s_members[%d] = {\n", MD_S8VArg(type_name), member_count);
             
-            for (TypeMember *member = type->first_member;
+            for (GEN_TypeMember *member = type->first_member;
                  member != 0;
                  member = member->next)
             {
@@ -231,22 +233,22 @@ generate_struct_member_tables_from_types(FILE *out, TypeInfo *first_type)
 }
 
 void
-generate_enum_member_tables_from_types(FILE *out, TypeInfo *first_type)
+gen_enum_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type)
 {
     MD_PrintGenNoteCComment(out);
     
-    for (TypeInfo *type = first_type;
+    for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
-        if (type->kind == TypeKind_Enum)
+        if (type->kind == GEN_TypeKind_Enum)
         {
             MD_String8 type_name = type->node->string;
             int enumerant_count = type->enumerant_count;
             
             fprintf(out, "TypeInfoEnumerant %.*s_members[%d] = {\n",
                     MD_S8VArg(type_name), enumerant_count);
-            for (TypeEnumerant *enumerant = type->first_enumerant;
+            for (GEN_TypeEnumerant *enumerant = type->first_enumerant;
                  enumerant != 0;
                  enumerant = enumerant->next)
             {
@@ -265,13 +267,13 @@ generate_enum_member_tables_from_types(FILE *out, TypeInfo *first_type)
 }
 
 void
-generate_type_info_definitions_from_types(FILE *out, TypeInfo *first_type)
+gen_type_info_definitions_from_types(FILE *out, GEN_TypeInfo *first_type)
 {
     MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     
     MD_PrintGenNoteCComment(out);
     
-    for (TypeInfo *type = first_type;
+    for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
@@ -281,7 +283,7 @@ generate_type_info_definitions_from_types(FILE *out, TypeInfo *first_type)
         {
             default:break;
             
-            case TypeKind_Basic:
+            case GEN_TypeKind_Basic:
             {
                 int size = type->size;
                 fprintf(out, "TypeInfo %.*s_type_info = "
@@ -290,7 +292,7 @@ generate_type_info_definitions_from_types(FILE *out, TypeInfo *first_type)
                         MD_S8VArg(type_name), (int)type_name.size, size);
             }break;
             
-            case TypeKind_Struct:
+            case GEN_TypeKind_Struct:
             {
                 int child_count = type->member_count;
                 fprintf(out, "TypeInfo %.*s_type_info = "
@@ -299,7 +301,7 @@ generate_type_info_definitions_from_types(FILE *out, TypeInfo *first_type)
                         MD_S8VArg(type_name), (int)type_name.size, child_count, MD_S8VArg(type_name));
             }break;
             
-            case TypeKind_Enum:
+            case GEN_TypeKind_Enum:
             {
                 MD_String8 underlying_type_ptr_expression = MD_S8Lit("0");
                 if (type->underlying_type != 0)
@@ -349,7 +351,7 @@ main(int argc, char **argv)
     arena = MD_ArenaAlloc();
     
     // output stream routing
-    FILE *error_file = stderr;
+    error_file = stderr;
     
     // parse all files passed to the command line
     MD_Node *list = MD_MakeList(arena);
@@ -387,23 +389,23 @@ main(int argc, char **argv)
             
             if (!MD_NodeIsNil(type_tag))
             {
-                TypeKind kind = TypeKind_Null;
+                GEN_TypeKind kind = GEN_TypeKind_Null;
                 MD_Node   *tag_arg_node = type_tag->first_child;
                 MD_String8 tag_arg_str = tag_arg_node->string;
                 if (MD_S8Match(tag_arg_str, MD_S8Lit("basic"), 0))
                 {
-                    kind = TypeKind_Basic;
+                    kind = GEN_TypeKind_Basic;
                 }
                 else if (MD_S8Match(tag_arg_str, MD_S8Lit("struct"), 0))
                 {
-                    kind = TypeKind_Struct;
+                    kind = GEN_TypeKind_Struct;
                 }
                 else if (MD_S8Match(tag_arg_str, MD_S8Lit("enum"), 0))
                 {
-                    kind = TypeKind_Enum;
+                    kind = GEN_TypeKind_Enum;
                 }
                 
-                if (kind == TypeKind_Null)
+                if (kind == GEN_TypeKind_Null)
                 {
                     MD_CodeLoc loc = MD_CodeLocFromNode(node);
                     MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
@@ -412,7 +414,7 @@ main(int argc, char **argv)
                 }
                 else
                 {
-                    TypeInfo *type_info = MD_PushArrayZero(arena, TypeInfo, 1);
+                    GEN_TypeInfo *type_info = MD_PushArrayZero(arena, GEN_TypeInfo, 1);
                     type_info->kind = kind;
                     type_info->node = node;
                     
@@ -459,7 +461,7 @@ main(int argc, char **argv)
                 MD_Node *auto_val = get_md_child_value(map_tag, MD_S8Lit("auto"));
                 
                 // save a new map
-                MapInfo *map_info = MD_PushArrayZero(arena, MapInfo, 1);
+                GEN_MapInfo *map_info = MD_PushArrayZero(arena, GEN_MapInfo, 1);
                 map_info->node = node;
                 map_info->in = in;
                 map_info->out = out;
@@ -478,16 +480,16 @@ main(int argc, char **argv)
     // TODO basic type sizes
     
     // build member lists
-    for (TypeInfo *type = first_type;
+    for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
-        if (type->kind == TypeKind_Struct)
+        if (type->kind == GEN_TypeKind_Struct)
         {
             // build the list
             MD_b32 got_list = 1;
-            TypeMember *first_member = 0;
-            TypeMember *last_member = 0;
+            GEN_TypeMember *first_member = 0;
+            GEN_TypeMember *last_member = 0;
             int member_count = 0;
             
             MD_Node *type_root_node = type->node;
@@ -522,7 +524,7 @@ main(int argc, char **argv)
                 // resolved type:
                 if (got_list)
                 {
-                    TypeInfo *type_info = (TypeInfo*)type_info_slot->val;
+                    GEN_TypeInfo *type_info = (GEN_TypeInfo*)type_info_slot->val;
                     
                     MD_Node *array_count = MD_NilNode();
                     MD_Node *array_tag = MD_TagFromString(type_name_node, MD_S8Lit("array"), 0);
@@ -548,7 +550,7 @@ main(int argc, char **argv)
                         }
                     }
                     
-                    TypeMember *member = MD_PushArray(arena, TypeMember, 1);
+                    GEN_TypeMember *member = MD_PushArray(arena, GEN_TypeMember, 1);
                     member->node = member_node;
                     member->type = type_info;
                     member->array_count = array_count;
@@ -572,17 +574,17 @@ main(int argc, char **argv)
     // TODO check enum base types
     
     // build enumerant lists
-    for (TypeInfo *type = first_type;
+    for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
-        if (type->kind == TypeKind_Enum)
+        if (type->kind == GEN_TypeKind_Enum)
         {
             
             // build the list
             MD_b32 got_list = 1;
-            TypeEnumerant *first_enumerant = 0;
-            TypeEnumerant *last_enumerant = 0;
+            GEN_TypeEnumerant *first_enumerant = 0;
+            GEN_TypeEnumerant *last_enumerant = 0;
             int enumerant_count = 0;
             
             int next_implicit_value = 0;
@@ -618,7 +620,7 @@ main(int argc, char **argv)
                 // save enumerant
                 if (got_list)
                 {
-                    TypeEnumerant *enumerant = MD_PushArray(arena, TypeEnumerant, 1);
+                    GEN_TypeEnumerant *enumerant = MD_PushArray(arena, GEN_TypeEnumerant, 1);
                     enumerant->node = enumerant_node;
                     enumerant->value = value;
                     MD_QueuePush(first_enumerant, last_enumerant, enumerant);
@@ -647,13 +649,13 @@ main(int argc, char **argv)
         fprintf(h, "#define META_TYPES_H\n");
         
         // generate type definitions
-        generate_type_definitions_from_types(h, first_type);
+        gen_type_definitions_from_types(h, first_type);
         
         // generate function declarations
-        generate_function_declarations_from_maps(h, first_map);
+        gen_function_declarations_from_maps(h, first_map);
         
         // generate metadata declarations
-        generate_type_info_declarations_from_types(h, first_type);
+        gen_type_info_declarations_from_types(h, first_type);
         
         fprintf(h, "#endif // META_TYPES_H\n");
         fclose(h);
@@ -665,9 +667,9 @@ main(int argc, char **argv)
         FILE *c = fopen("meta_types.c", "wb");
         
         // generate metadata tables
-        generate_struct_member_tables_from_types(c, first_type);
-        generate_enum_member_tables_from_types(c, first_type);
-        generate_type_info_definitions_from_types(c, first_type);
+        gen_struct_member_tables_from_types(c, first_type);
+        gen_enum_member_tables_from_types(c, first_type);
+        gen_type_info_definitions_from_types(c, first_type);
         
         // TODO generate function definitions
         
@@ -676,7 +678,7 @@ main(int argc, char **argv)
     }
     
     // print state
-    for (TypeInfo *type = first_type;
+    for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
     {
@@ -684,16 +686,16 @@ main(int argc, char **argv)
         switch (type->kind)
         {
             default:break;
-            case TypeKind_Basic:  kind_string = "basic"; break;
-            case TypeKind_Struct: kind_string = "struct"; break;
-            case TypeKind_Enum:   kind_string = "enum"; break;
+            case GEN_TypeKind_Basic:  kind_string = "basic"; break;
+            case GEN_TypeKind_Struct: kind_string = "struct"; break;
+            case GEN_TypeKind_Enum:   kind_string = "enum"; break;
         }
         
         MD_Node *node = type->node;
         printf("%.*s: %s\n", MD_S8VArg(node->string), kind_string);
         
         // print member lists
-        for (TypeMember *member = type->first_member;
+        for (GEN_TypeMember *member = type->first_member;
              member != 0;
              member = member->next)
         {
@@ -703,7 +705,7 @@ main(int argc, char **argv)
         }
         
         // print enumerant lists
-        for (TypeEnumerant *enumerant = type->first_enumerant;
+        for (GEN_TypeEnumerant *enumerant = type->first_enumerant;
              enumerant != 0;
              enumerant = enumerant->next)
         {
@@ -713,7 +715,7 @@ main(int argc, char **argv)
         }
     }
     
-    for (MapInfo *map = first_map;
+    for (GEN_MapInfo *map = first_map;
          map != 0;
          map = map->next)
     {
