@@ -36,6 +36,8 @@ struct TypeInfo
     // struct: TypeInfoMember*
     // enum: TypeInfoMember*
     void *children;
+    // enum
+    TypeInfo *underlying_type;
 };
 
 typedef struct TypeInfoMember TypeInfoMember;

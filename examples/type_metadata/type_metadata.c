@@ -31,15 +31,19 @@ struct TypeInfo
     TypeKind kind;
     MD_Node *node;
     
-    // member list
+    // basic
+    int size;
+    
+    // structs
     struct TypeMember *first_member;
     struct TypeMember *last_member;
     int member_count;
     
-    // enumerant list
+    // enums
     struct TypeEnumerant *first_enumerant;
     struct TypeEnumerant *last_enumerant;
     int enumerant_count;
+    TypeInfo *underlying_type;
 };
 
 typedef struct TypeMember TypeMember;
@@ -260,6 +264,66 @@ generate_enum_member_tables_from_types(FILE *out, TypeInfo *first_type)
     fprintf(out, "\n");
 }
 
+void
+generate_type_info_definitions_from_types(FILE *out, TypeInfo *first_type)
+{
+    MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+    
+    MD_PrintGenNoteCComment(out);
+    
+    for (TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        MD_String8 type_name = type->node->string;
+        
+        switch (type->kind)
+        {
+            default:break;
+            
+            case TypeKind_Basic:
+            {
+                int size = type->size;
+                fprintf(out, "TypeInfo %.*s_type_info = "
+                        "{TypeKind_Basic, \"%.*s\", %d, %d, 0, 0};\n",
+                        MD_S8VArg(type_name),
+                        MD_S8VArg(type_name), (int)type_name.size, size);
+            }break;
+            
+            case TypeKind_Struct:
+            {
+                int child_count = type->member_count;
+                fprintf(out, "TypeInfo %.*s_type_info = "
+                        "{TypeKind_Struct, \"%.*s\", %d, %d, %.*s_members, 0};\n",
+                        MD_S8VArg(type_name),
+                        MD_S8VArg(type_name), (int)type_name.size, child_count, MD_S8VArg(type_name));
+            }break;
+            
+            case TypeKind_Enum:
+            {
+                MD_String8 underlying_type_ptr_expression = MD_S8Lit("0");
+                if (type->underlying_type != 0)
+                {
+                    MD_String8 underlying_type_name = type->underlying_type->node->string;
+                    underlying_type_ptr_expression = MD_S8Fmt(scratch.arena, "&%.*s_type_info",
+                                                              MD_S8VArg(underlying_type_name));
+                }
+                
+                int child_count = type->enumerant_count;
+                fprintf(out, "TypeInfo %.*s_type_info = "
+                        "{TypeKind_Enum, \"%.*s\", %d, %d, %.*s_members, %.*s};\n",
+                        MD_S8VArg(type_name),
+                        MD_S8VArg(type_name), (int)type_name.size, child_count, MD_S8VArg(type_name),
+                        MD_S8VArg(underlying_type_ptr_expression));
+            }break;
+        }
+    }
+    
+    fprintf(out, "\n");
+    
+    MD_ReleaseScratch(scratch);
+}
+
 
 //~ main //////////////////////////////////////////////////////////////////////
 
@@ -411,6 +475,8 @@ main(int argc, char **argv)
     
     // TODO no duplicate member names check
     
+    // TODO basic type sizes
+    
     // build member lists
     for (TypeInfo *type = first_type;
          type != 0;
@@ -503,6 +569,8 @@ main(int argc, char **argv)
         }
     }
     
+    // TODO check enum base types
+    
     // build enumerant lists
     for (TypeInfo *type = first_type;
          type != 0;
@@ -510,6 +578,7 @@ main(int argc, char **argv)
     {
         if (type->kind == TypeKind_Enum)
         {
+            
             // build the list
             MD_b32 got_list = 1;
             TypeEnumerant *first_enumerant = 0;
@@ -598,6 +667,7 @@ main(int argc, char **argv)
         // generate metadata tables
         generate_struct_member_tables_from_types(c, first_type);
         generate_enum_member_tables_from_types(c, first_type);
+        generate_type_info_definitions_from_types(c, first_type);
         
         // TODO generate function definitions
         
