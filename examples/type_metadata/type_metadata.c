@@ -928,12 +928,73 @@ gen_function_definitions_from_maps(FILE *out)
             fprintf(out, "%.*s\n", MD_S8VArg(out_type));
             fprintf(out, "%.*s(%.*s v)\n", MD_S8VArg(map->node->string), MD_S8VArg(in_type));
             fprintf(out, "{\n");
-            // TODO implement default
-            // TODO implement auto
             fprintf(out, "%.*s result;\n", MD_S8VArg(out_type));
-            fprintf(out, "memset(&result, 0, sizeof(result));\n");
             fprintf(out, "switch (v)\n");
             fprintf(out, "{\n");
+            
+            // default
+            fprintf(out, "default:\n");
+            fprintf(out, "{\n");
+            if (!MD_NodeIsNil(map->default_val))
+            {
+                MD_String8 default_expr = map->default_val->string;
+                MD_String8 val_expr = default_expr;
+                if (map->out_is_type_info_ptr)
+                {
+                    val_expr = MD_S8Fmt(scratch.arena, "&%.*s_type_info", MD_S8VArg(default_expr));
+                }
+                fprintf(out, "result = %.*s;\n", MD_S8VArg(val_expr));
+            }
+            else if (map->out_is_type_info_ptr)
+            {
+                fprintf(out, "result = 0;\n");
+            }
+            fprintf(out, "}break;\n");
+            
+            // auto cases
+            if (!MD_NodeIsNil(map->auto_val))
+            {
+                int map_has_an_implicit_case = 0;
+                for (GEN_TypeEnumerant *enumerant = map->in->first_enumerant;
+                     enumerant != 0;
+                     enumerant = enumerant->next)
+                {
+                    int enumerant_has_explicit_case = 0;
+                    for (GEN_MapCase *map_case = map->first_case;
+                         map_case != 0;
+                         map_case = map_case->next)
+                    {
+                        if (map_case->in_enumerant == enumerant)
+                        {
+                            enumerant_has_explicit_case = 1;
+                            break;
+                        }
+                    }
+                    
+                    if (!enumerant_has_explicit_case)
+                    {
+                        map_has_an_implicit_case = 1;
+                        MD_String8 in_expr = enumerant->node->string;
+                        fprintf(out, "case %.*s_%.*s:\n", MD_S8VArg(in_type), MD_S8VArg(in_expr));
+                    }
+                }
+                
+                if (map_has_an_implicit_case)
+                {
+                    MD_String8 auto_expr = map->auto_val->string;
+                    MD_String8 val_expr = auto_expr;
+                    if (map->out_is_type_info_ptr)
+                    {
+                        val_expr = MD_S8Fmt(scratch.arena, "&%.*s_type_info", MD_S8VArg(auto_expr));
+                    }
+                    
+                    fprintf(out, "{\n");
+                    fprintf(out, "result = %.*s;\n", MD_S8VArg(val_expr));
+                    fprintf(out, "}break;\n");
+                }
+            }
+            
+            // explicit cases
             for (GEN_MapCase *map_case = map->first_case;
                  map_case != 0;
                  map_case = map_case->next)
@@ -951,6 +1012,7 @@ gen_function_definitions_from_maps(FILE *out)
                 fprintf(out, "result = %.*s;\n", MD_S8VArg(val_expr));
                 fprintf(out, "}break;\n");
             }
+            
             fprintf(out, "}\n");
             fprintf(out, "return(result);\n");
             fprintf(out, "}\n");

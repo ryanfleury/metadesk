@@ -35,9 +35,12 @@ TypeInfo*
 type_info_from_shape(Shape v)
 {
 TypeInfo* result;
-memset(&result, 0, sizeof(result));
 switch (v)
 {
+default:
+{
+result = 0;
+}break;
 case Shape_Circle:
 {
 result = &Circle_type_info;
@@ -57,12 +60,20 @@ U32
 max_slot_from_shape(Shape v)
 {
 U32 result;
-memset(&result, 0, sizeof(result));
 switch (v)
 {
+default:
+{
+result = 0;
+}break;
 case Shape_Polygon:
 {
 result = 12;
+}break;
+case Shape_Circle:
+case Shape_Segment:
+{
+result = 64;
 }break;
 }
 return(result);
