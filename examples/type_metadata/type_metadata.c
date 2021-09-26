@@ -126,7 +126,7 @@ generate_type_definitions(FILE *out, TypeInfo *first_type)
             case TypeKind_Enum:
             {
                 MD_String8 enum_name = type->node->string;
-                fprintf(out, "enum %.*s\n", MD_S8VArg(enum_name));
+                fprintf(out, "typedef enum %.*s\n", MD_S8VArg(enum_name));
                 fprintf(out, "{\n");
                 for (TypeEnumerant *enumerant = type->first_enumerant;
                      enumerant != 0;
@@ -136,7 +136,7 @@ generate_type_definitions(FILE *out, TypeInfo *first_type)
                     fprintf(out, "%.*s_%.*s = %d,\n",
                             MD_S8VArg(enum_name), MD_S8VArg(member_name), enumerant->value);
                 }
-                fprintf(out, "};\n");
+                fprintf(out, "} %.*s;\n", MD_S8VArg(enum_name));
             }break;
         }
     }
