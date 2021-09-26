@@ -592,44 +592,97 @@ gen_check_duplicate_cases(void)
          map != 0;
          map = map->next)
     {
-        
-        for (GEN_MapCase *node = map->first_case;
-             node != 0;
-             node = node->next)
+        if (map->types_are_good)
         {
-            GEN_TypeEnumerant *enumerant = node->in_enumerant;
-            MD_String8 name = enumerant->node->string;
-            for (GEN_MapCase *check = map->first_case;
-                 check != 0;
-                 check = check->next)
+            
+            for (GEN_MapCase *node = map->first_case;
+                 node != 0;
+                 node = node->next)
             {
-                if (node == check)
+                GEN_TypeEnumerant *enumerant = node->in_enumerant;
+                MD_String8 name = enumerant->node->string;
+                for (GEN_MapCase *check = map->first_case;
+                     check != 0;
+                     check = check->next)
                 {
-                    break;
-                }
-                if (enumerant == check->in_enumerant)
-                {
-                    MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
-                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
-                    MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
-                                       "'%.*s' is already defined", MD_S8VArg(name));
-                    MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
-                                       "see previous definition of '%.*s'", MD_S8VArg(name));
-                    break;
-                }
-                if (enumerant->value == check->in_enumerant->value)
-                {
-                    MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
-                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
-                    MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
-                                       "'%.*s' has value %d which is already defined",
-                                       MD_S8VArg(name), enumerant->value);
-                    MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
-                                       "see previous definition '%.*s'",
-                                       MD_S8VArg(check->in_enumerant->node->string));
-                    break;
+                    if (node == check)
+                    {
+                        break;
+                    }
+                    if (enumerant == check->in_enumerant)
+                    {
+                        MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
+                        MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
+                        MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
+                                           "'%.*s' is already defined", MD_S8VArg(name));
+                        MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
+                                           "see previous definition of '%.*s'", MD_S8VArg(name));
+                        break;
+                    }
+                    if (enumerant->value == check->in_enumerant->value)
+                    {
+                        MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
+                        MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
+                        MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
+                                           "'%.*s' has value %d which is already defined",
+                                           MD_S8VArg(name), enumerant->value);
+                        MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
+                                           "see previous definition '%.*s'",
+                                           MD_S8VArg(check->in_enumerant->node->string));
+                        break;
+                    }
                 }
             }
+            
+        }
+    }
+}
+
+void
+gen_check_complete_map_cases(void)
+{
+    for (GEN_MapInfo *map = first_map;
+         map != 0;
+         map = map->next)
+    {
+        if (map->types_are_good && map->is_complete)
+        {
+            int printed_message_for_this_map = 0;
+            
+            GEN_TypeInfo *in_type = map->in;
+            for (GEN_TypeEnumerant *enumerant = in_type->first_enumerant;
+                 enumerant != 0;
+                 enumerant = enumerant->next)
+            {
+                // TODO deduplicate
+                int enumerant_has_case = 0;
+                for (GEN_MapCase *map_case = map->first_case;
+                     map_case != 0;
+                     map_case =  map_case->next)
+                {
+                    if (map_case->in_enumerant == enumerant)
+                    {
+                        enumerant_has_case = 1;
+                        break;
+                    }
+                }
+                
+                if (!enumerant_has_case)
+                {
+                    if (!printed_message_for_this_map)
+                    {
+                        printed_message_for_this_map = 1;
+                        MD_CodeLoc map_loc = MD_CodeLocFromNode(map->node); 
+                        MD_PrintMessage(error_file, map_loc, MD_MessageKind_Warning,
+                                        MD_S8Lit("map marked as complete is missing a case (or more)"));
+                    }
+                    MD_String8 enumerant_name = enumerant->node->string;
+                    MD_CodeLoc enumerant_loc = MD_CodeLocFromNode(enumerant->node);
+                    MD_PrintMessageFmt(error_file, enumerant_loc, MD_MessageKind_Note,
+                                       "see enumerant '%.*s'", MD_S8VArg(enumerant_name));
+                }
+            }
+            
         }
     }
 }
@@ -959,6 +1012,7 @@ gen_function_definitions_from_maps(FILE *out)
                      enumerant != 0;
                      enumerant = enumerant->next)
                 {
+                    // TODO deduplicate
                     int enumerant_has_explicit_case = 0;
                     for (GEN_MapCase *map_case = map->first_case;
                          map_case != 0;
@@ -1078,7 +1132,7 @@ main(int argc, char **argv)
     gen_equip_map_in_out_types();
     gen_equip_map_cases();
     gen_check_duplicate_cases();
-    // TODO check 'complete'
+    gen_check_complete_map_cases();
     
     // generate header file
     {

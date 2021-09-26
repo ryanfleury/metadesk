@@ -105,6 +105,7 @@ void gen_equip_enum_members(void);
 void gen_equip_map_in_out_types(void);
 void gen_equip_map_cases(void);
 void gen_check_duplicate_cases(void);
+void gen_check_complete_map_cases(void);
 
 //~ generators ////////////////////////////////////////////////////////////////
 void gen_type_definitions_from_types(FILE *out);
