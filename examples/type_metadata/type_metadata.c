@@ -1,9 +1,7 @@
 /*
 ** Example: type-metadata
 **
-** This example shows how one might use metadesk to define types with a
-** metadesk file and generate the types along with metadata such as field
-** layouts, string tables, and maps.
+** TODO full commentary
 **
 */
 
@@ -31,13 +29,39 @@ MD_Map map_map = {0};
 //~ helpers ///////////////////////////////////////////////////////////////////
 
 MD_Node*
-gen_get_md_child_value(MD_Node *parent, MD_String8 child_name)
+gen_get_child_value(MD_Node *parent, MD_String8 child_name)
 {
     MD_Node *child = MD_ChildFromString(parent, child_name, 0);
     MD_Node *result = child->first_child;
     return(result);
 }
 
+GEN_TypeInfo*
+gen_resolve_type_info_from_string(MD_String8 name)
+{
+    GEN_TypeInfo *result = 0;
+    MD_MapSlot *slot = MD_MapLookup(&type_map, MD_MapKeyStr(name));
+    if (slot != 0)
+    {
+        result = (GEN_TypeInfo*)slot->val;
+    }
+    return(result);
+}
+
+GEN_TypeInfo*
+gen_resolve_type_info_from_referencer(MD_Node *reference)
+{
+    GEN_TypeInfo *result = gen_resolve_type_info_from_string(reference->string);
+    return(result);
+}
+
+void
+gen_type_resolve_error(MD_Node *reference)
+{
+    MD_CodeLoc loc = MD_CodeLocFromNode(reference);
+    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                       "could not resolve type name '%.*s'", MD_S8VArg(reference->string));
+}
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 
@@ -82,58 +106,16 @@ gen_gather_types_and_maps(MD_Node *list)
                     GEN_TypeInfo *type_info = MD_PushArrayZero(arena, GEN_TypeInfo, 1);
                     type_info->kind = kind;
                     type_info->node = node;
-                    
                     MD_QueuePush(first_type, last_type, type_info);
                     MD_MapInsert(arena, &type_map, MD_MapKeyStr(node->string), type_info);
                 }
             }
             
             // gather map
-            MD_Node *map_tag = MD_TagFromString(node, MD_S8Lit("map"), 0);
-            
-            if (!MD_NodeIsNil(map_tag))
+            if (MD_NodeHasTag(node, MD_S8Lit("map"), 0))
             {
-                // NOTE we could use an expression parser here to make this fancier
-                // and check for the 'In -> Out' semicolon delimited syntax more
-                // carefully, this isn't checking it very rigorously. But there are
-                // no other cases we need to expect so far so being a bit sloppy
-                // buys us a lot of simplicity.
-                MD_Node *in = map_tag->first_child;
-                MD_Node *arrow = in->next;
-                MD_Node *out = arrow->next;
-                {
-                    MD_Node *error_at = 0;
-                    if (MD_NodeIsNil(in))
-                    {
-                        error_at = map_tag;
-                    }
-                    else if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
-                             MD_NodeIsNil(out))
-                    {
-                        error_at = in;
-                    }
-                    if (error_at != 0)
-                    {
-                        MD_CodeLoc loc = MD_CodeLocFromNode(error_at);
-                        MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
-                                        MD_S8Lit("Map's type should be specified like: `In -> Out`"));
-                    }
-                }
-                
-                // check for named children in the map tag
-                int is_complete = MD_NodeHasChild(map_tag, MD_S8Lit("complete"), 0);
-                MD_Node *default_val = gen_get_md_child_value(map_tag, MD_S8Lit("default"));
-                MD_Node *auto_val = gen_get_md_child_value(map_tag, MD_S8Lit("auto"));
-                
-                // save a new map
                 GEN_MapInfo *map_info = MD_PushArrayZero(arena, GEN_MapInfo, 1);
                 map_info->node = node;
-                map_info->in = in;
-                map_info->out = out;
-                map_info->is_complete = is_complete;
-                map_info->default_val = default_val;
-                map_info->auto_val = auto_val;
-                
                 MD_QueuePush(first_map, last_map, map_info);
                 MD_MapInsert(arena, &map_map, MD_MapKeyStr(node->string), map_info);
             }
@@ -248,14 +230,12 @@ gen_equip_struct_members(void)
                 
                 // has type node:
                 MD_String8 type_name = type_name_node->string;
-                MD_MapSlot *type_info_slot = MD_MapLookup(&type_map, MD_MapKeyStr(type_name));
+                GEN_TypeInfo *type_info = gen_resolve_type_info_from_string(type_name);
                 
                 // could not resolve type?
-                if (type_info_slot == 0)
+                if (type_info == 0)
                 {
-                    MD_CodeLoc loc = MD_CodeLocFromNode(type_name_node);
-                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                                       "Could not resolve type name '%.*s'", MD_S8VArg(type_name));
+                    gen_type_resolve_error(type_name_node);
                     got_list = 0;
                     goto skip_member;
                 }
@@ -263,8 +243,6 @@ gen_equip_struct_members(void)
                 // resolved type:
                 if (got_list)
                 {
-                    GEN_TypeInfo *type_info = (GEN_TypeInfo*)type_info_slot->val;
-                    
                     MD_Node *array_count = MD_NilNode();
                     MD_Node *array_tag = MD_TagFromString(type_name_node, MD_S8Lit("array"), 0);
                     if (!MD_NodeIsNil(array_tag))
@@ -326,25 +304,27 @@ gen_equip_enum_underlying_type(void)
             MD_Node *type_node = type->node;
             MD_Node *type_tag = MD_TagFromString(type_node, MD_S8Lit("type"), 0);
             MD_Node *type_tag_param = type_tag->first_child;
-            MD_Node *underlying_type_referencer = type_tag_param->first_child;
-            if (!MD_NodeIsNil(underlying_type_referencer))
+            MD_Node *underlying_type_ref = type_tag_param->first_child;
+            if (!MD_NodeIsNil(underlying_type_ref))
             {
-                MD_String8 underlying_type_name = underlying_type_referencer->string;
-                MD_MapSlot *underlying_type_slot = MD_MapLookup(&type_map,
-                                                                MD_MapKeyStr(underlying_type_name));
-                if (underlying_type_slot != 0)
+                GEN_TypeInfo *resolved_type = gen_resolve_type_info_from_referencer(underlying_type_ref);
+                if (resolved_type == 0)
                 {
-                    GEN_TypeInfo *mapped_type = (GEN_TypeInfo*)underlying_type_slot->val;
-                    if (mapped_type->kind == GEN_TypeKind_Basic)
-                    {
-                        underlying_type = mapped_type;
-                    }
+                    gen_type_resolve_error(underlying_type_ref);
                 }
-                if (underlying_type == 0)
+                else
                 {
-                    MD_CodeLoc loc = MD_CodeLocFromNode(underlying_type_referencer);
-                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                                       "'%.*s' is not a basic type", MD_S8VArg(underlying_type_name));
+                    if (resolved_type->kind != GEN_TypeKind_Basic)
+                    {
+                        MD_CodeLoc loc = MD_CodeLocFromNode(underlying_type_ref);
+                        MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                           "'%.*s' is not a basic type",
+                                           MD_S8VArg(underlying_type_ref->string));
+                    }
+                    else
+                    {
+                        underlying_type = resolved_type;
+                    }
                 }
             }
             
@@ -420,6 +400,155 @@ gen_equip_enum_members(void)
                 type->last_enumerant = last_enumerant;
                 type->enumerant_count = enumerant_count;
             }
+        }
+    }
+}
+
+void
+gen_equip_map_in_out_types(void)
+{
+    for (GEN_MapInfo *map = first_map;
+         map != 0;
+         map = map->next)
+    {
+        MD_Node *map_root_node = map->node;
+        MD_Node *map_tag = MD_TagFromString(map_root_node, MD_S8Lit("map"), 0);
+        
+        // NOTE we could use an expression parser here to make this fancier
+        // and check for the 'In -> Out' semicolon delimited syntax more
+        // carefully, this isn't checking it very rigorously. But there are
+        // no other cases we need to expect so far so being a bit sloppy
+        // buys us a lot of simplicity.
+        MD_Node *in_node = map_tag->first_child;
+        MD_Node *arrow = in_node->next;
+        MD_Node *out_node = arrow->next;
+        {
+            MD_Node *error_at = 0;
+            if (MD_NodeIsNil(in_node))
+            {
+                error_at = map_tag;
+            }
+            else if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
+                     MD_NodeIsNil(out_node))
+            {
+                error_at = in_node;
+            }
+            if (error_at != 0)
+            {
+                MD_CodeLoc loc = MD_CodeLocFromNode(error_at);
+                MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                MD_S8Lit("a map's type should be specified like: `In -> Out`"));
+            }
+        }
+        
+        // resolve in type info
+        GEN_TypeInfo *in_type_info = gen_resolve_type_info_from_referencer(in_node);
+        if (in_type_info != 0 &&
+            in_type_info->kind != GEN_TypeKind_Enum)
+        {
+            MD_CodeLoc loc = MD_CodeLocFromNode(in_node);
+            MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                            MD_S8Lit("a map's In type should be an enum"));
+            in_type_info = 0;
+        }
+        
+        // resolve out type info
+        GEN_TypeInfo *out_type_info = gen_resolve_type_info_from_referencer(out_node);
+        int out_is_type_info_ptr = 0;
+        if (out_type_info == 0)
+        {
+            MD_String8 out_name = out_node->string;
+            if (MD_S8Match(out_name, MD_S8Lit("$Type"), 0))
+            {
+                out_is_type_info_ptr = 1;
+            }
+            else
+            {
+                gen_type_resolve_error(out_node);
+            }
+        }
+        
+        // types are good
+        int types_are_good = 0;
+        if (in_type_info != 0 &&
+            (out_type_info != 0 || out_is_type_info_ptr))
+        {
+            types_are_good = 1;
+        }
+        
+        // check for named children in the map tag
+        int is_complete = MD_NodeHasChild(map_tag, MD_S8Lit("complete"), 0);
+        MD_Node *default_val = gen_get_child_value(map_tag, MD_S8Lit("default"));
+        MD_Node *auto_val = gen_get_child_value(map_tag, MD_S8Lit("auto"));
+        
+        // save to map
+        map->in = in_type_info;
+        map->out = out_type_info;
+        map->out_is_type_info_ptr = out_is_type_info_ptr;
+        map->types_are_good = types_are_good;
+        map->is_complete = is_complete;
+        map->default_val = default_val;
+        map->auto_val = auto_val;
+    }
+}
+
+void
+gen_equip_map_cases(void)
+{
+    for (GEN_MapInfo *map = first_map;
+         map != 0;
+         map = map->next)
+    {
+        
+        // build the list
+        MD_b32 got_list = 1;
+        GEN_MapCase *first_case = 0;
+        GEN_MapCase *last_case = 0;
+        int case_count = 0;
+        
+        MD_Node *map_root_node = map->node;
+        
+        for (MD_Node *case_node = map_root_node->first_child, *next = 0;
+             !MD_NodeIsNil(case_node);
+             case_node = next)
+        {
+            MD_Node *next = MD_FirstNodeWithFlags(case_node, MD_NodeFlag_IsAfterComma);
+            
+            // extract in & out
+            MD_Node *in = case_node;
+            MD_Node *arrow = in->next;
+            MD_Node *out = arrow->next;
+            if (!MD_S8Match(arrow->string, MD_S8Lit("->"), 0) ||
+                MD_NodeIsNil(out))
+            {
+                MD_CodeLoc loc = MD_CodeLocFromNode(in);
+                MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                MD_S8Lit("a map's case should be specified like: `in -> out,`"));
+                got_list = 0;
+                goto skip_case;
+            }
+            
+            // TODO check in is a value of in type
+            
+            // save case
+            if (got_list)
+            {
+                GEN_MapCase *map_case = MD_PushArray(arena, GEN_MapCase, 1);
+                map_case->in = in;
+                map_case->out = out;
+                MD_QueuePush(first_case, last_case, map_case);
+                case_count += 1;
+            }
+            
+            skip_case:;
+        }
+        
+        // save the list
+        if (got_list)
+        {
+            map->first_case = first_case;
+            map->last_case = last_case;
+            map->case_count = case_count;
         }
     }
 }
@@ -519,17 +648,24 @@ gen_function_declarations_from_maps(FILE *out)
          map != 0;
          map = map->next)
     {
-        MD_Node *node = map->node;
-        
-        MD_String8 in_type = map->in->string;
-        MD_String8 out_type = map->out->string;
-        if (MD_S8Match(out_type, MD_S8Lit("$Type"), 0))
+        if (map->types_are_good)
         {
-            out_type = MD_S8Lit("TypeInfo*");
+            MD_Node *node = map->node;
+            
+            MD_String8 in_type = map->in->node->string;
+            MD_String8 out_type = {0};
+            if (map->out_is_type_info_ptr)
+            {
+                out_type = MD_S8Lit("TypeInfo*");
+            }
+            else
+            {
+                out_type = map->out->node->string;
+            }
+            
+            fprintf(out, "%.*s %.*s(%.*s v);\n",
+                    MD_S8VArg(out_type), MD_S8VArg(node->string), MD_S8VArg(in_type));
         }
-        
-        fprintf(out, "%.*s %.*s(%.*s v);\n",
-                MD_S8VArg(out_type), MD_S8VArg(node->string), MD_S8VArg(in_type));
     }
     
     fprintf(out, "\n");
@@ -735,7 +871,8 @@ main(int argc, char **argv)
     gen_equip_struct_members();
     gen_equip_enum_underlying_type();
     gen_equip_enum_members();
-    // TODO check maps & build case lists
+    gen_equip_map_in_out_types();
+    gen_equip_map_cases();
     
     // generate header file
     {

@@ -1,4 +1,9 @@
-/* date = September 25th 2021 8:06 pm */
+/*
+** Example: type-metadata
+**
+** TODO full commentary
+**
+*/
 
 #ifndef TYPE_METADATA_H
 #define TYPE_METADATA_H
@@ -58,17 +63,34 @@ struct GEN_MapInfo
     GEN_MapInfo *next;
     MD_Node *node;
     
-    MD_Node *in;
-    MD_Node *out;
+    GEN_TypeInfo *in;
+    GEN_TypeInfo *out;
+    int out_is_type_info_ptr;
+    int types_are_good;
     
     int is_complete;
     MD_Node *default_val;
     MD_Node *auto_val;
+    
+    struct GEN_MapCase *first_case;
+    struct GEN_MapCase *last_case;
+    int case_count;
+};
+
+typedef struct GEN_MapCase GEN_MapCase;
+struct GEN_MapCase
+{
+    GEN_MapCase *next;
+    MD_Node *in;
+    MD_Node *out;
 };
 
 
 //~ helpers ///////////////////////////////////////////////////////////////////
-MD_Node* gen_get_md_child_value(MD_Node *parent, MD_String8 child_name);
+MD_Node* gen_get_child_value(MD_Node *parent, MD_String8 child_name);
+GEN_TypeInfo* gen_resolve_type_info_from_string(MD_String8 name);
+GEN_TypeInfo* gen_resolve_type_info_from_referencer(MD_Node *reference);
+void          gen_type_resolve_error(MD_Node *reference);
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 void gen_gather_types_and_maps(MD_Node *list);
@@ -77,6 +99,8 @@ void gen_equip_basic_type_size(void);
 void gen_equip_struct_members(void);
 void gen_equip_enum_underlying_type(void);
 void gen_equip_enum_members(void);
+void gen_equip_map_in_out_types(void);
+void gen_equip_map_cases(void);
 
 //~ generators ////////////////////////////////////////////////////////////////
 void gen_type_definitions_from_types(FILE *out);
