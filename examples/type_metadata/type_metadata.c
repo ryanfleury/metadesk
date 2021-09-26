@@ -435,7 +435,21 @@ gen_type_definitions_from_types(FILE *out)
             case GEN_TypeKind_Enum:
             {
                 MD_String8 enum_name = type->node->string;
-                fprintf(out, "typedef enum %.*s\n", MD_S8VArg(enum_name));
+                GEN_TypeInfo *underlying_type = type->underlying_type;
+                
+                // enum header
+                if (underlying_type != 0)
+                {
+                    MD_String8 underlying_type_name = underlying_type->node->string;
+                    fprintf(out, "typedef %.*s %.*s;\n",
+                            MD_S8VArg(underlying_type_name), MD_S8VArg(enum_name));
+                    fprintf(out, "enum\n");
+                }
+                else
+                {
+                    fprintf(out, "typedef enum %.*s\n", MD_S8VArg(enum_name));
+                }
+                
                 fprintf(out, "{\n");
                 for (GEN_TypeEnumerant *enumerant = type->first_enumerant;
                      enumerant != 0;
@@ -445,7 +459,17 @@ gen_type_definitions_from_types(FILE *out)
                     fprintf(out, "%.*s_%.*s = %d,\n",
                             MD_S8VArg(enum_name), MD_S8VArg(member_name), enumerant->value);
                 }
-                fprintf(out, "} %.*s;\n", MD_S8VArg(enum_name));
+                
+                // enum footer
+                if (underlying_type != 0)
+                {
+                    fprintf(out, "};\n");
+                }
+                else
+                {
+                    fprintf(out, "} %.*s;\n", MD_S8VArg(enum_name));
+                }
+                
             }break;
         }
     }
