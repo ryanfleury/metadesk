@@ -142,7 +142,7 @@ gen_gather_types_and_maps(MD_Node *list)
 }
 
 void
-gen_equip_basic_type_sizes(void)
+gen_equip_basic_type_size(void)
 {
     for (GEN_TypeInfo *type = first_type;
          type != 0;
@@ -216,7 +216,7 @@ gen_equip_struct_members(void)
                 
                 // has type node:
                 MD_String8 type_name = type_name_node->string;
-                MD_MapSlot *type_info_slot = (MD_MapSlot*)MD_MapLookup(&type_map, MD_MapKeyStr(type_name));
+                MD_MapSlot *type_info_slot = MD_MapLookup(&type_map, MD_MapKeyStr(type_name));
                 
                 // could not resolve type?
                 if (type_info_slot == 0)
@@ -275,6 +275,49 @@ gen_equip_struct_members(void)
                 type->last_member = last_member;
                 type->member_count = member_count;
             }
+        }
+    }
+}
+
+void
+gen_equip_enum_underlying_type(void)
+{
+    for (GEN_TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        if (type->kind == GEN_TypeKind_Enum)
+        {
+            // extract underlying type
+            GEN_TypeInfo *underlying_type = 0;
+            
+            MD_Node *type_node = type->node;
+            MD_Node *type_tag = MD_TagFromString(type_node, MD_S8Lit("type"), 0);
+            MD_Node *type_tag_param = type_tag->first_child;
+            MD_Node *underlying_type_referencer = type_tag_param->first_child;
+            if (!MD_NodeIsNil(underlying_type_referencer))
+            {
+                MD_String8 underlying_type_name = underlying_type_referencer->string;
+                MD_MapSlot *underlying_type_slot = MD_MapLookup(&type_map,
+                                                                MD_MapKeyStr(underlying_type_name));
+                if (underlying_type_slot != 0)
+                {
+                    GEN_TypeInfo *mapped_type = (GEN_TypeInfo*)underlying_type_slot->val;
+                    if (mapped_type->kind == GEN_TypeKind_Basic)
+                    {
+                        underlying_type = mapped_type;
+                    }
+                }
+                if (underlying_type == 0)
+                {
+                    MD_CodeLoc loc = MD_CodeLocFromNode(underlying_type_referencer);
+                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                       "'%.*s' is not a basic type", MD_S8VArg(underlying_type_name));
+                }
+            }
+            
+            // save underlying type
+            type->underlying_type = underlying_type;
         }
     }
 }
@@ -631,10 +674,9 @@ main(int argc, char **argv)
     // analysis phase
     gen_gather_types_and_maps(list);
     // TODO no duplicate member names check
-    // TODO basic type sizes
-    gen_equip_basic_type_sizes();
+    gen_equip_basic_type_size();
     gen_equip_struct_members();
-    // TODO check enum base types
+    gen_equip_enum_underlying_type();
     gen_equip_enum_members();
     // TODO check maps & build case lists
     
