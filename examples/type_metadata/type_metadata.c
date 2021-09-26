@@ -142,7 +142,50 @@ gen_gather_types_and_maps(MD_Node *list)
 }
 
 void
-gen_gather_struct_members(void)
+gen_equip_basic_type_sizes(void)
+{
+    for (GEN_TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        if (type->kind == GEN_TypeKind_Basic)
+        {
+            // extract the size
+            int size = 0;
+            
+            MD_Node *size_node = type->node->first_child;
+            MD_Node *error_at = 0;
+            if (MD_NodeIsNil(size_node))
+            {
+                error_at = type->node;
+            }
+            else
+            {
+                MD_String8 size_string = size_node->string;
+                if (!MD_StringIsCStyleInt(size_string))
+                {
+                    error_at = size_node;
+                }
+                else
+                {
+                    size = (int)MD_CStyleIntFromString(size_string);
+                }
+            }
+            if (error_at != 0)
+            {
+                MD_CodeLoc loc = MD_CodeLocFromNode(error_at);
+                MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                MD_S8Lit("a basic type requires a plain integer size specifier"));
+            }
+            
+            // save the size
+            type->size = size;
+        }
+    }
+}
+
+void
+gen_equip_struct_members(void)
 {
     for (GEN_TypeInfo *type = first_type;
          type != 0;
@@ -237,7 +280,7 @@ gen_gather_struct_members(void)
 }
 
 void
-gen_gather_enum_members(void)
+gen_equip_enum_members(void)
 {
     for (GEN_TypeInfo *type = first_type;
          type != 0;
@@ -309,7 +352,7 @@ gen_gather_enum_members(void)
 //~ generators ////////////////////////////////////////////////////////////////
 
 void
-gen_type_definitions_from_types(FILE *out, GEN_TypeInfo *first_type)
+gen_type_definitions_from_types(FILE *out)
 {
     MD_PrintGenNoteCComment(out);
     
@@ -368,7 +411,7 @@ gen_type_definitions_from_types(FILE *out, GEN_TypeInfo *first_type)
 }
 
 void
-gen_function_declarations_from_maps(FILE *out, GEN_MapInfo *first_map)
+gen_function_declarations_from_maps(FILE *out)
 {
     MD_PrintGenNoteCComment(out);
     
@@ -393,7 +436,7 @@ gen_function_declarations_from_maps(FILE *out, GEN_MapInfo *first_map)
 }
 
 void
-gen_type_info_declarations_from_types(FILE *out, GEN_TypeInfo *first_type)
+gen_type_info_declarations_from_types(FILE *out)
 {
     MD_PrintGenNoteCComment(out);
     
@@ -409,7 +452,7 @@ gen_type_info_declarations_from_types(FILE *out, GEN_TypeInfo *first_type)
 }
 
 void
-gen_struct_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type)
+gen_struct_member_tables_from_types(FILE *out)
 {
     MD_PrintGenNoteCComment(out);
     
@@ -448,7 +491,7 @@ gen_struct_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type)
 }
 
 void
-gen_enum_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type)
+gen_enum_member_tables_from_types(FILE *out)
 {
     MD_PrintGenNoteCComment(out);
     
@@ -482,7 +525,7 @@ gen_enum_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type)
 }
 
 void
-gen_type_info_definitions_from_types(FILE *out, GEN_TypeInfo *first_type)
+gen_type_info_definitions_from_types(FILE *out)
 {
     MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     
@@ -585,21 +628,14 @@ main(int argc, char **argv)
     type_map = MD_MapMake(arena);
     map_map = MD_MapMake(arena);
     
-    // gather types & maps
+    // analysis phase
     gen_gather_types_and_maps(list);
-    
     // TODO no duplicate member names check
-    
     // TODO basic type sizes
-    
-    // build member lists
-    gen_gather_struct_members();
-    
+    gen_equip_basic_type_sizes();
+    gen_equip_struct_members();
     // TODO check enum base types
-    
-    // build enumerant lists
-    gen_gather_enum_members();
-    
+    gen_equip_enum_members();
     // TODO check maps & build case lists
     
     // generate meta types header
@@ -608,14 +644,9 @@ main(int argc, char **argv)
         fprintf(h, "#if !defined(META_TYPES_H)\n");
         fprintf(h, "#define META_TYPES_H\n");
         
-        // generate type definitions
-        gen_type_definitions_from_types(h, first_type);
-        
-        // generate function declarations
-        gen_function_declarations_from_maps(h, first_map);
-        
-        // generate metadata declarations
-        gen_type_info_declarations_from_types(h, first_type);
+        gen_type_definitions_from_types(h);
+        gen_function_declarations_from_maps(h);
+        gen_type_info_declarations_from_types(h);
         
         fprintf(h, "#endif // META_TYPES_H\n");
         fclose(h);
@@ -626,10 +657,9 @@ main(int argc, char **argv)
         // open output file
         FILE *c = fopen("meta_types.c", "wb");
         
-        // generate metadata tables
-        gen_struct_member_tables_from_types(c, first_type);
-        gen_enum_member_tables_from_types(c, first_type);
-        gen_type_info_definitions_from_types(c, first_type);
+        gen_struct_member_tables_from_types(c);
+        gen_enum_member_tables_from_types(c);
+        gen_type_info_definitions_from_types(c);
         
         // TODO generate function definitions
         

@@ -72,15 +72,17 @@ MD_Node* gen_get_md_child_value(MD_Node *parent, MD_String8 child_name);
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 void gen_gather_types_and_maps(MD_Node *list);
-void gen_gather_struct_members(void);
+void gen_equip_basic_type_sizes(void);
+void gen_equip_struct_members(void);
+void gen_equip_enum_members(void);
 
 //~ generators ////////////////////////////////////////////////////////////////
-void gen_type_definitions_from_types(FILE *out, GEN_TypeInfo *first_type);
-void gen_function_declarations_from_maps(FILE *out, GEN_MapInfo *first_map);
-void gen_type_info_declarations_from_types(FILE *out, GEN_TypeInfo *first_type);
-void gen_struct_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type);
-void gen_enum_member_tables_from_types(FILE *out, GEN_TypeInfo *first_type);
-void gen_type_info_definitions_from_types(FILE *out, GEN_TypeInfo *first_type);
+void gen_type_definitions_from_types(FILE *out);
+void gen_function_declarations_from_maps(FILE *out);
+void gen_type_info_declarations_from_types(FILE *out);
+void gen_struct_member_tables_from_types(FILE *out);
+void gen_enum_member_tables_from_types(FILE *out);
+void gen_type_info_definitions_from_types(FILE *out);
 
 
 #endif //TYPE_METADATA_H
