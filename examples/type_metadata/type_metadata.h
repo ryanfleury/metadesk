@@ -72,6 +72,7 @@ MD_Node* gen_get_md_child_value(MD_Node *parent, MD_String8 child_name);
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 void gen_gather_types_and_maps(MD_Node *list);
+void gen_check_duplicate_member_names(void);
 void gen_equip_basic_type_size(void);
 void gen_equip_struct_members(void);
 void gen_equip_enum_underlying_type(void);

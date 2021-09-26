@@ -142,6 +142,38 @@ gen_gather_types_and_maps(MD_Node *list)
 }
 
 void
+gen_check_duplicate_member_names(void)
+{
+    for (GEN_TypeInfo *type = first_type;
+         type != 0;
+         type = type->next)
+    {
+        MD_Node *type_root_node = type->node;
+        for (MD_EachNode(member_node, type_root_node->first_child))
+        {
+            MD_String8 name = member_node->string;
+            for (MD_EachNode(check_node, type_root_node->first_child))
+            {
+                if (member_node == check_node)
+                {
+                    break;
+                }
+                if (MD_S8Match(name, check_node->string, 0))
+                {
+                    MD_CodeLoc my_loc = MD_CodeLocFromNode(member_node);
+                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check_node);
+                    MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
+                                       "'%.*s' is already defined", MD_S8VArg(name));
+                    MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
+                                       "see previous definition of '%.*s'", MD_S8VArg(name));
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void
 gen_equip_basic_type_size(void)
 {
     for (GEN_TypeInfo *type = first_type;
@@ -449,8 +481,9 @@ gen_type_definitions_from_types(FILE *out)
                 {
                     fprintf(out, "typedef enum %.*s\n", MD_S8VArg(enum_name));
                 }
-                
                 fprintf(out, "{\n");
+                
+                // enum body
                 for (GEN_TypeEnumerant *enumerant = type->first_enumerant;
                      enumerant != 0;
                      enumerant = enumerant->next)
@@ -672,7 +705,7 @@ main(int argc, char **argv)
     
     // parse all files passed to the command line
     MD_Node *list = MD_MakeList(arena);
-    for(int i = 1; i < argc; i += 1)
+    for (int i = 1; i < argc; i += 1)
     {
         // parse the file
         MD_String8 file_name = MD_S8CString(argv[i]);
@@ -697,28 +730,26 @@ main(int argc, char **argv)
     
     // analysis phase
     gen_gather_types_and_maps(list);
-    // TODO no duplicate member names check
+    gen_check_duplicate_member_names();
     gen_equip_basic_type_size();
     gen_equip_struct_members();
     gen_equip_enum_underlying_type();
     gen_equip_enum_members();
     // TODO check maps & build case lists
     
-    // generate meta types header
+    // generate header file
     {
         FILE *h = fopen("meta_types.h", "wb");
         fprintf(h, "#if !defined(META_TYPES_H)\n");
         fprintf(h, "#define META_TYPES_H\n");
-        
         gen_type_definitions_from_types(h);
         gen_function_declarations_from_maps(h);
         gen_type_info_declarations_from_types(h);
-        
         fprintf(h, "#endif // META_TYPES_H\n");
         fclose(h);
     }
     
-    // generate meta types code
+    // generate definitions file
     {
         // open output file
         FILE *c = fopen("meta_types.c", "wb");
