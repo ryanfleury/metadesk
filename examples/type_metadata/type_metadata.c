@@ -80,6 +80,52 @@ gen_enumerant_from_name(GEN_TypeInfo *enum_type, MD_String8 name)
     return(result);
 }
 
+GEN_MapCase*
+gen_map_case_from_enumerant(GEN_MapInfo *map, GEN_TypeEnumerant *enumerant)
+{
+    GEN_MapCase *result = 0;
+    for (GEN_MapCase *map_case = map->first_case;
+         map_case != 0;
+         map_case = map_case->next)
+    {
+        if (map_case->in_enumerant == enumerant)
+        {
+            result = map_case;
+            break;
+        }
+    }
+    return(result);
+}
+
+
+MD_String8
+gen_in_type_string_from_map(GEN_MapInfo *map)
+{
+    MD_String8 result = {0};
+    if (map->types_are_good)
+    {
+        result = map->in->node->string;
+    }
+    return(result);
+}
+
+MD_String8
+gen_out_type_string_from_map(GEN_MapInfo *map)
+{
+    MD_String8 result = {0};
+    if (map->types_are_good)
+    {
+        if (map->out_is_type_info_ptr)
+        {
+            result = MD_S8Lit("TypeInfo*");
+        }
+        else
+        {
+            result = map->out->node->string;
+        }
+    }
+    return(result);
+}
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 
@@ -488,8 +534,7 @@ gen_equip_map_in_out_types(void)
         
         // types are good
         int types_are_good = 0;
-        if (in_type_info != 0 &&
-            (out_type_info != 0 || out_is_type_info_ptr))
+        if (in_type_info != 0 && (out_type_info != 0 || out_is_type_info_ptr))
         {
             types_are_good = 1;
         }
@@ -654,20 +699,9 @@ gen_check_complete_map_cases(void)
                  enumerant != 0;
                  enumerant = enumerant->next)
             {
-                // TODO deduplicate
-                int enumerant_has_case = 0;
-                for (GEN_MapCase *map_case = map->first_case;
-                     map_case != 0;
-                     map_case =  map_case->next)
-                {
-                    if (map_case->in_enumerant == enumerant)
-                    {
-                        enumerant_has_case = 1;
-                        break;
-                    }
-                }
+                GEN_MapCase *existing_case = gen_map_case_from_enumerant(map, enumerant);
                 
-                if (!enumerant_has_case)
+                if (existing_case == 0)
                 {
                     if (!printed_message_for_this_map)
                     {
@@ -784,17 +818,8 @@ gen_function_declarations_from_maps(FILE *out)
     {
         if (map->types_are_good)
         {
-            // TODO deduplicate
-            MD_String8 in_type = map->in->node->string;
-            MD_String8 out_type = {0};
-            if (map->out_is_type_info_ptr)
-            {
-                out_type = MD_S8Lit("TypeInfo*");
-            }
-            else
-            {
-                out_type = map->out->node->string;
-            }
+            MD_String8 in_type = gen_in_type_string_from_map(map);
+            MD_String8 out_type = gen_out_type_string_from_map(map);
             
             fprintf(out, "%.*s %.*s(%.*s v);\n",
                     MD_S8VArg(out_type), MD_S8VArg(map->node->string), MD_S8VArg(in_type));
@@ -966,17 +991,8 @@ gen_function_definitions_from_maps(FILE *out)
     {
         if (map->types_are_good)
         {
-            // TODO deduplicate
-            MD_String8 in_type = map->in->node->string;
-            MD_String8 out_type = {0};
-            if (map->out_is_type_info_ptr)
-            {
-                out_type = MD_S8Lit("TypeInfo*");
-            }
-            else
-            {
-                out_type = map->out->node->string;
-            }
+            MD_String8 in_type = gen_in_type_string_from_map(map);
+            MD_String8 out_type = gen_out_type_string_from_map(map);
             
             fprintf(out, "%.*s\n", MD_S8VArg(out_type));
             fprintf(out, "%.*s(%.*s v)\n", MD_S8VArg(map->node->string), MD_S8VArg(in_type));
@@ -1012,20 +1028,9 @@ gen_function_definitions_from_maps(FILE *out)
                      enumerant != 0;
                      enumerant = enumerant->next)
                 {
-                    // TODO deduplicate
-                    int enumerant_has_explicit_case = 0;
-                    for (GEN_MapCase *map_case = map->first_case;
-                         map_case != 0;
-                         map_case = map_case->next)
-                    {
-                        if (map_case->in_enumerant == enumerant)
-                        {
-                            enumerant_has_explicit_case = 1;
-                            break;
-                        }
-                    }
+                    GEN_MapCase *explicit_case = gen_map_case_from_enumerant(map, enumerant);
                     
-                    if (!enumerant_has_explicit_case)
+                    if (explicit_case == 0)
                     {
                         map_has_an_implicit_case = 1;
                         MD_String8 in_expr = enumerant->node->string;

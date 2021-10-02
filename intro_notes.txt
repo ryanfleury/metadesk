@@ -10,6 +10,9 @@ Example Programs:
 [x] User error checking
 [x] Datadesk-like setup
 [ ] Example type metadata
+    [ ] Cleanup & Simplification Pass
+    [ ] Commentary
+    [ ] Example Type File With Errors
 [ ] Example of simple expression parser
 [ ] Example of C-like expression parser (with value and type expressions)
 [ ] Example(s) of using overrides
@@ -20,19 +23,4 @@ Example Metadesk Files:
 [x] Hello world
 [x] identifiers, numbers, strings, and symbols
 [x] sets, seperators, and tags
-
-
-Allen's Final Tweak Notes (September 10th 2021):
-
-*** MD_EachNodeRef seems bad to me. ***
-
-Using it is equivalent to:
-for (MD_EachNode(it, first_child)
-{
- MD_Node *node = MD_ResolveFromReference(it); // this line is saved by the macro
-}
-
-Explaning this concept seems more difficult with the extra macro. I think it'd be
-clearer and basically just as maintenance efficient to live without this.
-
 
