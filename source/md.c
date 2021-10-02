@@ -3425,9 +3425,6 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
     return(result);
 }
 
-MD_FUNCTION MD_ExprParseResult 
-_MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_u32 min_precedence);
-
 MD_FUNCTION MD_ExprNode*
 _MD_Expr_Make(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node, 
               MD_ExprNode *left, MD_ExprNode *right)
@@ -3447,44 +3444,12 @@ _MD_Expr_Make(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
     return result;
 }
 
-MD_FUNCTION void
-_MD_CtxAdvance(MD_ExprParseCtx *ctx)
-{
-    MD_Node *node = ctx->first->next;
-    if (node == ctx->one_past_last__)
-    {
-        node = MD_NilNode();
-    }
-    ctx->first = node;
-}
-
-MD_FUNCTION MD_b32
-_MD_ExprOprConsumed(MD_ExprParseCtx *ctx, MD_ExprOprKind kind, MD_u32 min_precedence,
-                    MD_ExprOpr **op_out)
-{
-    MD_b32 result = 0;
-    if(!MD_NodeIsNil(ctx->first))
-    {
-        MD_Node *node = ctx->first;
-        MD_ExprOpr *op = MD_ExprOprFromKindString(ctx->op_table, kind, node->string);
-        if(op && op->precedence >= min_precedence)
-        {
-            result = 1;
-            *op_out = op;
-            _MD_CtxAdvance(ctx);
-        }
-    }
-    return result;
-}
-
 MD_FUNCTION MD_ExprParseCtx
-_MD_ExprParse_MakeContext(MD_ExprOprTable *op_table, MD_Node *first, MD_Node *one_past_last)
+_MD_ExprParse_MakeContext(MD_ExprOprTable *op_table, MD_Node *first)
 {
     MD_ExprParseCtx result = MD_ZERO_STRUCT;
     result.op_table = op_table;
     result.original_first = first;
-    result.first = first;
-    result.one_past_last__ = one_past_last;
     
     result.accel.bracket_set_op = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Prefix,  MD_S8Lit("[]"));
     result.accel.brace_set_op   = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Prefix,  MD_S8Lit("{}"));
@@ -3494,176 +3459,19 @@ _MD_ExprParse_MakeContext(MD_ExprOprTable *op_table, MD_Node *first, MD_Node *on
     return result;
 }
 
-MD_FUNCTION MD_ExprParseCtx
-_MD_ExprParse_MakeSubcontext(MD_ExprParseCtx *ctx, MD_Node *first, MD_Node *one_past_last)
-{
-    MD_ExprParseCtx result = *ctx;
-    result.first = first;
-    result.one_past_last__ = one_past_last;
-    return result;
-}
-
-MD_FUNCTION MD_ExprParseResult 
-_MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx)
-{
-    MD_ExprParseResult result = MD_ZERO_STRUCT;
-    
-    MD_Node *node = ctx->first;
-    MD_ExprOpr *op = 0;
-    
-    if(MD_NodeIsNil(node))
-    {
-        MD_Node *last = ctx->original_first;
-        for (;last->next != ctx->one_past_last__; last = last->next);
-        
-        MD_Node *error_node = last->next;
-        if (MD_NodeIsNil(error_node))
-        {
-            MD_Node *root = MD_RootFromNode(node);
-            MD_String8 parse_contents = root->raw_string;
-            MD_u64 offset = last->offset + last->raw_string.size;
-            error_node = MD_MakeErrorMarkerNode(arena, parse_contents, offset);
-        }
-        
-        MD_String8 error_str = MD_S8Lit("Unexpected end of expression.");
-        MD_Message *error = MD_MakeNodeError(arena, error_node, MD_MessageKind_FatalError,
-                                             error_str);
-        MD_MessageListPush(&result.errors, error);
-    }
-    else if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
-    { // NOTE(mal): Parens
-        _MD_CtxAdvance(ctx);
-        MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeSubcontext(ctx, node->first_child, node->last_child->next);
-        result = _MD_ExprParse_Ctx_MinPrecedence(arena, &sub_ctx, 0);
-    }
-    else if((node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight &&
-             ctx->accel.bracket_set_op) ||
-            (node->flags & MD_NodeFlag_HasBraceLeft && node->flags & MD_NodeFlag_HasBraceRight &&
-             ctx->accel.brace_set_op))
-    {
-        _MD_CtxAdvance(ctx);
-        // NOTE(mal): Unparsed leaf sets ({ ... }, [ ... ])
-        result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
-        result.node->md_node = node;
-    }
-    else if(_MD_ExprOprConsumed(ctx, MD_ExprOprKind_Prefix, 1, &op))
-    {
-        MD_u32 min_precedence = op->precedence + 1;
-        MD_ExprParseResult sub_parse_result = _MD_ExprParse_Ctx_MinPrecedence(arena, ctx, min_precedence);
-        if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
-        {
-            result.node = _MD_Expr_Make(arena, op, node, sub_parse_result.node, 0);
-        }
-        else{
-            result.errors = sub_parse_result.errors;
-        }
-    }
-    else if(_MD_ExprOprConsumed(ctx, MD_ExprOprKind_Null, 1, &op))
-    {
-        MD_String8 error_str = MD_S8Fmt(arena, "Expected leaf. Got operator \"%.*s\".", MD_S8VArg(node->string));
-        MD_u64 error_offset = node->offset - ctx->original_first->offset;
-        
-        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_FatalError, error_str);
-        MD_MessageListPush(&result.errors, error);
-    }
-    else if(node->flags & (MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight | MD_NodeFlag_HasBracketLeft | 
-                           MD_NodeFlag_HasBracketRight | MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight))
-    {
-        MD_String8 error_str = MD_S8Fmt(arena, "Unexpected set.", MD_S8VArg(node->string));
-        MD_u64 error_offset = node->offset - ctx->original_first->offset;
-        
-        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_FatalError, error_str);
-        MD_MessageListPush(&result.errors, error);
-    }
-    else{   // NOTE(mal): leaf
-        _MD_CtxAdvance(ctx);
-        result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
-        result.node->md_node = node;
-    }
-    
-    return result;
-}
-
-MD_FUNCTION MD_ExprParseResult 
-_MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_u32 min_precedence)
-{
-    MD_ExprParseResult result = MD_ZERO_STRUCT;
-    
-    MD_ExprOpr *subscript_op = ctx->accel.subscript_op;
-    
-    result = _MD_ExprParse_Atom(arena, ctx);
-    if(result.errors.max_message_kind == MD_MessageKind_Null)
-    {
-        for (;!MD_NodeIsNil(ctx->first);)
-        {
-            MD_Node *node = ctx->first;
-            MD_ExprOpr *op;
-            
-            if(subscript_op && subscript_op->precedence >= min_precedence &&
-               node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight)
-            {
-                _MD_CtxAdvance(ctx);
-                
-                // NOTE(mal): Array subscript
-                MD_ExprParseCtx sub_ctx = _MD_ExprParse_MakeSubcontext(ctx, node->first_child, node->last_child->next);
-                MD_ExprParseResult sub_parse_result = _MD_ExprParse_Ctx_MinPrecedence(arena, &sub_ctx, 0);
-                if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
-                {
-                    result.node = _MD_Expr_Make(arena, subscript_op, node, result.node, sub_parse_result.node);
-                }
-                else{
-                    result.errors = sub_parse_result.errors;
-                    break;
-                }
-            }
-            else if(_MD_ExprOprConsumed(ctx, MD_ExprOprKind_Binary, min_precedence, &op) ||
-                    _MD_ExprOprConsumed(ctx, MD_ExprOprKind_BinaryRightAssociative, min_precedence, &op))
-            {
-                MD_u32 next_min_precedence = op->precedence + (op->kind == MD_ExprOprKind_Binary);
-                MD_ExprParseResult sub_parse_result = _MD_ExprParse_Ctx_MinPrecedence(arena, ctx, next_min_precedence);
-                if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
-                {
-                    result.node = _MD_Expr_Make(arena, op, node, result.node, sub_parse_result.node);
-                }
-                else{
-                    result.errors = sub_parse_result.errors;
-                    break;
-                }
-            }
-            else if(ctx->accel.call_op && ctx->accel.call_op->precedence >= min_precedence &&
-                    node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
-            { // NOTE: call
-                _MD_CtxAdvance(ctx);
-                result.node = _MD_Expr_Make(arena, ctx->accel.call_op, node, result.node, 0);
-            }
-            else if(_MD_ExprOprConsumed(ctx, MD_ExprOprKind_Postfix, min_precedence, &op))
-            {
-                result.node = _MD_Expr_Make(arena, op, node, result.node, 0);
-            }
-            else{
-                break;  // NOTE: Due to lack of progress
-            }
-        }
-    }
-    
-    return result;
-}
-
 MD_FUNCTION MD_ExprParseResult
-MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table,
-             MD_Node *first, MD_Node *one_past_last)
+MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table, MD_Node *first, MD_Node *opl)
 {
-    MD_ExprParseResult result = MD_ZERO_STRUCT;
-    
-    MD_ExprParseCtx ctx = _MD_ExprParse_MakeContext(op_table, first, one_past_last);
-    result = _MD_ExprParse_Ctx_MinPrecedence(arena, &ctx, 0);
+    MD_ExprParseCtx ctx = _MD_ExprParse_MakeContext(op_table, first);
+    MD_Node *iter = first;
+    MD_ExprParseResult result = MD_ExprParse_Ctx_MinPrecedence(arena, &ctx, &iter, opl, 0);
     if(result.errors.max_message_kind == MD_MessageKind_Null)
     {
-        if(!MD_NodeIsNil(ctx.first))
+        MD_Node *stop_node = iter;
+        if(!MD_NodeIsNil(stop_node))
         {
-            MD_String8 error_str =
-                MD_S8Lit("Partial parse. Expected binary or unary postfix operator.");
-            MD_Message *error = MD_MakeNodeError(arena,ctx.first,MD_MessageKind_FatalError,error_str);
+            MD_String8 error_str=MD_S8Lit("Expected binary or unary postfix operator.");
+            MD_Message *error = MD_MakeNodeError(arena,stop_node,MD_MessageKind_FatalError,error_str);
             MD_MessageListPush(&result.errors, error);
         }
     }
@@ -3698,6 +3506,198 @@ MD_ExprOprFromKindString(MD_ExprOprTable *table, MD_ExprOprKind kind, MD_String8
     dbl_break:;
     return result;
 }
+
+MD_FUNCTION MD_Node*
+MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl)
+{
+    node = node->next;
+    if (node == opl)
+    {
+        node = MD_NilNode();
+    }
+    return(node);
+}
+
+
+
+
+
+MD_FUNCTION MD_b32
+MD_ExprOprConsume(MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl,
+                  MD_ExprOprKind kind, MD_u32 min_precedence, MD_ExprOpr **op_out)
+{
+    MD_b32 result = 0;
+    MD_Node *node = *iter;
+    if(!MD_NodeIsNil(node))
+    {
+        MD_ExprOpr *op = MD_ExprOprFromKindString(ctx->op_table, kind, node->string);
+        if(op != 0 && op->precedence >= min_precedence)
+        {
+            result = 1;
+            *op_out = op;
+            *iter= MD_NodeNextWithLimit(*iter, opl);
+        }
+    }
+    return result;
+}
+
+MD_FUNCTION MD_ExprParseResult 
+MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl)
+{
+    MD_ExprParseResult result = MD_ZERO_STRUCT;
+    
+    MD_Node *node = *iter;
+    MD_ExprOpr *op = 0;
+    
+    if(MD_NodeIsNil(node))
+    {
+        MD_Node *last = ctx->original_first;
+        for (;last->next != opl; last = last->next);
+        
+        MD_Node *error_node = last->next;
+        if (MD_NodeIsNil(error_node))
+        {
+            MD_Node *root = MD_RootFromNode(node);
+            MD_String8 parse_contents = root->raw_string;
+            MD_u64 offset = last->offset + last->raw_string.size;
+            error_node = MD_MakeErrorMarkerNode(arena, parse_contents, offset);
+        }
+        
+        MD_String8 error_str = MD_S8Lit("Unexpected end of expression.");
+        MD_Message *error = MD_MakeNodeError(arena, error_node, MD_MessageKind_FatalError,
+                                             error_str);
+        MD_MessageListPush(&result.errors, error);
+    }
+    else if((node->flags & MD_NodeFlag_HasParenLeft) &&
+            (node->flags & MD_NodeFlag_HasParenRight))
+    { // NOTE(mal): Parens
+        *iter = MD_NodeNextWithLimit(*iter, opl);
+        MD_Node *sub_iter = node->first_child;
+        result = MD_ExprParse_Ctx_MinPrecedence(arena, ctx, &sub_iter, MD_NilNode(), 0);
+    }
+    else if(((node->flags & MD_NodeFlag_HasBracketLeft) && (node->flags & MD_NodeFlag_HasBracketRight) &&
+             ctx->accel.bracket_set_op) ||
+            ((node->flags & MD_NodeFlag_HasBraceLeft) &&
+             (node->flags & MD_NodeFlag_HasBraceRight) &&
+             ctx->accel.brace_set_op))
+    {
+        *iter = MD_NodeNextWithLimit(*iter, opl);
+        // NOTE(mal): Unparsed leaf sets ({ ... }, [ ... ])
+        result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
+        result.node->md_node = node;
+    }
+    else if(MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_Prefix, 1, &op))
+    {
+        MD_u32 min_precedence = op->precedence + 1;
+        MD_ExprParseResult sub_parse_result =
+            MD_ExprParse_Ctx_MinPrecedence(arena, ctx, iter, opl, min_precedence);
+        if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
+        {
+            result.node = _MD_Expr_Make(arena, op, node, sub_parse_result.node, 0);
+        }
+        else{
+            result.errors = sub_parse_result.errors;
+        }
+    }
+    else if(MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_Null, 1, &op))
+    {
+        MD_String8 error_str = MD_S8Fmt(arena, "Expected leaf. Got operator \"%.*s\".", MD_S8VArg(node->string));
+        MD_u64 error_offset = node->offset - ctx->original_first->offset;
+        
+        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_FatalError, error_str);
+        MD_MessageListPush(&result.errors, error);
+    }
+    else if(node->flags & (MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight | MD_NodeFlag_HasBracketLeft | 
+                           MD_NodeFlag_HasBracketRight | MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight))
+    {
+        MD_String8 error_str = MD_S8Fmt(arena, "Unexpected set.", MD_S8VArg(node->string));
+        MD_u64 error_offset = node->offset - ctx->original_first->offset;
+        
+        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_FatalError, error_str);
+        MD_MessageListPush(&result.errors, error);
+    }
+    else{   // NOTE(mal): leaf
+        *iter = MD_NodeNextWithLimit(*iter, opl);
+        result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
+        result.node->md_node = node;
+    }
+    
+    return result;
+}
+
+MD_FUNCTION MD_ExprParseResult 
+MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
+                               MD_Node **iter, MD_Node *opl,
+                               MD_u32 min_precedence)
+{
+    MD_ExprParseResult result = MD_ZERO_STRUCT;
+    
+    MD_ExprOpr *subscript_op = ctx->accel.subscript_op;
+    
+    result = MD_ExprParse_Atom(arena, ctx, iter, opl);
+    if(result.errors.max_message_kind == MD_MessageKind_Null)
+    {
+        for (;!MD_NodeIsNil(*iter);)
+        {
+            MD_Node *node = *iter;
+            MD_ExprOpr *op;
+            
+            if(subscript_op && subscript_op->precedence >= min_precedence &&
+               node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight)
+            {
+                *iter = MD_NodeNextWithLimit(*iter, opl);
+                
+                // NOTE(mal): Array subscript
+                MD_Node *sub_iter = node->first_child;
+                MD_ExprParseResult sub_parse_result = MD_ExprParse_Ctx_MinPrecedence(arena, ctx,
+                                                                                     &sub_iter,MD_NilNode(),
+                                                                                     0);
+                if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
+                {
+                    result.node = _MD_Expr_Make(arena, subscript_op, node, result.node, sub_parse_result.node);
+                }
+                else{
+                    result.errors = sub_parse_result.errors;
+                    break;
+                }
+            }
+            else if(MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_Binary, min_precedence, &op) ||
+                    MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_BinaryRightAssociative,
+                                      min_precedence, &op))
+            {
+                MD_u32 next_min_precedence = op->precedence + (op->kind == MD_ExprOprKind_Binary);
+                MD_ExprParseResult sub_parse_result =
+                    MD_ExprParse_Ctx_MinPrecedence(arena, ctx, iter, opl, next_min_precedence);
+                if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
+                {
+                    result.node = _MD_Expr_Make(arena, op, node, result.node, sub_parse_result.node);
+                }
+                else{
+                    result.errors = sub_parse_result.errors;
+                    break;
+                }
+            }
+            else if(ctx->accel.call_op && ctx->accel.call_op->precedence >= min_precedence &&
+                    node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
+            { // NOTE: call
+                *iter = MD_NodeNextWithLimit(*iter, opl);
+                result.node = _MD_Expr_Make(arena, ctx->accel.call_op, node, result.node, 0);
+            }
+            else if(MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_Postfix, min_precedence, &op))
+            {
+                result.node = _MD_Expr_Make(arena, op, node, result.node, 0);
+            }
+            else
+            {
+                break;  // NOTE: Due to lack of progress
+            }
+        }
+    }
+    
+    return result;
+}
+
+
 
 
 //~ String Generation

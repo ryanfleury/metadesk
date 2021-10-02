@@ -781,8 +781,6 @@ struct MD_ExprParseCtx
 {
     MD_ExprOprTable *op_table;
     MD_Node *original_first;
-    MD_Node *first;
-    MD_Node *one_past_last__;
     
     struct
     {
@@ -1121,8 +1119,23 @@ MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op
                                             MD_Node *first, MD_Node *one_past_last);
 
 
-MD_FUNCTION MD_ExprOpr* MD_ExprOprFromKindString(MD_ExprOprTable *table,
-                                                 MD_ExprOprKind kind, MD_String8 s);
+MD_FUNCTION MD_ExprOpr*        MD_ExprOprFromKindString(MD_ExprOprTable *table,
+                                                        MD_ExprOprKind kind, MD_String8 s);
+
+MD_FUNCTION MD_Node* MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl);
+
+
+
+MD_FUNCTION MD_b32   MD_ExprOprConsume(MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl,
+                                       MD_ExprOprKind kind, MD_u32 min_precedence,
+                                       MD_ExprOpr **op_out);
+MD_FUNCTION MD_ExprParseResult MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx,
+                                                 MD_Node **iter, MD_Node *opl);
+MD_FUNCTION MD_ExprParseResult MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena,
+                                                              MD_ExprParseCtx *ctx,
+                                                              MD_Node **iter, MD_Node *node,
+                                                              MD_u32 min_precedence);
+
 
 //~ String Generation
 
