@@ -63,11 +63,7 @@ struct GEN_MapInfo
     GEN_MapInfo *next;
     MD_Node *node;
     
-    // TODO(allen): fix this shit idiot
-    GEN_TypeInfo *in;
-    GEN_TypeInfo *out;
-    int out_is_type_info_ptr;
-    int types_are_good;
+    struct GEN_TypedMapInfo *typed_map;
     
     int is_complete;
     MD_Node *default_val;
@@ -76,6 +72,19 @@ struct GEN_MapInfo
     struct GEN_MapCase *first_case;
     struct GEN_MapCase *last_case;
     int case_count;
+};
+
+typedef struct GEN_TypedMapInfo GEN_TypedMapInfo;
+struct GEN_TypedMapInfo
+{
+    // primary
+    GEN_TypeInfo *in;
+    GEN_TypeInfo *out;
+    int out_is_type_info_ptr;
+    
+    // derived
+    MD_String8 in_type_string; 
+    MD_String8 out_type_string; 
 };
 
 typedef struct GEN_MapCase GEN_MapCase;
@@ -97,8 +106,6 @@ void          gen_type_resolve_error(MD_Node *reference);
 GEN_TypeEnumerant* gen_enumerant_from_name(GEN_TypeInfo *enum_type, MD_String8 name);
 
 GEN_MapCase* gen_map_case_from_enumerant(GEN_MapInfo *map, GEN_TypeEnumerant *enumerant);
-MD_String8   gen_in_type_string_from_map(GEN_MapInfo *map);
-MD_String8   gen_out_type_string_from_map(GEN_MapInfo *map);
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 void gen_gather_types_and_maps(MD_Node *list);

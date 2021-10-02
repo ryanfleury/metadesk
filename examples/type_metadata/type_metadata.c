@@ -97,36 +97,6 @@ gen_map_case_from_enumerant(GEN_MapInfo *map, GEN_TypeEnumerant *enumerant)
     return(result);
 }
 
-
-MD_String8
-gen_in_type_string_from_map(GEN_MapInfo *map)
-{
-    MD_String8 result = {0};
-    if (map->types_are_good)
-    {
-        result = map->in->node->string;
-    }
-    return(result);
-}
-
-MD_String8
-gen_out_type_string_from_map(GEN_MapInfo *map)
-{
-    MD_String8 result = {0};
-    if (map->types_are_good)
-    {
-        if (map->out_is_type_info_ptr)
-        {
-            result = MD_S8Lit("TypeInfo*");
-        }
-        else
-        {
-            result = map->out->node->string;
-        }
-    }
-    return(result);
-}
-
 //~ analyzers /////////////////////////////////////////////////////////////////
 
 void
@@ -505,38 +475,57 @@ gen_equip_map_in_out_types(void)
             }
         }
         
-        // resolve in type info
-        GEN_TypeInfo *in_type_info = gen_resolve_type_info_from_referencer(in_node);
-        if (in_type_info != 0 &&
-            in_type_info->kind != GEN_TypeKind_Enum)
+        // construct type info for map
+        GEN_TypedMapInfo *typed_map = 0;
         {
-            MD_CodeLoc loc = MD_CodeLocFromNode(in_node);
-            MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
-                            MD_S8Lit("a map's In type should be an enum"));
-            in_type_info = 0;
-        }
-        
-        // resolve out type info
-        GEN_TypeInfo *out_type_info = gen_resolve_type_info_from_referencer(out_node);
-        int out_is_type_info_ptr = 0;
-        if (out_type_info == 0)
-        {
-            MD_String8 out_name = out_node->string;
-            if (MD_S8Match(out_name, MD_S8Lit("$Type"), 0))
+            // resolve in type info
+            GEN_TypeInfo *in_type_info = gen_resolve_type_info_from_referencer(in_node);
+            if (in_type_info != 0 &&
+                in_type_info->kind != GEN_TypeKind_Enum)
             {
-                out_is_type_info_ptr = 1;
+                MD_CodeLoc loc = MD_CodeLocFromNode(in_node);
+                MD_PrintMessage(error_file, loc, MD_MessageKind_Error,
+                                MD_S8Lit("a map's In type should be an enum"));
+                in_type_info = 0;
             }
-            else
+            
+            // resolve out type info
+            GEN_TypeInfo *out_type_info = gen_resolve_type_info_from_referencer(out_node);
+            int out_is_type_info_ptr = 0;
+            if (out_type_info == 0)
             {
-                gen_type_resolve_error(out_node);
+                MD_String8 out_name = out_node->string;
+                if (MD_S8Match(out_name, MD_S8Lit("$Type"), 0))
+                {
+                    out_is_type_info_ptr = 1;
+                }
+                else
+                {
+                    gen_type_resolve_error(out_node);
+                }
             }
-        }
-        
-        // types are good
-        int types_are_good = 0;
-        if (in_type_info != 0 && (out_type_info != 0 || out_is_type_info_ptr))
-        {
-            types_are_good = 1;
+            
+            // assemble typed map
+            if (in_type_info != 0 && (out_type_info != 0 || out_is_type_info_ptr))
+            {
+                typed_map = MD_PushArray(arena, GEN_TypedMapInfo, 1);
+                
+                // fill primary values
+                typed_map->in = in_type_info;
+                typed_map->out = out_type_info;
+                typed_map->out_is_type_info_ptr = out_is_type_info_ptr;
+                
+                // fill derived values
+                typed_map->in_type_string  = in_type_info->node->string;
+                if (out_is_type_info_ptr)
+                {
+                    typed_map->out_type_string = MD_S8Lit("TypeInfo*");
+                }
+                else
+                {
+                    typed_map->out_type_string = out_type_info->node->string;
+                }
+            }
         }
         
         // check for named children in the map tag
@@ -545,10 +534,7 @@ gen_equip_map_in_out_types(void)
         MD_Node *auto_val = gen_get_child_value(map_tag, MD_S8Lit("auto"));
         
         // save to map
-        map->in = in_type_info;
-        map->out = out_type_info;
-        map->out_is_type_info_ptr = out_is_type_info_ptr;
-        map->types_are_good = types_are_good;
+        map->typed_map = typed_map;
         map->is_complete = is_complete;
         map->default_val = default_val;
         map->auto_val = auto_val;
@@ -562,11 +548,12 @@ gen_equip_map_cases(void)
          map != 0;
          map = map->next)
     {
-        if (map->types_are_good)
+        GEN_TypedMapInfo *typed_map = map->typed_map;
+        if (typed_map != 0)
         {
             
             // get in type
-            GEN_TypeInfo *in_type = map->in;
+            GEN_TypeInfo *in_type = typed_map->in;
             
             // build the list
             MD_b32 got_list = 1;
@@ -637,49 +624,46 @@ gen_check_duplicate_cases(void)
          map != 0;
          map = map->next)
     {
-        if (map->types_are_good)
+        
+        for (GEN_MapCase *node = map->first_case;
+             node != 0;
+             node = node->next)
         {
-            
-            for (GEN_MapCase *node = map->first_case;
-                 node != 0;
-                 node = node->next)
+            GEN_TypeEnumerant *enumerant = node->in_enumerant;
+            MD_String8 name = enumerant->node->string;
+            for (GEN_MapCase *check = map->first_case;
+                 check != 0;
+                 check = check->next)
             {
-                GEN_TypeEnumerant *enumerant = node->in_enumerant;
-                MD_String8 name = enumerant->node->string;
-                for (GEN_MapCase *check = map->first_case;
-                     check != 0;
-                     check = check->next)
+                if (node == check)
                 {
-                    if (node == check)
-                    {
-                        break;
-                    }
-                    if (enumerant == check->in_enumerant)
-                    {
-                        MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
-                        MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
-                        MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
-                                           "'%.*s' is already defined", MD_S8VArg(name));
-                        MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
-                                           "see previous definition of '%.*s'", MD_S8VArg(name));
-                        break;
-                    }
-                    if (enumerant->value == check->in_enumerant->value)
-                    {
-                        MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
-                        MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
-                        MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
-                                           "'%.*s' has value %d which is already defined",
-                                           MD_S8VArg(name), enumerant->value);
-                        MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
-                                           "see previous definition '%.*s'",
-                                           MD_S8VArg(check->in_enumerant->node->string));
-                        break;
-                    }
+                    break;
+                }
+                if (enumerant == check->in_enumerant)
+                {
+                    MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
+                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
+                    MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
+                                       "'%.*s' is already defined", MD_S8VArg(name));
+                    MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
+                                       "see previous definition of '%.*s'", MD_S8VArg(name));
+                    break;
+                }
+                if (enumerant->value == check->in_enumerant->value)
+                {
+                    MD_CodeLoc my_loc = MD_CodeLocFromNode(enumerant->node);
+                    MD_CodeLoc og_loc = MD_CodeLocFromNode(check->in_enumerant->node);
+                    MD_PrintMessageFmt(error_file, my_loc, MD_MessageKind_Error,
+                                       "'%.*s' has value %d which is already defined",
+                                       MD_S8VArg(name), enumerant->value);
+                    MD_PrintMessageFmt(error_file, og_loc, MD_MessageKind_Note,
+                                       "see previous definition '%.*s'",
+                                       MD_S8VArg(check->in_enumerant->node->string));
+                    break;
                 }
             }
-            
         }
+        
     }
 }
 
@@ -690,11 +674,12 @@ gen_check_complete_map_cases(void)
          map != 0;
          map = map->next)
     {
-        if (map->types_are_good && map->is_complete)
+        GEN_TypedMapInfo *typed_map = map->typed_map;
+        if (typed_map != 0 && map->is_complete)
         {
             int printed_message_for_this_map = 0;
             
-            GEN_TypeInfo *in_type = map->in;
+            GEN_TypeInfo *in_type = typed_map->in;
             for (GEN_TypeEnumerant *enumerant = in_type->first_enumerant;
                  enumerant != 0;
                  enumerant = enumerant->next)
@@ -816,10 +801,11 @@ gen_function_declarations_from_maps(FILE *out)
          map != 0;
          map = map->next)
     {
-        if (map->types_are_good)
+        GEN_TypedMapInfo *typed_map = map->typed_map;
+        if (typed_map != 0)
         {
-            MD_String8 in_type = gen_in_type_string_from_map(map);
-            MD_String8 out_type = gen_out_type_string_from_map(map);
+            MD_String8 in_type  = typed_map->in_type_string;
+            MD_String8 out_type = typed_map->out_type_string;
             
             fprintf(out, "%.*s %.*s(%.*s v);\n",
                     MD_S8VArg(out_type), MD_S8VArg(map->node->string), MD_S8VArg(in_type));
@@ -989,10 +975,11 @@ gen_function_definitions_from_maps(FILE *out)
          map != 0;
          map = map->next)
     {
-        if (map->types_are_good)
+        GEN_TypedMapInfo *typed_map = map->typed_map;
+        if (typed_map != 0)
         {
-            MD_String8 in_type = gen_in_type_string_from_map(map);
-            MD_String8 out_type = gen_out_type_string_from_map(map);
+            MD_String8 in_type  = typed_map->in_type_string;
+            MD_String8 out_type = typed_map->out_type_string;
             
             fprintf(out, "%.*s\n", MD_S8VArg(out_type));
             fprintf(out, "%.*s(%.*s v)\n", MD_S8VArg(map->node->string), MD_S8VArg(in_type));
@@ -1008,13 +995,13 @@ gen_function_definitions_from_maps(FILE *out)
             {
                 MD_String8 default_expr = map->default_val->string;
                 MD_String8 val_expr = default_expr;
-                if (map->out_is_type_info_ptr)
+                if (typed_map->out_is_type_info_ptr)
                 {
                     val_expr = MD_S8Fmt(scratch.arena, "&%.*s_type_info", MD_S8VArg(default_expr));
                 }
                 fprintf(out, "result = %.*s;\n", MD_S8VArg(val_expr));
             }
-            else if (map->out_is_type_info_ptr)
+            else if (typed_map->out_is_type_info_ptr)
             {
                 fprintf(out, "result = 0;\n");
             }
@@ -1024,7 +1011,7 @@ gen_function_definitions_from_maps(FILE *out)
             if (!MD_NodeIsNil(map->auto_val))
             {
                 int map_has_an_implicit_case = 0;
-                for (GEN_TypeEnumerant *enumerant = map->in->first_enumerant;
+                for (GEN_TypeEnumerant *enumerant = typed_map->in->first_enumerant;
                      enumerant != 0;
                      enumerant = enumerant->next)
                 {
@@ -1042,7 +1029,7 @@ gen_function_definitions_from_maps(FILE *out)
                 {
                     MD_String8 auto_expr = map->auto_val->string;
                     MD_String8 val_expr = auto_expr;
-                    if (map->out_is_type_info_ptr)
+                    if (typed_map->out_is_type_info_ptr)
                     {
                         val_expr = MD_S8Fmt(scratch.arena, "&%.*s_type_info", MD_S8VArg(auto_expr));
                     }
@@ -1061,7 +1048,7 @@ gen_function_definitions_from_maps(FILE *out)
                 MD_String8 in_expr = map_case->in_enumerant->node->string;
                 MD_String8 out_expr = map_case->out->string;
                 MD_String8 val_expr = out_expr;
-                if (map->out_is_type_info_ptr)
+                if (typed_map->out_is_type_info_ptr)
                 {
                     val_expr = MD_S8Fmt(scratch.arena, "&%.*s_type_info", MD_S8VArg(out_expr));
                 }
