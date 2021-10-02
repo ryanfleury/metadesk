@@ -3426,7 +3426,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
 }
 
 MD_FUNCTION MD_ExprNode*
-_MD_Expr_Make(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node, 
+MD_Expr_Alloc(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
               MD_ExprNode *left, MD_ExprNode *right)
 {
     MD_ExprNode *result = MD_PushArrayZero(arena, MD_ExprNode, 1);
@@ -3445,7 +3445,7 @@ _MD_Expr_Make(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
 }
 
 MD_FUNCTION MD_ExprParseCtx
-_MD_ExprParse_MakeContext(MD_ExprOprTable *op_table, MD_Node *first)
+MD_ExprParse_MakeContext(MD_ExprOprTable *op_table, MD_Node *first)
 {
     MD_ExprParseCtx result = MD_ZERO_STRUCT;
     result.op_table = op_table;
@@ -3462,7 +3462,7 @@ _MD_ExprParse_MakeContext(MD_ExprOprTable *op_table, MD_Node *first)
 MD_FUNCTION MD_ExprParseResult
 MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table, MD_Node *first, MD_Node *opl)
 {
-    MD_ExprParseCtx ctx = _MD_ExprParse_MakeContext(op_table, first);
+    MD_ExprParseCtx ctx = MD_ExprParse_MakeContext(op_table, first);
     MD_Node *iter = first;
     MD_ExprParseResult result = MD_ExprParse_Ctx_MinPrecedence(arena, &ctx, &iter, opl, 0);
     if(result.errors.max_message_kind == MD_MessageKind_Null)
@@ -3523,8 +3523,8 @@ MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl)
 
 
 MD_FUNCTION MD_b32
-MD_ExprOprConsume(MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl,
-                  MD_ExprOprKind kind, MD_u32 min_precedence, MD_ExprOpr **op_out)
+MD_ExprParse_OprConsume(MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl,
+                        MD_ExprOprKind kind, MD_u32 min_precedence, MD_ExprOpr **op_out)
 {
     MD_b32 result = 0;
     MD_Node *node = *iter;
@@ -3586,20 +3586,20 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node
         result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
         result.node->md_node = node;
     }
-    else if(MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_Prefix, 1, &op))
+    else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Prefix, 1, &op))
     {
         MD_u32 min_precedence = op->precedence + 1;
         MD_ExprParseResult sub_parse_result =
             MD_ExprParse_Ctx_MinPrecedence(arena, ctx, iter, opl, min_precedence);
         if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
         {
-            result.node = _MD_Expr_Make(arena, op, node, sub_parse_result.node, 0);
+            result.node = MD_Expr_Alloc(arena, op, node, sub_parse_result.node, 0);
         }
         else{
             result.errors = sub_parse_result.errors;
         }
     }
-    else if(MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_Null, 1, &op))
+    else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Null, 1, &op))
     {
         MD_String8 error_str = MD_S8Fmt(arena, "Expected leaf. Got operator \"%.*s\".", MD_S8VArg(node->string));
         MD_u64 error_offset = node->offset - ctx->original_first->offset;
@@ -3654,23 +3654,24 @@ MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                                                                                      0);
                 if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
                 {
-                    result.node = _MD_Expr_Make(arena, subscript_op, node, result.node, sub_parse_result.node);
+                    result.node = MD_Expr_Alloc(arena, subscript_op, node, result.node, sub_parse_result.node);
                 }
                 else{
                     result.errors = sub_parse_result.errors;
                     break;
                 }
             }
-            else if(MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_Binary, min_precedence, &op) ||
-                    MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_BinaryRightAssociative,
-                                      min_precedence, &op))
+            else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Binary,
+                                            min_precedence, &op) ||
+                    MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_BinaryRightAssociative,
+                                            min_precedence, &op))
             {
                 MD_u32 next_min_precedence = op->precedence + (op->kind == MD_ExprOprKind_Binary);
                 MD_ExprParseResult sub_parse_result =
                     MD_ExprParse_Ctx_MinPrecedence(arena, ctx, iter, opl, next_min_precedence);
                 if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
                 {
-                    result.node = _MD_Expr_Make(arena, op, node, result.node, sub_parse_result.node);
+                    result.node = MD_Expr_Alloc(arena, op, node, result.node, sub_parse_result.node);
                 }
                 else{
                     result.errors = sub_parse_result.errors;
@@ -3681,11 +3682,12 @@ MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                     node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
             { // NOTE: call
                 *iter = MD_NodeNextWithLimit(*iter, opl);
-                result.node = _MD_Expr_Make(arena, ctx->accel.call_op, node, result.node, 0);
+                result.node = MD_Expr_Alloc(arena, ctx->accel.call_op, node, result.node, 0);
             }
-            else if(MD_ExprOprConsume(ctx, iter, opl, MD_ExprOprKind_Postfix, min_precedence, &op))
+            else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Postfix,
+                                            min_precedence, &op))
             {
-                result.node = _MD_Expr_Make(arena, op, node, result.node, 0);
+                result.node = MD_Expr_Alloc(arena, op, node, result.node, 0);
             }
             else
             {

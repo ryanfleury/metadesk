@@ -1118,7 +1118,6 @@ MD_FUNCTION MD_ExprOprTable    MD_ExprBakeOperatorTableFromList(MD_Arena *arena,
 MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table,
                                             MD_Node *first, MD_Node *one_past_last);
 
-
 MD_FUNCTION MD_ExprOpr*        MD_ExprOprFromKindString(MD_ExprOprTable *table,
                                                         MD_ExprOprKind kind, MD_String8 s);
 
@@ -1126,9 +1125,16 @@ MD_FUNCTION MD_Node* MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl);
 
 
 
-MD_FUNCTION MD_b32   MD_ExprOprConsume(MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl,
-                                       MD_ExprOprKind kind, MD_u32 min_precedence,
-                                       MD_ExprOpr **op_out);
+MD_FUNCTION MD_ExprNode* MD_Expr_Alloc(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
+                                       MD_ExprNode *left, MD_ExprNode *right);
+
+MD_FUNCTION MD_ExprParseCtx    MD_ExprParse_MakeContext(MD_ExprOprTable *table,MD_Node *first);
+
+MD_FUNCTION MD_b32             MD_ExprParse_OprConsume(MD_ExprParseCtx *ctx, MD_Node **iter,
+                                                       MD_Node *opl,
+                                                       MD_ExprOprKind kind,
+                                                       MD_u32 min_precedence,
+                                                       MD_ExprOpr **op_out);
 MD_FUNCTION MD_ExprParseResult MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx,
                                                  MD_Node **iter, MD_Node *opl);
 MD_FUNCTION MD_ExprParseResult MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena,
