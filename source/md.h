@@ -780,7 +780,6 @@ typedef struct MD_ExprParseCtx MD_ExprParseCtx;
 struct MD_ExprParseCtx
 {
     MD_ExprOprTable *op_table;
-    MD_Node *original_first;
     
     struct
     {
@@ -1117,29 +1116,29 @@ MD_FUNCTION void               MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *l
 
 MD_FUNCTION MD_ExprOprTable    MD_ExprBakeOperatorTableFromList(MD_Arena *arena,
                                                                 MD_ExprOprList *list);
+MD_FUNCTION MD_ExprOpr*        MD_ExprOprFromKindString(MD_ExprOprTable *table,
+                                                        MD_ExprOprKind kind, MD_String8 s);
 
 MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table,
                                             MD_Node *first, MD_Node *one_past_last);
 
-MD_FUNCTION MD_ExprOpr*        MD_ExprOprFromKindString(MD_ExprOprTable *table,
-                                                        MD_ExprOprKind kind, MD_String8 s);
-
 MD_FUNCTION MD_Expr* MD_Expr_Alloc(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
                                    MD_Expr *left, MD_Expr *right);
 
-MD_FUNCTION MD_ExprParseCtx    MD_ExprParse_MakeContext(MD_ExprOprTable *table,MD_Node *first);
+MD_FUNCTION MD_ExprParseCtx MD_ExprParse_MakeContext(MD_ExprOprTable *table);
 
-MD_FUNCTION MD_b32             MD_ExprParse_OprConsume(MD_ExprParseCtx *ctx, MD_Node **iter,
-                                                       MD_Node *opl,
-                                                       MD_ExprOprKind kind,
-                                                       MD_u32 min_precedence,
-                                                       MD_ExprOpr **op_out);
-MD_FUNCTION MD_Expr*           MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx,
-                                                 MD_Node **iter, MD_Node *opl);
-MD_FUNCTION MD_Expr*           MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena,
-                                                              MD_ExprParseCtx *ctx,
-                                                              MD_Node **iter, MD_Node *node,
-                                                              MD_u32 min_precedence);
+MD_FUNCTION MD_Expr* MD_ExprParse_TopLevel(MD_Arena *arena, MD_ExprParseCtx *ctx,
+                                           MD_Node *first, MD_Node *opl);
+MD_FUNCTION MD_b32   MD_ExprParse_OprConsume(MD_ExprParseCtx *ctx,
+                                             MD_Node **iter, MD_Node *opl,
+                                             MD_ExprOprKind kind,
+                                             MD_u32 min_precedence,
+                                             MD_ExprOpr **op_out);
+MD_FUNCTION MD_Expr* MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx,
+                                       MD_Node **iter, MD_Node *first, MD_Node *opl);
+MD_FUNCTION MD_Expr* MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
+                                                MD_Node **iter, MD_Node *first, MD_Node *opl,
+                                                MD_u32 min_precedence);
 
 
 //~ String Generation

@@ -302,8 +302,6 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
     //            adding some extra parens, we can then compare it to the expected parenthisation of the
     //            original input string. We get most of the topological comparison with a simpler test interface.
     Expression_QA tests[] = {
-        { .q = "a+",            .a = "",                    ExpressionErrorKind_Expr, 2},
-        
         { .q = "a + b + c",     .a = "(a + b) + c"          },
         { .q = "a + (b + c)",   .a = "a + (b + c)"          },
         { .q = "a + b + c + d", .a = "((a + b) + c) + d"    },
@@ -353,8 +351,10 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "a)",            .a = "",                    ExpressionErrorKind_MD, 1},
         { .q = "/a",            .a = "",                    ExpressionErrorKind_Expr, 0},
         { .q = "+ /a",          .a = "",                    ExpressionErrorKind_Expr, 2},
-        //{ .q = "a+",            .a = "",                    ExpressionErrorKind_Expr, 2},
+        { .q = "a+",            .a = "",                    ExpressionErrorKind_Expr, 2},
         { .q = "a 1",           .a = "",                    ExpressionErrorKind_Expr, 2},
+        { .q = "a + (a+)",      .a = "",                    ExpressionErrorKind_Expr, 7},
+        { .q = "a[a+]",         .a = "",                    ExpressionErrorKind_Expr, 4},
     };
     
     for(MD_u32 i_test = 0; i_test < MD_ArrayCount(tests); i_test+=1)
