@@ -3,7 +3,12 @@ I don't get what's going on with error messages:
  Why is it rebased by "original_first"?
  Why is it the same for 3 locations but different here?
   `MD_u64 error_offset = ctx.first->offset - first->offset;`
- Why is it named `MD_MakeExprParseError` it doesn't seem to have any\
-  details tied expression parsing.
+ Why is it named `MD_MakeExprParseError`?
+
+Some changes I made to `MD_MakeExprParseError` (I'm not obsessed I swear):
+ Attach user pointer to keep the testing features working as originally written
+
+
+
 
 

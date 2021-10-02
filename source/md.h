@@ -691,6 +691,7 @@ struct MD_Message
     MD_Node *node;
     MD_MessageKind kind;
     MD_String8 string;
+    void *user_ptr;
 };
 
 typedef struct MD_MessageList MD_MessageList;
@@ -783,7 +784,8 @@ struct MD_ExprParseCtx
     MD_Node *first;
     MD_Node *one_past_last;
     
-    struct{
+    struct
+    {
         MD_ExprOpr *call_op;
         MD_ExprOpr *subscript_op;
         MD_ExprOpr *bracket_set_op;
@@ -1112,7 +1114,8 @@ MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op
 
 MD_FUNCTION MD_ExprOpr* MD_ExprOprFromKindString(MD_ExprOprTable *table,
                                                  MD_ExprOprKind kind, MD_String8 s);
-MD_FUNCTION MD_Message* MD_MakeExprParseError(MD_Arena *arena, MD_String8 str, MD_u64 offset);
+MD_FUNCTION MD_Message* MD_MakeExprParseError(MD_Arena *arena, MD_MessageKind kind,
+                                              MD_String8 str, MD_u64 offset, void *ptr);
 
 //~ String Generation
 

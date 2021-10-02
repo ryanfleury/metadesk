@@ -3387,7 +3387,8 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         {
             // TODO(allen): review: does it make sense to use these kinds of errors
             // for *this* which isn't derived from metadesk at all?
-            MD_Message *error = MD_MakeExprParseError(arena, error_str, 0);
+            MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_Warning, error_str, 0,
+                                                      op->op_ptr);
             MD_MessageListPush(&result.errors, error);
         }
         
@@ -3427,13 +3428,15 @@ _MD_Expr_Make(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
     return result;
 }
 
-MD_FUNCTION void _MD_CtxAdvance(MD_ExprParseCtx *ctx)
+MD_FUNCTION void
+_MD_CtxAdvance(MD_ExprParseCtx *ctx)
 {
     ctx->first = ctx->first->next;
 }
 
-MD_FUNCTION MD_b32 _MD_ExprOprConsumed(MD_ExprParseCtx *ctx, MD_ExprOprKind kind, MD_u32 min_precedence,
-                                       MD_ExprOpr **op_out)
+MD_FUNCTION MD_b32
+_MD_ExprOprConsumed(MD_ExprParseCtx *ctx, MD_ExprOprKind kind, MD_u32 min_precedence,
+                    MD_ExprOpr **op_out)
 {
     MD_b32 result = 0;
     if(!MD_NodeIsNil(ctx->first))
@@ -3494,7 +3497,8 @@ _MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx)
         
         MD_String8 error_str = MD_S8Lit("Unexpected end of expression.");
         MD_u64 error_offset = last_non_null->offset + last_non_null->raw_string.size - ctx->original_first->offset;
-        MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
+        MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_FatalError,
+                                                  error_str, error_offset, last_non_null);
         MD_MessageListPush(&result.errors, error);
     }
     else if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
@@ -3529,7 +3533,8 @@ _MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx)
     {
         MD_String8 error_str = MD_S8Fmt(arena, "Expected leaf. Got operator \"%.*s\".", MD_S8VArg(node->string));
         MD_u64 error_offset = node->offset - ctx->original_first->offset;
-        MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
+        MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_FatalError,
+                                                  error_str, error_offset, node);
         MD_MessageListPush(&result.errors, error);
     }
     else if(node->flags & (MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight | MD_NodeFlag_HasBracketLeft | 
@@ -3537,7 +3542,8 @@ _MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx)
     {
         MD_String8 error_str = MD_S8Fmt(arena, "Unexpected set.", MD_S8VArg(node->string));
         MD_u64 error_offset = node->offset - ctx->original_first->offset;
-        MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
+        MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_FatalError,
+                                                  error_str, error_offset, node);
         MD_MessageListPush(&result.errors, error);
     }
     else{   // NOTE(mal): leaf
@@ -3629,7 +3635,8 @@ MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table,
             MD_String8 error_str =
                 MD_S8Lit("Partial parse. Expected binary or unary postfix operator.");
             MD_u64 error_offset = ctx.first->offset - first->offset;
-            MD_Message *error = MD_MakeExprParseError(arena, error_str, error_offset);
+            MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_FatalError,
+                                                      error_str, error_offset, ctx.first);
             MD_MessageListPush(&result.errors, error);
         }
     }
@@ -3666,10 +3673,14 @@ MD_ExprOprFromKindString(MD_ExprOprTable *table, MD_ExprOprKind kind, MD_String8
 }
 
 MD_FUNCTION MD_Message*
-MD_MakeExprParseError(MD_Arena *arena, MD_String8 str, MD_u64 offset)
+MD_MakeExprParseError(MD_Arena *arena, MD_MessageKind kind, MD_String8 str, MD_u64 offset,
+                      void *user_ptr)
 {
-    MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker, MD_S8Lit(""), MD_S8Lit(""), offset);
-    return MD_MakeNodeError(arena, err_node, MD_MessageKind_FatalError, str);
+    MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker,
+                                    MD_S8Lit(""), MD_S8Lit(""), offset);
+    MD_Message *result = MD_MakeNodeError(arena, err_node, kind, str);
+    result->user_ptr = user_ptr;
+    return(result);
 }
 
 
