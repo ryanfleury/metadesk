@@ -728,13 +728,15 @@ typedef enum MD_ExprOprKind
     MD_ExprOprKind_COUNT,
 } MD_ExprOprKind;
 
+// TODO(allen): can we lego-brick the node and opr?
 typedef struct MD_ExprOpr MD_ExprOpr;
 struct MD_ExprOpr
 {
     MD_u32 op_id;
     MD_ExprOprKind kind;
     MD_u32 precedence;
-    MD_Node *md_node__;
+    MD_String8 string;
+    void *op_ptr;
 };
 
 typedef struct MD_ExprOprNode MD_ExprOprNode;
@@ -767,9 +769,8 @@ struct MD_ExprNode
     struct MD_ExprNode *right;
     MD_b32 is_op;
     MD_u32 op_id;
+    void *op_ptr;
     MD_Node *md_node;
-    // TODO(allen): could md_op_node actually be void* ?
-    MD_Node *md_op_node;
 };
 
 typedef struct MD_ExprParseResult MD_ExprParseResult;
@@ -1105,8 +1106,9 @@ MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 //~ Expression Parsing
 
 MD_FUNCTION void               MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *list,
-                                              MD_u32 op_id, MD_ExprOprKind kind,
-                                              MD_u64 precedence, MD_Node *md_node);
+                                              MD_ExprOprKind kind, MD_u64 precedence,
+                                              MD_String8 op_string,
+                                              MD_u32 op_id, void *op_ptr);
 
 MD_FUNCTION MD_ExprOprTable    MD_ExprBakeOperatorTableFromList(MD_Arena *arena,
                                                                 MD_ExprOprList *list);
@@ -1117,6 +1119,7 @@ MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op
 
 MD_FUNCTION MD_ExprOpr* MD_ExprOprFromKindString(MD_ExprOprTable *table,
                                                  MD_ExprOprKind kind, MD_String8 s);
+MD_FUNCTION MD_Message* MD_MakeExprParseError(MD_Arena *arena, MD_String8 str, MD_u64 offset);
 
 //~ String Generation
 

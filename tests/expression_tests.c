@@ -242,32 +242,38 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         
         // NOTE: Wrong operator kind
         operator_list = (MD_ExprOprList){0};
-        MD_ExprOprPush(arena, &operator_list, Op_Addition, MD_ExprOprKind_Null, 1, plus_node);
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Null, 1, MD_S8Lit("+"),
+                       Op_Addition, plus_node);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
         MD_Assert(op_table.errors.max_message_kind = MD_MessageKind_Warning && op_table.errors.node_count == 1 && 
                   op_table.errors.first->node == plus_node);
         
         // NOTE: Repeat operator
         operator_list = (MD_ExprOprList){0};
-        MD_ExprOprPush(arena, &operator_list, Op_Addition, MD_ExprOprKind_Binary, 1, plus_node);
-        MD_ExprOprPush(arena, &operator_list, Op_Addition, MD_ExprOprKind_Binary, 1, plus_node_bis);
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
+                       Op_Addition, plus_node);
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
+                       Op_Addition, plus_node_bis);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
         MD_Assert(op_table.errors.max_message_kind = MD_MessageKind_Warning && op_table.errors.node_count == 1 && 
                   op_table.errors.first->node == plus_node_bis);
         
         operator_list = (MD_ExprOprList){0};
         // NOTE: Binary-postfix operator conflict
-        MD_ExprOprPush(arena, &operator_list, Op_Addition, MD_ExprOprKind_Binary, 1, plus_node);
-        MD_ExprOprPush(arena, &operator_list, Op_Addition, MD_ExprOprKind_Postfix, 1, plus_node_bis);
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
+                       Op_Addition, plus_node);
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Postfix, 1, MD_S8Lit("+"),
+                       Op_Addition, plus_node_bis);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
         MD_Assert(op_table.errors.max_message_kind = MD_MessageKind_Warning && op_table.errors.node_count == 1 && 
                   op_table.errors.first->node == plus_node_bis);
         
         operator_list = (MD_ExprOprList){0};
         // NOTE: Same precedence difference associativity conflict
-        MD_ExprOprPush(arena, &operator_list, Op_Addition, MD_ExprOprKind_Binary, 1, plus_node);
-        MD_ExprOprPush(arena, &operator_list, Op_Addition, MD_ExprOprKind_BinaryRightAssociative, 
-                       1, minus_node);
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
+                       Op_Addition, plus_node);
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_BinaryRightAssociative, 1, MD_S8Lit("-"),
+                       Op_Addition, minus_node);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
         MD_Assert(op_table.errors.max_message_kind = MD_MessageKind_Warning && op_table.errors.node_count == 1 && 
                   op_table.errors.first->node == minus_node);
@@ -280,7 +286,8 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
     {
         OperatorDescription *desc = operator_array + op;
         MD_Node *node = MD_MakeNode(arena, MD_NodeKind_Main, desc->s, desc->s, 0);
-        MD_ExprOprPush(arena, &operator_list, op, desc->op.kind, desc->op.precedence, node);
+        MD_ExprOprPush(arena, &operator_list, desc->op.kind, desc->op.precedence, desc->s,
+                       op, node);
     }
     
     MD_ExprOprTable op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);

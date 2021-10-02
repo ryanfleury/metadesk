@@ -3313,8 +3313,8 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 
 MD_FUNCTION void
 MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *list,
-               MD_u32 op_id, MD_ExprOprKind kind,
-               MD_u64 precedence, MD_Node *md_node)
+               MD_ExprOprKind kind, MD_u64 precedence, MD_String8 string,
+               MD_u32 op_id, void *op_ptr)
 {
     MD_ExprOprNode *node = MD_PushArrayZero(arena, MD_ExprOprNode, 1);
     MD_QueuePush(list->first, list->last, node);
@@ -3322,7 +3322,8 @@ MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *list,
     node->op.op_id = op_id;
     node->op.kind = kind;
     node->op.precedence = precedence;
-    node->op.md_node__ = md_node;
+    node->op.string = string;
+    node->op.op_ptr = op_ptr;
 }
 
 MD_FUNCTION MD_ExprOprTable
@@ -3335,7 +3336,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         op_node = op_node->next)
     {
         MD_ExprOpr op = op_node->op;
-        MD_String8 op_s = op.md_node__->string;
+        MD_String8 op_s = op.string;
         
         // TODO(allen): @upgrade_potential(minor)
         
@@ -3353,13 +3354,16 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
                 op_node2 = op_node2->next)
             {   // NOTE(mal): O(n^2)
                 MD_ExprOpr op2 = op_node2->op;
-                MD_String8 op2_s = op2.md_node__->string;
+                MD_String8 op2_s = op2.string;
                 if(op.precedence == op2.precedence && 
-                   ((op.kind == MD_ExprOprKind_Binary && op2.kind == MD_ExprOprKind_BinaryRightAssociative) ||
-                    (op.kind == MD_ExprOprKind_BinaryRightAssociative && op2.kind == MD_ExprOprKind_Binary)))
+                   ((op.kind == MD_ExprOprKind_Binary &&
+                     op2.kind == MD_ExprOprKind_BinaryRightAssociative) ||
+                    (op.kind == MD_ExprOprKind_BinaryRightAssociative &&
+                     op2.kind == MD_ExprOprKind_Binary)))
                 {
-                    error_str = MD_S8Fmt(arena, "Ignored binary operator \"%.*s\" because another binary operator"
-                                         "has the same precedence and different associativity", MD_S8VArg(op_s));
+                    error_str =
+                        MD_S8Fmt(arena, "Ignored binary operator \"%.*s\" because another binary operator"
+                                 "has the same precedence and different associativity", MD_S8VArg(op_s));
                 }
                 else if(MD_S8Match(op_s, op2_s, 0))
                 {
@@ -3381,7 +3385,9 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         // save error
         if(error_str.size != 0)
         {
-            MD_Message *error = MD_MakeNodeError(arena, op.md_node__, MD_MessageKind_Warning, error_str);
+            // TODO(allen): review: does it make sense to use these kinds of errors
+            // for *this* which isn't derived from metadesk at all?
+            MD_Message *error = MD_MakeExprParseError(arena, error_str, 0);
             MD_MessageListPush(&result.errors, error);
         }
         
@@ -3409,7 +3415,7 @@ _MD_Expr_Make(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
     MD_ExprNode *result = MD_PushArrayZero(arena, MD_ExprNode, 1);
     result->is_op = 1;
     result->op_id = op->op_id;
-    result->md_op_node = op->md_node__;
+    result->op_ptr = op->op_ptr;
     result->md_node = op_node;
     result->left = left;
     result->right = right;
@@ -3468,13 +3474,6 @@ _MD_ExprParse_MakeSubcontext(MD_ExprParseCtx *ctx, MD_Node *first, MD_Node *one_
     result.first = first;
     result.one_past_last = one_past_last;
     return result;
-}
-
-MD_FUNCTION MD_Message*
-MD_MakeExprParseError(MD_Arena *arena, MD_String8 str, MD_u64 offset)
-{
-    MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker, MD_S8Lit(""), MD_S8Lit(""), offset);
-    return MD_MakeNodeError(arena, err_node, MD_MessageKind_FatalError, str);
 }
 
 MD_FUNCTION MD_ExprParseResult 
@@ -3652,7 +3651,7 @@ MD_ExprOprFromKindString(MD_ExprOprTable *table, MD_ExprOprKind kind, MD_String8
             MD_ExprOprList *op_list = table->table+cur_kind;
             for(MD_ExprOprNode *op_node = op_list->first; !result && op_node; op_node = op_node->next)
             {
-                if(MD_S8Match(op_node->op.md_node__->string, s, 0))
+                if(MD_S8Match(op_node->op.string, s, 0))
                 {
                     result = &op_node->op;
                 }
@@ -3661,6 +3660,14 @@ MD_ExprOprFromKindString(MD_ExprOprTable *table, MD_ExprOprKind kind, MD_String8
     }
     return result;
 }
+
+MD_FUNCTION MD_Message*
+MD_MakeExprParseError(MD_Arena *arena, MD_String8 str, MD_u64 offset)
+{
+    MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker, MD_S8Lit(""), MD_S8Lit(""), offset);
+    return MD_MakeNodeError(arena, err_node, MD_MessageKind_FatalError, str);
+}
+
 
 //~ String Generation
 
