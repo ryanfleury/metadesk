@@ -755,12 +755,12 @@ struct MD_ExprOprTable
     MD_MessageList errors;
 };
 
-typedef struct MD_ExprNode MD_ExprNode;
-struct MD_ExprNode
+typedef struct MD_Expr MD_Expr;
+struct MD_Expr
 {
-    struct MD_ExprNode *parent;
-    struct MD_ExprNode *left;
-    struct MD_ExprNode *right;
+    struct MD_Expr *parent;
+    struct MD_Expr *left;
+    struct MD_Expr *right;
     MD_b32 is_op;
     MD_u32 op_id;
     void *op_ptr;
@@ -770,11 +770,11 @@ struct MD_ExprNode
 typedef struct MD_ExprParseResult MD_ExprParseResult;
 struct MD_ExprParseResult
 {
-    MD_ExprNode *node;
+    MD_Expr *node;
     MD_MessageList errors;
 };
 
-// TODO(allen): nil MD_ExprNode
+// TODO(allen): nil MD_Expr
 
 typedef struct MD_ExprParseCtx MD_ExprParseCtx;
 struct MD_ExprParseCtx
@@ -1125,8 +1125,8 @@ MD_FUNCTION MD_Node* MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl);
 
 
 
-MD_FUNCTION MD_ExprNode* MD_Expr_Alloc(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
-                                       MD_ExprNode *left, MD_ExprNode *right);
+MD_FUNCTION MD_Expr* MD_Expr_Alloc(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
+                                   MD_Expr *left, MD_Expr *right);
 
 MD_FUNCTION MD_ExprParseCtx    MD_ExprParse_MakeContext(MD_ExprOprTable *table,MD_Node *first);
 

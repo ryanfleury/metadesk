@@ -117,7 +117,7 @@ static MD_String8 node_raw_contents(MD_Node *node, MD_b32 exclude_outer)
 }
 
 static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *descs, MD_String8List *l, 
-                                       MD_ExprNode *node, MD_b32 exclude_outer_parens)
+                                       MD_Expr *node, MD_b32 exclude_outer_parens)
 {
     if(node->is_op)
     {
@@ -209,7 +209,7 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
     }
 }
 
-static MD_String8 parenthesize(MD_Arena *arena, OperatorDescription *descs, MD_ExprNode *node)
+static MD_String8 parenthesize(MD_Arena *arena, OperatorDescription *descs, MD_Expr *node)
 {
     MD_String8 result = {0};
     MD_String8List l = {0};

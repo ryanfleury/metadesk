@@ -3425,11 +3425,11 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
     return(result);
 }
 
-MD_FUNCTION MD_ExprNode*
+MD_FUNCTION MD_Expr*
 MD_Expr_Alloc(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
-              MD_ExprNode *left, MD_ExprNode *right)
+              MD_Expr *left, MD_Expr *right)
 {
-    MD_ExprNode *result = MD_PushArrayZero(arena, MD_ExprNode, 1);
+    MD_Expr *result = MD_PushArrayZero(arena, MD_Expr, 1);
     result->is_op = 1;
     result->op_id = op->op_id;
     result->op_ptr = op->op_ptr;
@@ -3583,7 +3583,7 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node
     {
         *iter = MD_NodeNextWithLimit(*iter, opl);
         // NOTE(mal): Unparsed leaf sets ({ ... }, [ ... ])
-        result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
+        result.node = MD_PushArrayZero(arena, MD_Expr, 1);
         result.node->md_node = node;
     }
     else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Prefix, 1, &op))
@@ -3618,7 +3618,7 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node
     }
     else{   // NOTE(mal): leaf
         *iter = MD_NodeNextWithLimit(*iter, opl);
-        result.node = MD_PushArrayZero(arena, MD_ExprNode, 1);
+        result.node = MD_PushArrayZero(arena, MD_Expr, 1);
         result.node->md_node = node;
     }
     
