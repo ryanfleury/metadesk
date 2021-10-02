@@ -1075,6 +1075,7 @@ MD_FUNCTION MD_b32     MD_NodeHasTag(MD_Node *node, MD_String8 string, MD_MatchF
 MD_FUNCTION MD_i64     MD_ChildCountFromNode(MD_Node *node);
 MD_FUNCTION MD_i64     MD_TagCountFromNode(MD_Node *node);
 MD_FUNCTION MD_Node *  MD_ResolveNodeFromReference(MD_Node *node);
+MD_FUNCTION MD_Node*   MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl);
 
 MD_FUNCTION MD_String8 MD_PrevCommentFromNode(MD_Node *node);
 MD_FUNCTION MD_String8 MD_NextCommentFromNode(MD_Node *node);
@@ -1122,10 +1123,6 @@ MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op
 
 MD_FUNCTION MD_ExprOpr*        MD_ExprOprFromKindString(MD_ExprOprTable *table,
                                                         MD_ExprOprKind kind, MD_String8 s);
-
-MD_FUNCTION MD_Node* MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl);
-
-
 
 MD_FUNCTION MD_Expr* MD_Expr_Alloc(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
                                    MD_Expr *left, MD_Expr *right);

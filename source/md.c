@@ -3196,6 +3196,17 @@ MD_ResolveNodeFromReference(MD_Node *node)
     return(result);
 }
 
+MD_FUNCTION MD_Node*
+MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl)
+{
+    node = node->next;
+    if (node == opl)
+    {
+        node = MD_NilNode();
+    }
+    return(node);
+}
+
 MD_FUNCTION MD_String8
 MD_PrevCommentFromNode(MD_Node *node)
 {
@@ -3513,21 +3524,6 @@ MD_ExprOprFromKindString(MD_ExprOprTable *table, MD_ExprOprKind kind, MD_String8
     dbl_break:;
     return result;
 }
-
-MD_FUNCTION MD_Node*
-MD_NodeNextWithLimit(MD_Node *node, MD_Node *opl)
-{
-    node = node->next;
-    if (node == opl)
-    {
-        node = MD_NilNode();
-    }
-    return(node);
-}
-
-
-
-
 
 MD_FUNCTION MD_b32
 MD_ExprParse_OprConsume(MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl,
