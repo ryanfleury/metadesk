@@ -2304,59 +2304,6 @@ MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds)
     return(result);
 }
 
-MD_FUNCTION MD_Message*
-MD_MakeNodeError(MD_Arena *arena, MD_Node *node, MD_MessageKind kind, MD_String8 str)
-{
-    MD_Message *error = MD_PushArrayZero(arena, MD_Message, 1);
-    error->node = node;
-    error->kind = kind;
-    error->string = str;
-    return error;
-}
-
-MD_FUNCTION MD_Message *
-MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents, MD_Token token,
-                  MD_MessageKind kind, MD_String8 str)
-{
-    MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker, MD_S8Lit(""), parse_contents,
-                                    token.raw_string.str - parse_contents.str);
-    return MD_MakeNodeError(arena, err_node, kind, str);
-}
-
-MD_FUNCTION void
-MD_MessageListPush(MD_MessageList *list, MD_Message *message)
-{
-    MD_QueuePush(list->first, list->last, message);
-    if(message->kind > list->max_message_kind)
-    {
-        list->max_message_kind = message->kind;
-    }
-    list->node_count += 1;
-}
-
-MD_FUNCTION void
-MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
-{
-    if(list->last)
-    {
-        if(to_push->node_count != 0)
-        {
-            list->last->next = to_push->first;
-            list->last = to_push->last;
-            list->node_count += to_push->node_count;
-            if(to_push->max_message_kind > list->max_message_kind)
-            {
-                list->max_message_kind = to_push->max_message_kind;
-            }
-        }
-    }
-    else
-    {
-        *list = *to_push;
-    }
-    MD_MemoryZeroStruct(to_push);
-}
-
 MD_FUNCTION MD_ParseResult
 MD_ParseResultZero(void)
 {
@@ -2915,6 +2862,78 @@ MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename)
     return parse;
 }
 
+//~ Messages (Errors/Warnings)
+
+MD_FUNCTION MD_Node*
+MD_MakeErrorMarkerNode(MD_Arena *arena, MD_String8 parse_contents, MD_u64 offset)
+{
+    MD_Node *result = MD_MakeNode(arena, MD_NodeKind_ErrorMarker, MD_S8Lit(""), parse_contents,
+                                  offset);
+    return(result);
+}
+
+MD_FUNCTION MD_Message*
+MD_MakeNodeError(MD_Arena *arena, MD_Node *node, MD_MessageKind kind, MD_String8 str)
+{
+    MD_Message *error = MD_PushArrayZero(arena, MD_Message, 1);
+    error->node = node;
+    error->kind = kind;
+    error->string = str;
+    return error;
+}
+
+MD_FUNCTION MD_Message*
+MD_MakeDetachedError(MD_Arena *arena, MD_MessageKind kind, MD_String8 str, void *user_ptr)
+{
+    MD_Node *err_node = MD_MakeErrorMarkerNode(arena, MD_S8Lit(""), 0);
+    MD_Message *result = MD_MakeNodeError(arena, err_node, kind, str);
+    result->user_ptr = user_ptr;
+    return(result);
+}
+
+MD_FUNCTION MD_Message *
+MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents, MD_Token token,
+                  MD_MessageKind kind, MD_String8 str)
+{
+    MD_u64 offset = token.raw_string.str - parse_contents.str;
+    MD_Node *err_node = MD_MakeErrorMarkerNode(arena, parse_contents, offset);
+    return MD_MakeNodeError(arena, err_node, kind, str);
+}
+
+MD_FUNCTION void
+MD_MessageListPush(MD_MessageList *list, MD_Message *message)
+{
+    MD_QueuePush(list->first, list->last, message);
+    if(message->kind > list->max_message_kind)
+    {
+        list->max_message_kind = message->kind;
+    }
+    list->node_count += 1;
+}
+
+MD_FUNCTION void
+MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
+{
+    if(list->last)
+    {
+        if(to_push->node_count != 0)
+        {
+            list->last->next = to_push->first;
+            list->last = to_push->last;
+            list->node_count += to_push->node_count;
+            if(to_push->max_message_kind > list->max_message_kind)
+            {
+                list->max_message_kind = to_push->max_message_kind;
+            }
+        }
+    }
+    else
+    {
+        *list = *to_push;
+    }
+    MD_MemoryZeroStruct(to_push);
+}
+
 //~ Location Conversions
 
 MD_FUNCTION MD_CodeLoc
@@ -3387,8 +3406,8 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         {
             // TODO(allen): review: does it make sense to use these kinds of errors
             // for *this* which isn't derived from metadesk at all?
-            MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_Warning, error_str, 0,
-                                                      op->op_ptr);
+            MD_Message *error = MD_MakeDetachedError(arena, MD_MessageKind_Warning,
+                                                     error_str, op->op_ptr);
             MD_MessageListPush(&result.errors, error);
         }
         
@@ -3431,7 +3450,12 @@ _MD_Expr_Make(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
 MD_FUNCTION void
 _MD_CtxAdvance(MD_ExprParseCtx *ctx)
 {
-    ctx->first = ctx->first->next;
+    MD_Node *node = ctx->first->next;
+    if (node == ctx->one_past_last__)
+    {
+        node = MD_NilNode();
+    }
+    ctx->first = node;
 }
 
 MD_FUNCTION MD_b32
@@ -3460,7 +3484,7 @@ _MD_ExprParse_MakeContext(MD_ExprOprTable *op_table, MD_Node *first, MD_Node *on
     result.op_table = op_table;
     result.original_first = first;
     result.first = first;
-    result.one_past_last = one_past_last;
+    result.one_past_last__ = one_past_last;
     
     result.accel.bracket_set_op = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Prefix,  MD_S8Lit("[]"));
     result.accel.brace_set_op   = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Prefix,  MD_S8Lit("{}"));
@@ -3475,7 +3499,7 @@ _MD_ExprParse_MakeSubcontext(MD_ExprParseCtx *ctx, MD_Node *first, MD_Node *one_
 {
     MD_ExprParseCtx result = *ctx;
     result.first = first;
-    result.one_past_last = one_past_last;
+    result.one_past_last__ = one_past_last;
     return result;
 }
 
@@ -3489,16 +3513,21 @@ _MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx)
     
     if(MD_NodeIsNil(node))
     {
-        MD_Node *last_non_null = ctx->original_first;
-        while(!MD_NodeIsNil(last_non_null->next))
+        MD_Node *last = ctx->original_first;
+        for (;last->next != ctx->one_past_last__; last = last->next);
+        
+        MD_Node *error_node = last->next;
+        if (MD_NodeIsNil(error_node))
         {
-            last_non_null = last_non_null->next;
+            MD_Node *root = MD_RootFromNode(node);
+            MD_String8 parse_contents = root->raw_string;
+            MD_u64 offset = last->offset + last->raw_string.size;
+            error_node = MD_MakeErrorMarkerNode(arena, parse_contents, offset);
         }
         
         MD_String8 error_str = MD_S8Lit("Unexpected end of expression.");
-        MD_u64 error_offset = last_non_null->offset + last_non_null->raw_string.size - ctx->original_first->offset;
-        MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_FatalError,
-                                                  error_str, error_offset, last_non_null);
+        MD_Message *error = MD_MakeNodeError(arena, error_node, MD_MessageKind_FatalError,
+                                             error_str);
         MD_MessageListPush(&result.errors, error);
     }
     else if(node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
@@ -3533,8 +3562,8 @@ _MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx)
     {
         MD_String8 error_str = MD_S8Fmt(arena, "Expected leaf. Got operator \"%.*s\".", MD_S8VArg(node->string));
         MD_u64 error_offset = node->offset - ctx->original_first->offset;
-        MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_FatalError,
-                                                  error_str, error_offset, node);
+        
+        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_FatalError, error_str);
         MD_MessageListPush(&result.errors, error);
     }
     else if(node->flags & (MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight | MD_NodeFlag_HasBracketLeft | 
@@ -3542,8 +3571,8 @@ _MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx)
     {
         MD_String8 error_str = MD_S8Fmt(arena, "Unexpected set.", MD_S8VArg(node->string));
         MD_u64 error_offset = node->offset - ctx->original_first->offset;
-        MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_FatalError,
-                                                  error_str, error_offset, node);
+        
+        MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_FatalError, error_str);
         MD_MessageListPush(&result.errors, error);
     }
     else{   // NOTE(mal): leaf
@@ -3565,7 +3594,7 @@ _MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_u32 mi
     result = _MD_ExprParse_Atom(arena, ctx);
     if(result.errors.max_message_kind == MD_MessageKind_Null)
     {
-        while(!MD_NodeIsNil(ctx->first) && ctx->first != ctx->one_past_last)
+        for (;!MD_NodeIsNil(ctx->first);)
         {
             MD_Node *node = ctx->first;
             MD_ExprOpr *op;
@@ -3630,13 +3659,11 @@ MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table,
     result = _MD_ExprParse_Ctx_MinPrecedence(arena, &ctx, 0);
     if(result.errors.max_message_kind == MD_MessageKind_Null)
     {
-        if(ctx.first != ctx.one_past_last)
+        if(!MD_NodeIsNil(ctx.first))
         {
             MD_String8 error_str =
                 MD_S8Lit("Partial parse. Expected binary or unary postfix operator.");
-            MD_u64 error_offset = ctx.first->offset - first->offset;
-            MD_Message *error = MD_MakeExprParseError(arena, MD_MessageKind_FatalError,
-                                                      error_str, error_offset, ctx.first);
+            MD_Message *error = MD_MakeNodeError(arena,ctx.first,MD_MessageKind_FatalError,error_str);
             MD_MessageListPush(&result.errors, error);
         }
     }
@@ -3670,17 +3697,6 @@ MD_ExprOprFromKindString(MD_ExprOprTable *table, MD_ExprOprKind kind, MD_String8
     }
     dbl_break:;
     return result;
-}
-
-MD_FUNCTION MD_Message*
-MD_MakeExprParseError(MD_Arena *arena, MD_MessageKind kind, MD_String8 str, MD_u64 offset,
-                      void *user_ptr)
-{
-    MD_Node *err_node = MD_MakeNode(arena, MD_NodeKind_ErrorMarker,
-                                    MD_S8Lit(""), MD_S8Lit(""), offset);
-    MD_Message *result = MD_MakeNodeError(arena, err_node, kind, str);
-    result->user_ptr = user_ptr;
-    return(result);
 }
 
 

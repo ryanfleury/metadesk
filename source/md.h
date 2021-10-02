@@ -782,7 +782,7 @@ struct MD_ExprParseCtx
     MD_ExprOprTable *op_table;
     MD_Node *original_first;
     MD_Node *first;
-    MD_Node *one_past_last;
+    MD_Node *one_past_last__;
     
     struct
     {
@@ -1013,13 +1013,6 @@ MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey 
 MD_FUNCTION MD_b32         MD_TokenGroupContainsKind(MD_TokenGroups groups, MD_TokenKind kind);
 MD_FUNCTION MD_Token       MD_TokenFromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds);
-MD_FUNCTION MD_Message*    MD_MakeNodeError(MD_Arena *arena, MD_Node *node,
-                                            MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION MD_Message*    MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents,
-                                             MD_Token token, MD_MessageKind kind,
-                                             MD_String8 str);
-MD_FUNCTION void           MD_MessageListPush(MD_MessageList *list, MD_Message *message);
-MD_FUNCTION void           MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push);
 MD_FUNCTION MD_ParseResult MD_ParseResultZero(void);
 MD_FUNCTION MD_ParseResult MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *parent,
                                            MD_ParseSetRule rule);
@@ -1027,6 +1020,22 @@ MD_FUNCTION MD_ParseResult MD_ParseOneNode(MD_Arena *arena, MD_String8 string, M
 MD_FUNCTION MD_ParseResult MD_ParseWholeString(MD_Arena *arena, MD_String8 filename, MD_String8 contents);
 
 MD_FUNCTION MD_ParseResult MD_ParseWholeFile(MD_Arena *arena, MD_String8 filename);
+
+//~ Messages (Errors/Warnings)
+
+MD_FUNCTION MD_Node*   MD_MakeErrorMarkerNode(MD_Arena *arena, MD_String8 parse_contents,
+                                              MD_u64 offset);
+
+MD_FUNCTION MD_Message*MD_MakeNodeError(MD_Arena *arena, MD_Node *node,
+                                        MD_MessageKind kind, MD_String8 str);
+MD_FUNCTION MD_Message*MD_MakeDetachedError(MD_Arena *arena, MD_MessageKind kind,
+                                            MD_String8 str, void *ptr);
+MD_FUNCTION MD_Message*MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents,
+                                         MD_Token token, MD_MessageKind kind,
+                                         MD_String8 str);
+
+MD_FUNCTION void       MD_MessageListPush(MD_MessageList *list, MD_Message *message);
+MD_FUNCTION void       MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push);
 
 //~ Location Conversion
 
@@ -1114,8 +1123,6 @@ MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op
 
 MD_FUNCTION MD_ExprOpr* MD_ExprOprFromKindString(MD_ExprOprTable *table,
                                                  MD_ExprOprKind kind, MD_String8 s);
-MD_FUNCTION MD_Message* MD_MakeExprParseError(MD_Arena *arena, MD_MessageKind kind,
-                                              MD_String8 str, MD_u64 offset, void *ptr);
 
 //~ String Generation
 
