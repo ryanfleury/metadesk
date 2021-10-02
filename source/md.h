@@ -728,10 +728,10 @@ typedef enum MD_ExprOprKind
     MD_ExprOprKind_COUNT,
 } MD_ExprOprKind;
 
-// TODO(allen): can we lego-brick the node and opr?
 typedef struct MD_ExprOpr MD_ExprOpr;
 struct MD_ExprOpr
 {
+    struct MD_ExprOpr *next;
     MD_u32 op_id;
     MD_ExprOprKind kind;
     MD_u32 precedence;
@@ -739,18 +739,11 @@ struct MD_ExprOpr
     void *op_ptr;
 };
 
-typedef struct MD_ExprOprNode MD_ExprOprNode;
-struct MD_ExprOprNode
-{
-    struct MD_ExprOprNode *next;
-    MD_ExprOpr op;
-};
-
 typedef struct MD_ExprOprList MD_ExprOprList;
 struct MD_ExprOprList
 {
-    MD_ExprOprNode *first;
-    MD_ExprOprNode *last;
+    MD_ExprOpr *first;
+    MD_ExprOpr *last;
     MD_u64 count;
 };
 

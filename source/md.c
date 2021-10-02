@@ -3316,14 +3316,14 @@ MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *list,
                MD_ExprOprKind kind, MD_u64 precedence, MD_String8 string,
                MD_u32 op_id, void *op_ptr)
 {
-    MD_ExprOprNode *node = MD_PushArrayZero(arena, MD_ExprOprNode, 1);
-    MD_QueuePush(list->first, list->last, node);
+    MD_ExprOpr *op = MD_PushArrayZero(arena, MD_ExprOpr, 1);
+    MD_QueuePush(list->first, list->last, op);
     list->count += 1;
-    node->op.op_id = op_id;
-    node->op.kind = kind;
-    node->op.precedence = precedence;
-    node->op.string = string;
-    node->op.op_ptr = op_ptr;
+    op->op_id = op_id;
+    op->kind = kind;
+    op->precedence = precedence;
+    op->string = string;
+    op->op_ptr = op_ptr;
 }
 
 MD_FUNCTION MD_ExprOprTable
@@ -3331,35 +3331,35 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
 {
     MD_ExprOprTable result = MD_ZERO_STRUCT;
     
-    for(MD_ExprOprNode *op_node = list->first;
-        op_node != 0;
-        op_node = op_node->next)
+    for(MD_ExprOpr *op = list->first;
+        op != 0;
+        op = op->next)
     {
-        MD_ExprOpr op = op_node->op;
-        MD_String8 op_s = op.string;
+        MD_ExprOprKind op_kind = op->kind;
+        MD_String8 op_s = op->string;
         
         // TODO(allen): @upgrade_potential(minor)
         
         // error checking
         MD_String8 error_str = MD_ZERO_STRUCT;
-        if(op.kind != MD_ExprOprKind_Prefix && op.kind != MD_ExprOprKind_Postfix &&
-           op.kind != MD_ExprOprKind_Binary && op.kind != MD_ExprOprKind_BinaryRightAssociative)
+        if(op_kind != MD_ExprOprKind_Prefix && op_kind != MD_ExprOprKind_Postfix &&
+           op_kind != MD_ExprOprKind_Binary && op_kind != MD_ExprOprKind_BinaryRightAssociative)
         {
             error_str = MD_S8Fmt(arena, "Invalid operator kind.");
         }
         else
         {
-            for(MD_ExprOprNode *op_node2 = list->first;
-                op_node2 != op_node;
-                op_node2 = op_node2->next)
+            for(MD_ExprOpr *op2 = list->first;
+                op2 != op;
+                op2 = op2->next)
             {   // NOTE(mal): O(n^2)
-                MD_ExprOpr op2 = op_node2->op;
-                MD_String8 op2_s = op2.string;
-                if(op.precedence == op2.precedence && 
-                   ((op.kind == MD_ExprOprKind_Binary &&
-                     op2.kind == MD_ExprOprKind_BinaryRightAssociative) ||
-                    (op.kind == MD_ExprOprKind_BinaryRightAssociative &&
-                     op2.kind == MD_ExprOprKind_Binary)))
+                MD_ExprOprKind op2_kind = op2->kind;
+                MD_String8 op2_s = op2->string;
+                if(op->precedence == op2->precedence && 
+                   ((op_kind == MD_ExprOprKind_Binary &&
+                     op2_kind == MD_ExprOprKind_BinaryRightAssociative) ||
+                    (op_kind == MD_ExprOprKind_BinaryRightAssociative &&
+                     op2_kind == MD_ExprOprKind_Binary)))
                 {
                     error_str =
                         MD_S8Fmt(arena, "Ignored binary operator \"%.*s\" because another binary operator"
@@ -3367,11 +3367,11 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
                 }
                 else if(MD_S8Match(op_s, op2_s, 0))
                 {
-                    if(op.kind == op2.kind)
+                    if(op_kind == op2_kind)
                     {
                         error_str = MD_S8Fmt(arena, "Ignored repeat operator \"%.*s\".", MD_S8VArg(op_s));
                     }
-                    else if(op.kind != MD_ExprOprKind_Prefix && op2.kind != MD_ExprOprKind_Prefix)
+                    else if(op_kind != MD_ExprOprKind_Prefix && op2_kind != MD_ExprOprKind_Prefix)
                     {
                         error_str =
                             MD_S8Fmt(arena, "Ignored conflicting repeat operator \"%.*s\". There can't be"
@@ -3394,11 +3394,11 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         // save list
         else
         {
-            MD_ExprOprList *list = result.table + op.kind;
-            MD_ExprOprNode *op_node_copy = MD_PushArrayZero(arena, MD_ExprOprNode, 1);
+            MD_ExprOprList *list = result.table + op_kind;
+            MD_ExprOpr *op_node_copy = MD_PushArray(arena, MD_ExprOpr, 1);
+            *op_node_copy = *op;
             MD_QueuePush(list->first, list->last, op_node_copy);
             list->count += 1;
-            op_node_copy->op = op;
         }
     }
     
@@ -3643,21 +3643,25 @@ MD_ExprOprFromKindString(MD_ExprOprTable *table, MD_ExprOprKind kind, MD_String8
     // NOTE(mal): Look for operator on one or all (kind == MD_ExprOprKind_Null) tables
     MD_ExprOpr *result = 0;
     for(MD_ExprOprKind cur_kind = (MD_ExprOprKind)(MD_ExprOprKind_Null + 1);
-        !result && cur_kind < MD_ExprOprKind_COUNT;
+        cur_kind < MD_ExprOprKind_COUNT;
         cur_kind = (MD_ExprOprKind)(cur_kind + 1))
     {
         if(kind == MD_ExprOprKind_Null || kind == cur_kind)
         {
             MD_ExprOprList *op_list = table->table+cur_kind;
-            for(MD_ExprOprNode *op_node = op_list->first; !result && op_node; op_node = op_node->next)
+            for(MD_ExprOpr *op = op_list->first;
+                op != 0;
+                op = op->next)
             {
-                if(MD_S8Match(op_node->op.string, s, 0))
+                if(MD_S8Match(op->string, s, 0))
                 {
-                    result = &op_node->op;
+                    result = op;
+                    goto dbl_break;
                 }
             }
         }
     }
+    dbl_break:;
     return result;
 }
 
