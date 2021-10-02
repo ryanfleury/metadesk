@@ -369,7 +369,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
             MD_ExprParseResult expr_parse = MD_ExprParse(arena, &op_table, parse.node->first_child, MD_NilNode());
             if(expr_parse.errors.max_message_kind == MD_MessageKind_Null)
             {
-                MD_String8 parser_answer = parenthesize(arena, operator_array, expr_parse.node);
+                MD_String8 parser_answer = parenthesize(arena, operator_array, expr_parse.expr);
                 if(!MD_S8Match(parser_answer, a, 0))
                 {
                     printf("Example %d : Expected answer for %.*s is %.*s. Got %.*s\n", 

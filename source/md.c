@@ -3462,20 +3462,27 @@ MD_ExprParse_MakeContext(MD_ExprOprTable *op_table, MD_Node *first)
 MD_FUNCTION MD_ExprParseResult
 MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table, MD_Node *first, MD_Node *opl)
 {
+    // parse the node range
     MD_ExprParseCtx ctx = MD_ExprParse_MakeContext(op_table, first);
     MD_Node *iter = first;
-    MD_ExprParseResult result = MD_ExprParse_Ctx_MinPrecedence(arena, &ctx, &iter, opl, 0);
-    if(result.errors.max_message_kind == MD_MessageKind_Null)
+    MD_Expr *expr = MD_ExprParse_Ctx_MinPrecedence(arena, &ctx, &iter, opl, 0);
+    
+    // check for failed-to-reach-end error
+    if(ctx.errors.max_message_kind == MD_MessageKind_Null)
     {
         MD_Node *stop_node = iter;
         if(!MD_NodeIsNil(stop_node))
         {
-            MD_String8 error_str=MD_S8Lit("Expected binary or unary postfix operator.");
+            MD_String8 error_str = MD_S8Lit("Expected binary or unary postfix operator.");
             MD_Message *error = MD_MakeNodeError(arena,stop_node,MD_MessageKind_FatalError,error_str);
-            MD_MessageListPush(&result.errors, error);
+            MD_MessageListPush(&ctx.errors, error);
         }
     }
     
+    // fill result
+    MD_ExprParseResult result = {0};
+    result.expr = expr;
+    result.errors = ctx.errors;
     return(result);
 }
 
@@ -3541,10 +3548,11 @@ MD_ExprParse_OprConsume(MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl,
     return result;
 }
 
-MD_FUNCTION MD_ExprParseResult 
+MD_FUNCTION MD_Expr*
 MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node *opl)
 {
-    MD_ExprParseResult result = MD_ZERO_STRUCT;
+    // TODO(allen): nil
+    MD_Expr* result = 0;
     
     MD_Node *node = *iter;
     MD_ExprOpr *op = 0;
@@ -3566,7 +3574,7 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node
         MD_String8 error_str = MD_S8Lit("Unexpected end of expression.");
         MD_Message *error = MD_MakeNodeError(arena, error_node, MD_MessageKind_FatalError,
                                              error_str);
-        MD_MessageListPush(&result.errors, error);
+        MD_MessageListPush(&ctx->errors, error);
     }
     else if((node->flags & MD_NodeFlag_HasParenLeft) &&
             (node->flags & MD_NodeFlag_HasParenRight))
@@ -3583,20 +3591,17 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node
     {
         *iter = MD_NodeNextWithLimit(*iter, opl);
         // NOTE(mal): Unparsed leaf sets ({ ... }, [ ... ])
-        result.node = MD_PushArrayZero(arena, MD_Expr, 1);
-        result.node->md_node = node;
+        result = MD_PushArrayZero(arena, MD_Expr, 1);
+        result->md_node = node;
     }
     else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Prefix, 1, &op))
     {
         MD_u32 min_precedence = op->precedence + 1;
-        MD_ExprParseResult sub_parse_result =
+        MD_Expr *sub_expr =
             MD_ExprParse_Ctx_MinPrecedence(arena, ctx, iter, opl, min_precedence);
-        if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
+        if(ctx->errors.max_message_kind == MD_MessageKind_Null)
         {
-            result.node = MD_Expr_Alloc(arena, op, node, sub_parse_result.node, 0);
-        }
-        else{
-            result.errors = sub_parse_result.errors;
+            result = MD_Expr_Alloc(arena, op, node, sub_expr, 0);
         }
     }
     else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Null, 1, &op))
@@ -3605,7 +3610,7 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node
         MD_u64 error_offset = node->offset - ctx->original_first->offset;
         
         MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_FatalError, error_str);
-        MD_MessageListPush(&result.errors, error);
+        MD_MessageListPush(&ctx->errors, error);
     }
     else if(node->flags & (MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight | MD_NodeFlag_HasBracketLeft | 
                            MD_NodeFlag_HasBracketRight | MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight))
@@ -3614,50 +3619,49 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter, MD_Node
         MD_u64 error_offset = node->offset - ctx->original_first->offset;
         
         MD_Message *error = MD_MakeNodeError(arena, node, MD_MessageKind_FatalError, error_str);
-        MD_MessageListPush(&result.errors, error);
+        MD_MessageListPush(&ctx->errors, error);
     }
     else{   // NOTE(mal): leaf
         *iter = MD_NodeNextWithLimit(*iter, opl);
-        result.node = MD_PushArrayZero(arena, MD_Expr, 1);
-        result.node->md_node = node;
+        result = MD_PushArrayZero(arena, MD_Expr, 1);
+        result->md_node = node;
     }
     
-    return result;
+    return(result);
 }
 
-MD_FUNCTION MD_ExprParseResult 
+MD_FUNCTION MD_Expr*
 MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                                MD_Node **iter, MD_Node *opl,
                                MD_u32 min_precedence)
 {
-    MD_ExprParseResult result = MD_ZERO_STRUCT;
+    // TODO(allen): nil
+    MD_Expr* result = 0;
     
     MD_ExprOpr *subscript_op = ctx->accel.subscript_op;
     
     result = MD_ExprParse_Atom(arena, ctx, iter, opl);
-    if(result.errors.max_message_kind == MD_MessageKind_Null)
+    if(ctx->errors.max_message_kind == MD_MessageKind_Null)
     {
         for (;!MD_NodeIsNil(*iter);)
         {
             MD_Node *node = *iter;
-            MD_ExprOpr *op;
+            MD_ExprOpr *op = 0;
             
-            if(subscript_op && subscript_op->precedence >= min_precedence &&
-               node->flags & MD_NodeFlag_HasBracketLeft && node->flags & MD_NodeFlag_HasBracketRight)
+            if(subscript_op != 0 && subscript_op->precedence >= min_precedence &&
+               (node->flags & MD_NodeFlag_HasBracketLeft) &&
+               (node->flags & MD_NodeFlag_HasBracketRight))
             {
                 *iter = MD_NodeNextWithLimit(*iter, opl);
                 
                 // NOTE(mal): Array subscript
                 MD_Node *sub_iter = node->first_child;
-                MD_ExprParseResult sub_parse_result = MD_ExprParse_Ctx_MinPrecedence(arena, ctx,
-                                                                                     &sub_iter,MD_NilNode(),
-                                                                                     0);
-                if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
+                MD_Expr* sub_expr = MD_ExprParse_Ctx_MinPrecedence(arena, ctx, &sub_iter, MD_NilNode(), 0);
+                if(ctx->errors.max_message_kind == MD_MessageKind_Null)
                 {
-                    result.node = MD_Expr_Alloc(arena, subscript_op, node, result.node, sub_parse_result.node);
+                    result = MD_Expr_Alloc(arena, subscript_op, node, result, sub_expr);
                 }
                 else{
-                    result.errors = sub_parse_result.errors;
                     break;
                 }
             }
@@ -3667,14 +3671,13 @@ MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                                             min_precedence, &op))
             {
                 MD_u32 next_min_precedence = op->precedence + (op->kind == MD_ExprOprKind_Binary);
-                MD_ExprParseResult sub_parse_result =
+                MD_Expr *sub_expr =
                     MD_ExprParse_Ctx_MinPrecedence(arena, ctx, iter, opl, next_min_precedence);
-                if(sub_parse_result.errors.max_message_kind == MD_MessageKind_Null)
+                if(ctx->errors.max_message_kind == MD_MessageKind_Null)
                 {
-                    result.node = MD_Expr_Alloc(arena, op, node, result.node, sub_parse_result.node);
+                    result = MD_Expr_Alloc(arena, op, node, result, sub_expr);
                 }
                 else{
-                    result.errors = sub_parse_result.errors;
                     break;
                 }
             }
@@ -3682,12 +3685,12 @@ MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                     node->flags & MD_NodeFlag_HasParenLeft && node->flags & MD_NodeFlag_HasParenRight)
             { // NOTE: call
                 *iter = MD_NodeNextWithLimit(*iter, opl);
-                result.node = MD_Expr_Alloc(arena, ctx->accel.call_op, node, result.node, 0);
+                result = MD_Expr_Alloc(arena, ctx->accel.call_op, node, result, 0);
             }
             else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Postfix,
                                             min_precedence, &op))
             {
-                result.node = MD_Expr_Alloc(arena, op, node, result.node, 0);
+                result = MD_Expr_Alloc(arena, op, node, result, 0);
             }
             else
             {
@@ -3696,7 +3699,7 @@ MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
         }
     }
     
-    return result;
+    return(result);
 }
 
 

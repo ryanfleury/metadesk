@@ -770,7 +770,7 @@ struct MD_Expr
 typedef struct MD_ExprParseResult MD_ExprParseResult;
 struct MD_ExprParseResult
 {
-    MD_Expr *node;
+    MD_Expr *expr;
     MD_MessageList errors;
 };
 
@@ -789,6 +789,8 @@ struct MD_ExprParseCtx
         MD_ExprOpr *bracket_set_op;
         MD_ExprOpr *brace_set_op;
     } accel;
+    
+    MD_MessageList errors;
 };
 
 //~ String Generation Types
@@ -1135,9 +1137,9 @@ MD_FUNCTION MD_b32             MD_ExprParse_OprConsume(MD_ExprParseCtx *ctx, MD_
                                                        MD_ExprOprKind kind,
                                                        MD_u32 min_precedence,
                                                        MD_ExprOpr **op_out);
-MD_FUNCTION MD_ExprParseResult MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx,
+MD_FUNCTION MD_Expr*           MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx,
                                                  MD_Node **iter, MD_Node *opl);
-MD_FUNCTION MD_ExprParseResult MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena,
+MD_FUNCTION MD_Expr*           MD_ExprParse_Ctx_MinPrecedence(MD_Arena *arena,
                                                               MD_ExprParseCtx *ctx,
                                                               MD_Node **iter, MD_Node *node,
                                                               MD_u32 min_precedence);
