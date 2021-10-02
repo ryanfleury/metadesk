@@ -7,56 +7,6 @@
 #ifndef MD_H
 #define MD_H
 
-/* NOTE(allen): Notes on overrides/macro options:
-**
-** Overridable :
-**  "memset" ** REQUIRED (default crt-based implementation available)
-**   #define MD_IMPL_Memset             (void*, int, MD_u64) -> void*
-**   #define MD_IMPL_Memmove            (void*, void*, MD_u64) -> void*
-**
-**  "file iteration" ** OPTIONAL
-**   #define MD_IMPL_FileIterBegin      (MD_FileIter*, MD_String8) -> MD_b32
-**   #define MD_IMPL_FileIterNext       (MD_Arena*, MD_FileIter*) -> MD_FileInfo
-**   #define MD_IMPL_FileIterEnd        (MD_FileIter*) -> void
-**
-**  "file load" ** OPTIONAL
-**   #define MD_IMPL_LoadEntireFile     (MD_Arena*, MD_String8 filename) -> MD_String8   
-**
-**  "low level memory" ** OPTIONAL (required for default arena)
-**   #define MD_IMPL_Reserve            (MD_u64) -> void*
-**   #define MD_IMPL_Commit             (void*, MD_u64) -> MD_b32
-**   #define MD_IMPL_Decommit           (void*, MD_u64) -> void
-**   #define MD_IMPL_Release            (void*, MD_u64) -> void
-**
-**  "arena" ** REQUIRED (default implementation available)
-**   #define MD_IMPL_Arena              <type>
-**   #define MD_IMPL_ArenaAlloc         () -> MD_IMPL_Arena*
-**   #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
-**   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> MD_u64
-**   #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, MD_u64) -> void*
-**   #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, MD_u64) -> void
-**   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, MD_u64) -> void
-**   #define MD_IMPL_ArenaHeaderSize    MD_u64
-**
-**  "scratch" ** REQUIRED (default implementation available)
-**   #define MD_IMPL_GetScratch         (MD_IMPL_Arena**, MD_u64) -> MD_IMPL_Arena*
-**  "scratch constants" ** OPTIONAL (required for default scratch)
-**   #define MD_IMPL_ScratchCount       MD_u64 / default 2
-**
-**  "sprintf" ** OPTIONAL (default implementation available)
-**   #define MD_IMPL_Vsnprintf          (char * buf, int count, char const * fmt, va_list va) -> int
-**
-** Default Implementation Controls
-**  These controls default to '1' i.e. 'enabled'
-**   #define MD_DEFAULT_MEMSET    -> construct "memset" from CRT
-**   #define MD_DEFAULT_FILE_ITER -> construct "file iteration" from OS headers
-**   #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS headers
-**   #define MD_DEFAULT_ARENA     -> construct "arena" from "low level memory"
-**   #define MD_DEFAULT_SCRATCH   -> construct "scratch" from "arena"
-**   #define MD_DEFAULT_SPRINTF   -> construct "vsnprintf" from internal implementaion
-**
-*/
-
 //~ Set default values for controls
 #if !defined(MD_DEFAULT_MEMSET)
 # define MD_DEFAULT_MEMSET 1
@@ -768,45 +718,44 @@ struct MD_ParseResult
 
 //~ Expression Parsing
 
-typedef enum MD_ExprOperatorKind
+typedef enum MD_ExprOprKind
 {
-    MD_ExprOperatorKind_Null,
-    // TODO(mal): Improve this naming scheme ?
-    MD_ExprOperatorKind_Prefix,
-    MD_ExprOperatorKind_Postfix,
-    MD_ExprOperatorKind_Binary,
-    MD_ExprOperatorKind_BinaryRightAssociative,
-    MD_ExprOperatorKind_COUNT,
-} MD_ExprOperatorKind;
+    MD_ExprOprKind_Null,
+    MD_ExprOprKind_Prefix,
+    MD_ExprOprKind_Postfix,
+    MD_ExprOprKind_Binary,
+    MD_ExprOprKind_BinaryRightAssociative,
+    MD_ExprOprKind_COUNT,
+} MD_ExprOprKind;
 
-typedef struct MD_ExprOperator MD_ExprOperator;
-struct MD_ExprOperator
+typedef struct MD_ExprOpr MD_ExprOpr;
+struct MD_ExprOpr
 {
     MD_u32 op_id;
-    MD_ExprOperatorKind kind;
+    MD_ExprOprKind kind;
     MD_u32 precedence;
-    MD_Node *md_node;
+    MD_Node *md_node__;
 };
 
-typedef struct MD_ExprOperatorNode MD_ExprOperatorNode;
-struct MD_ExprOperatorNode
+typedef struct MD_ExprOprNode MD_ExprOprNode;
+struct MD_ExprOprNode
 {
-    struct MD_ExprOperatorNode *next;
-    MD_ExprOperator op;
+    struct MD_ExprOprNode *next;
+    MD_ExprOpr op;
 };
 
-typedef struct MD_ExprOperatorList MD_ExprOperatorList;
-struct MD_ExprOperatorList
+typedef struct MD_ExprOprList MD_ExprOprList;
+struct MD_ExprOprList
 {
-    MD_ExprOperatorNode *first;
-    MD_ExprOperatorNode *last;
+    MD_ExprOprNode *first;
+    MD_ExprOprNode *last;
     MD_u64 count;
 };
 
-typedef struct MD_ExprOperatorTable MD_ExprOperatorTable;
-struct MD_ExprOperatorTable
+typedef struct MD_ExprOprTable MD_ExprOprTable;
+struct MD_ExprOprTable
 {
-    MD_ExprOperatorList table[MD_ExprOperatorKind_COUNT]; // TODO(mal): Hash?
+    MD_ExprOprList table[MD_ExprOprKind_COUNT]; // TODO(mal): Hash?
     MD_MessageList errors;
 };
 
@@ -819,6 +768,7 @@ struct MD_ExprNode
     MD_b32 is_op;
     MD_u32 op_id;
     MD_Node *md_node;
+    // TODO(allen): could md_op_node actually be void* ?
     MD_Node *md_op_node;
 };
 
@@ -827,6 +777,24 @@ struct MD_ExprParseResult
 {
     MD_ExprNode *node;
     MD_MessageList errors;
+};
+
+// TODO(allen): nil MD_ExprNode
+
+typedef struct MD_ExprParseCtx MD_ExprParseCtx;
+struct MD_ExprParseCtx
+{
+    MD_ExprOprTable *op_table;
+    MD_Node *original_first;
+    MD_Node *first;
+    MD_Node *one_past_last;
+    
+    struct{
+        MD_ExprOpr *call_op;
+        MD_ExprOpr *subscript_op;
+        MD_ExprOpr *bracket_set_op;
+        MD_ExprOpr *brace_set_op;
+    } accel;
 };
 
 //~ String Generation Types
@@ -1049,9 +1017,9 @@ MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey 
 MD_FUNCTION MD_b32         MD_TokenGroupContainsKind(MD_TokenGroups groups, MD_TokenKind kind);
 MD_FUNCTION MD_Token       MD_TokenFromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds);
-MD_FUNCTION MD_Message *   MD_MakeNodeError(MD_Arena *arena, MD_Node *node,
+MD_FUNCTION MD_Message*    MD_MakeNodeError(MD_Arena *arena, MD_Node *node,
                                             MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION MD_Message *   MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents,
+MD_FUNCTION MD_Message*    MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents,
                                              MD_Token token, MD_MessageKind kind,
                                              MD_String8 str);
 MD_FUNCTION void           MD_MessageListPush(MD_MessageList *list, MD_Message *message);
@@ -1136,15 +1104,19 @@ MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 
 //~ Expression Parsing
 
-MD_FUNCTION void   MD_ExprOperatorPush(MD_Arena *arena, MD_ExprOperatorList *list,
-                                       MD_u32 op_id, MD_ExprOperatorKind kind,
-                                       MD_u64 precedence, MD_Node *md_node);
+MD_FUNCTION void               MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *list,
+                                              MD_u32 op_id, MD_ExprOprKind kind,
+                                              MD_u64 precedence, MD_Node *md_node);
 
-MD_FUNCTION MD_ExprOperatorTable MD_ExprBakeOperatorTableFromList(MD_Arena *arena,
-                                                                  MD_ExprOperatorList *list);
+MD_FUNCTION MD_ExprOprTable    MD_ExprBakeOperatorTableFromList(MD_Arena *arena,
+                                                                MD_ExprOprList *list);
 
-MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOperatorTable *op_table,
+MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table,
                                             MD_Node *first, MD_Node *one_past_last);
+
+
+MD_FUNCTION MD_ExprOpr* MD_ExprOprFromKindString(MD_ExprOprTable *table,
+                                                 MD_ExprOprKind kind, MD_String8 s);
 
 //~ String Generation
 

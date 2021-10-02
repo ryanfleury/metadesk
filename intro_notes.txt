@@ -10,7 +10,7 @@ Example Programs:
 [x] User error checking
 [x] Datadesk-like setup
 [ ] Example type metadata
-    [ ] Cleanup & Simplification Pass
+    [x] Cleanup & Simplification Pass
     [ ] Commentary
     [ ] Example Type File With Errors
 [ ] Example of simple expression parser

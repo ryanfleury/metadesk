@@ -1,0 +1,9 @@
+I don't get what's going on with error messages:
+ `MD_u64 error_offset = node->offset - ctx->original_first->offset;`
+ Why is it rebased by "original_first"?
+ Why is it the same for 3 locations but different here?
+  `MD_u64 error_offset = ctx.first->offset - first->offset;`
+ Why is it named `MD_MakeExprParseError` it doesn't seem to have any\
+  details tied expression parsing.
+
+
