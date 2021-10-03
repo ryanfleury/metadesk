@@ -72,9 +72,11 @@ X(AssignLeftShift,     "<<=",       BinaryRightAssociative,  4) \
 X(AssignRightShift,    ">>=",       BinaryRightAssociative,  4) \
 X(AssignBitwiseAnd,    "&=",        BinaryRightAssociative,  4) \
 X(AssignBitwiseXor,    "^=",        BinaryRightAssociative,  4) \
-X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  4) \
-X(BracketSet,          "[]",        Prefix,                  3) \
-X(BraceSet,            "{}",        Prefix,                  3)
+X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  4)
+
+// TODO(allen): I don't think we want to do this
+// X(BracketSet,          "[]",        Prefix,                  3)
+// X(BraceSet,            "{}",        Prefix,                  3)
 // X(Cast                 "()",        Prefix,                 17)
 // X(Comma,               ",",         Binary,                  3)
 

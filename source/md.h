@@ -1122,7 +1122,8 @@ MD_FUNCTION MD_ExprOpr*        MD_ExprOprFromKindString(MD_ExprOprTable *table,
 MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table,
                                             MD_Node *first, MD_Node *one_past_last);
 
-MD_FUNCTION MD_Expr* MD_Expr_Alloc(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
+MD_FUNCTION MD_Expr* MD_Expr_NewLeaf(MD_Arena *arena, MD_Node *node);
+MD_FUNCTION MD_Expr* MD_Expr_NewOp(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
                                    MD_Expr *left, MD_Expr *right);
 
 MD_FUNCTION MD_ExprParseCtx MD_ExprParse_MakeContext(MD_ExprOprTable *table);

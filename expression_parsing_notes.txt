@@ -1,0 +1,37 @@
+It looks like there was some confusion around the [] and {} handling.
+
+1. I don't think these should be allowed as prefix operators at all.
+   Here for example I find it weird and ambiguous `[1, 100] * n`
+   Is this two prefix operators on `n` or is `*` a binary operator?
+   I want to read it as a binary operator, which makes `[1, 100]` a leaf
+   not a prefix. Yet the test sets up "[]" as a prefix and if I remove
+   the "[]" prefix operator the test fails
+    'Example 12 : "[1, 100] * n". Unexpected Expr parsing error: "Unexpected set."'
+   This is a good test but I think it should work *all the time*. Any set
+   with "[]" "{}" "[)" or "(]" should just always be allowed.
+
+   I would like to:
+    a. Always accept the kinds of sets I just listed as leafs when they appear
+       in a location expecting a leaf
+    b. Emit an error when the user tries to create a binary or prefix operator with
+       "[]" "()" or any other set type; allowing "[]" and "()" should be a special
+       case of postfix operators only
+
+2. When a set type is allowed as a postfix operator, let's do the same thing no
+   matter what kind of set it is. Right now the "[]" postfix has it's children
+   parsed but the "()" does not. I think we should just treat all sets-as-postfix
+   operators the way we're doing "()". Then it's just a matter of checking if a
+   node is a particular set type that matches an existing postfix set.
+
+3. We should emit errors whenever an operator string does not parse to a single
+   metadesk token - with the exception of the special cases for sets "()" and
+   "[]" Also they should be restricted to the "label" making tokens:
+   identifiers, numbers, string literals and symbols. We could make this easier
+   by allowing even fewer kinds. At the limit it could be just symbols, but
+   that cuts out the clever 'sizeof' from the test... Maybe symbols and
+   identifers only? If that's not too difficult to pull off let's go with that.
+   If an issue comes up with this one we can discuss more because it's not
+   exactly clear to me what's best.
+
+
+   
