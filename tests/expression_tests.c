@@ -75,8 +75,6 @@ X(AssignBitwiseXor,    "^=",        BinaryRightAssociative,  4) \
 X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  4)
 
 // TODO(allen): I don't think we want to do this
-// X(BracketSet,          "[]",        Prefix,                  3)
-// X(BraceSet,            "{}",        Prefix,                  3)
 // X(Cast                 "()",        Prefix,                 17)
 // X(Comma,               ",",         Binary,                  3)
 
@@ -193,19 +191,30 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
         }
         else
         {
-            if(node->md_node->flags & MD_NodeFlag_HasBracketLeft && 
-               node->md_node->flags & MD_NodeFlag_HasBracketRight)
+            if(node->md_node->flags & MD_NodeFlag_HasParenLeft)
             {
-                MD_S8ListPush(arena, l, MD_S8Lit("[...]"));
+                MD_S8ListPush(arena, l, MD_S8Lit("("));
             }
-            else if(node->md_node->flags & MD_NodeFlag_HasBraceLeft && 
-                    node->md_node->flags & MD_NodeFlag_HasBraceRight)
+            else if(node->md_node->flags & MD_NodeFlag_HasBraceLeft)
             {
-                MD_S8ListPush(arena, l, MD_S8Lit("{...}"));
+                MD_S8ListPush(arena, l, MD_S8Lit("{"));
             }
-            else
+            else if(node->md_node->flags & MD_NodeFlag_HasBracketLeft)
             {
-                MD_S8ListPush(arena, l, MD_S8Lit("???"));
+                MD_S8ListPush(arena, l, MD_S8Lit("["));
+            }
+
+            MD_S8ListPush(arena, l, MD_S8Lit("..."));
+
+            if(node->md_node->flags & MD_NodeFlag_HasParenRight)
+            {
+                MD_S8ListPush(arena, l, MD_S8Lit(")"));
+            }
+            else if(node->md_node->flags & MD_NodeFlag_HasBraceRight){
+                MD_S8ListPush(arena, l, MD_S8Lit("}"));
+            }
+            else if(node->md_node->flags & MD_NodeFlag_HasBracketRight){
+                MD_S8ListPush(arena, l, MD_S8Lit("]"));
             }
         }
     }
@@ -316,7 +325,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "a(b,c)",        .a = "a(...)"               },
         { .q = "a.b()",         .a = "(a . b)(...)"         },
         { .q = "sizeof a + b",  .a = "(sizeof a) + b"       },
-        { .q = "[1, 100] * n",  .a = "[...] * n"            },
+        { .q = "[1, 100] * [1)",.a = "[...] * [...)"        },
         { .q = "a[b+c]",        .a = "a[b + c]"             },
         { .q = "a + b[c[d]+e]", .a = "a + (b[(c[d]) + e])"  },
         { .q = "a++ + b",       .a = "(a++) + b"            },
@@ -356,6 +365,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "a+",            .a = "",                    ExpressionErrorKind_Expr, 2},
         { .q = "a 1",           .a = "",                    ExpressionErrorKind_Expr, 2},
         { .q = "a + (a+)",      .a = "",                    ExpressionErrorKind_Expr, 7},
+        // TODO(mal): This test should not generate an error when [] is postfix and a+ remains unparsed
         { .q = "a[a+]",         .a = "",                    ExpressionErrorKind_Expr, 4},
     };
     

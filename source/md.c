@@ -3379,6 +3379,9 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         }
         else
         {
+            // TODO(mal): Allow "[]" and "()" only as unary postfix
+            // TODO(mal): Disallow all other set types ("[)", "(]", "{}") from becoming operators
+
             for(MD_ExprOpr *op2 = list->first;
                 op2 != op;
                 op2 = op2->next)
@@ -3520,8 +3523,6 @@ MD_ExprParse_MakeContext(MD_ExprOprTable *op_table)
     MD_ExprParseCtx result = MD_ZERO_STRUCT;
     result.op_table = op_table;
     
-    result.accel.bracket_set_op = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Prefix,  MD_S8Lit("[]"));
-    result.accel.brace_set_op   = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Prefix,  MD_S8Lit("{}"));
     result.accel.call_op        = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("()"));
     result.accel.subscript_op   = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Binary,  MD_S8Lit("[]"));
     
@@ -3604,16 +3605,12 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter,
         *iter = MD_NodeNextWithLimit(*iter, opl);
         result = MD_ExprParse_TopLevel(arena, ctx, node->first_child, MD_NilNode());
     }
-    // TODO(allen): this part seems a bit odd. I think any (delimited) set 
-    // should get this treatment, without making these operators to enable them.
-    else if(((node->flags & MD_NodeFlag_HasBracketLeft) && (node->flags & MD_NodeFlag_HasBracketRight) &&
-             ctx->accel.bracket_set_op) ||
-            ((node->flags & MD_NodeFlag_HasBraceLeft) &&
-             (node->flags & MD_NodeFlag_HasBraceRight) &&
-             ctx->accel.brace_set_op))
-    {
+    else if(((node->flags & MD_NodeFlag_HasBraceLeft)   && (node->flags & MD_NodeFlag_HasBraceRight))   ||
+            ((node->flags & MD_NodeFlag_HasBracketLeft) && (node->flags & MD_NodeFlag_HasBracketRight)) ||
+            ((node->flags & MD_NodeFlag_HasBracketLeft) && (node->flags & MD_NodeFlag_HasParenRight))   ||
+            ((node->flags & MD_NodeFlag_HasParenLeft)   && (node->flags & MD_NodeFlag_HasBracketRight)))
+    { // NOTE(mal): Unparsed leaf sets ({...}, [...], [...), (...])
         *iter = MD_NodeNextWithLimit(*iter, opl);
-        // NOTE(mal): Unparsed leaf sets ({ ... }, [ ... ])
         result = MD_Expr_NewLeaf(arena, node);
     }
     else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Prefix, 1, &op))

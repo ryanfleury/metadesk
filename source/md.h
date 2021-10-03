@@ -785,8 +785,6 @@ struct MD_ExprParseCtx
     {
         MD_ExprOpr *call_op;
         MD_ExprOpr *subscript_op;
-        MD_ExprOpr *bracket_set_op;
-        MD_ExprOpr *brace_set_op;
     } accel;
     
     MD_MessageList errors;
