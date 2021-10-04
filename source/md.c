@@ -3377,11 +3377,18 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         {
             error_str = MD_S8Fmt(arena, "Invalid operator kind.");
         }
+        else if(op_kind != MD_ExprOprKind_Postfix &&
+                (MD_S8Match(op_s, MD_S8Lit("[]"), 0) || MD_S8Match(op_s, MD_S8Lit("()"), 0))){
+            error_str =
+                MD_S8Fmt(arena, "Ignored operator \"%.*s\". \"%.*s\" is only allowed as unary postfix",
+                         MD_S8VArg(op_s), MD_S8VArg(op_s));
+        }
+        else if(MD_S8Match(op_s, MD_S8Lit("[)"), 0) || MD_S8Match(op_s, MD_S8Lit("(]"), 0) ||
+                MD_S8Match(op_s, MD_S8Lit("{}"), 0)){
+            error_str = MD_S8Fmt(arena, "Ignored forbidden operator \"%.*s\".", MD_S8VArg(op_s));
+        }
         else
         {
-            // TODO(mal): Allow "[]" and "()" only as unary postfix
-            // TODO(mal): Disallow all other set types ("[)", "(]", "{}") from becoming operators
-
             for(MD_ExprOpr *op2 = list->first;
                 op2 != op;
                 op2 = op2->next)

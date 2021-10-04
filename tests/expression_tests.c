@@ -239,7 +239,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
 #undef X 
     
     arena = MD_ArenaAlloc();
-    
+
     /* NOTE: Operator table bake errors */ 
     {
         MD_ExprOprList operator_list = {0};
@@ -247,7 +247,9 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         
         MD_String8 plus = MD_S8Lit("+");
         MD_String8 minus = MD_S8Lit("-");
+        MD_String8 cast = MD_S8Lit("()");
         MD_Node *plus_node = MD_MakeNode(arena, MD_NodeKind_Main, plus, plus, 0);
+        MD_Node *cast_node = MD_MakeNode(arena, MD_NodeKind_Main, cast, cast, 0);
         MD_Node *minus_node = MD_MakeNode(arena, MD_NodeKind_Main, minus, minus, 0);
         MD_Node *plus_node_bis = MD_MakeNode(arena, MD_NodeKind_Main, plus, plus, 0);
         
@@ -259,6 +261,15 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
                   op_table.errors.node_count == 1 && 
                   op_table.errors.first->user_ptr == plus_node);
+
+        // NOTE: () not as unary postfix
+        operator_list = (MD_ExprOprList){0};
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("()"),
+                       23 /* arbitrary MD_ExprOprKind */, cast_node);
+        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
+                  op_table.errors.node_count == 1 && 
+                  op_table.errors.first->user_ptr == cast_node);
         
         // NOTE: Repeat operator
         operator_list = (MD_ExprOprList){0};
