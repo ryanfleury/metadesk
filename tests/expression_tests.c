@@ -32,7 +32,7 @@ struct OperatorDescription{
 X(PostFixIncrement,    "++",        Postfix,                18) \
 X(PostFixDecrement,    "--",        Postfix,                18) \
 X(Call,                "()",        Postfix,                18) \
-X(ArraySubscript,      "[]",        Binary,                 18) \
+X(ArraySubscript,      "[]",        Postfix,                18) \
 X(Member,              ".",         Binary,                 18) \
 X(PointerMember,       "->",        Binary,                 18) \
 X(PreFixIncrement,     "++",        Prefix,                 17) \
@@ -43,7 +43,7 @@ X(LogicalNot,          "!",         Prefix,                 17) \
 X(BitwiseNot,          "~",         Prefix,                 17) \
 X(Dereference,         "*",         Prefix,                 17) \
 X(AddressOf,           "&",         Prefix,                 17) \
-X(SizeOf,              "sizeof",    Prefix,                 17) /* NOTE(mal); Just for fun*/ \
+X(SizeOf,              "sizeof",    Prefix,                 17) /* NOTE(mal); Just for fun */ \
 X(Multiplication,      "*",         Binary,                 15) \
 X(Division,            "/",         Binary,                 15) \
 X(Modulo,              "%",         Binary,                 15) \
@@ -72,7 +72,11 @@ X(AssignLeftShift,     "<<=",       BinaryRightAssociative,  4) \
 X(AssignRightShift,    ">>=",       BinaryRightAssociative,  4) \
 X(AssignBitwiseAnd,    "&=",        BinaryRightAssociative,  4) \
 X(AssignBitwiseXor,    "^=",        BinaryRightAssociative,  4) \
-X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  4)
+X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  4) \
+/* NOTE(mal): These are not in C */ \
+X(PostfixBraceBrace,   "{}",        Postfix,                18) \
+X(PostfixBracketParen, "[)",        Postfix,                18) \
+X(PostfixParenBracket, "(]",        Postfix,                18) \
 
 // TODO(allen): I don't think we want to do this
 // X(Cast                 "()",        Prefix,                 17)
@@ -82,7 +86,7 @@ X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  4)
 typedef enum{
     Op_Null,
     OPERATORS
-        Op_COUNT
+    Op_COUNT
 } Op;
 #undef X
 
@@ -129,23 +133,11 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
         MD_ExprOpr *op = &descs[node->op_id].op;
         if(op->kind == MD_ExprOprKind_Binary || op->kind == MD_ExprOprKind_BinaryRightAssociative)
         {
-            
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
-            
-            MD_b32 is_subscript = (node->op_id == Op_ArraySubscript);
-            if(is_subscript)
-            {
-                MD_S8ListPush(arena, l, MD_S8Lit("["));
-                parenthesize_exclude_outer(arena, descs, l, node->right, 1);
-                MD_S8ListPush(arena, l, MD_S8Lit("]"));
-            }
-            else
-            {
-                MD_S8ListPush(arena, l, MD_S8Lit(" "));
-                MD_S8ListPush(arena, l, node->md_node->string);
-                MD_S8ListPush(arena, l, MD_S8Lit(" "));
-                parenthesize_exclude_outer(arena, descs, l, node->right, 0);
-            }
+            MD_S8ListPush(arena, l, MD_S8Lit(" "));
+            MD_S8ListPush(arena, l, node->md_node->string);
+            MD_S8ListPush(arena, l, MD_S8Lit(" "));
+            parenthesize_exclude_outer(arena, descs, l, node->right, 0);
         }
         else if(op->kind == MD_ExprOprKind_Prefix)
         {
@@ -162,11 +154,15 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
         else if(op->kind == MD_ExprOprKind_Postfix)
         {
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
-            
-            MD_b32 is_call = (node->op_id == Op_Call);
-            if(is_call)
+
+            MD_String8 op_s = descs[op->op_id].s;
+            if(MD_S8Match(op_s, MD_S8Lit("()"), 0) || MD_S8Match(op_s, MD_S8Lit("[]"), 0) || 
+               MD_S8Match(op_s, MD_S8Lit("{}"), 0) || MD_S8Match(op_s, MD_S8Lit("[)"), 0) || 
+               MD_S8Match(op_s, MD_S8Lit("(]"), 0))
             {
-                MD_S8ListPush(arena, l, MD_S8Lit("(...)"));
+                MD_S8ListPush(arena, l, MD_S8Substring(op_s, 0, 1));
+                MD_S8ListPush(arena, l, MD_S8Lit("..."));
+                MD_S8ListPush(arena, l, MD_S8Substring(op_s, 1, 2));
             }
             else
             {
@@ -337,8 +333,9 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "a.b()",         .a = "(a . b)(...)"         },
         { .q = "sizeof a + b",  .a = "(sizeof a) + b"       },
         { .q = "[1, 100] * [1)",.a = "[...] * [...)"        },
-        { .q = "a[b+c]",        .a = "a[b + c]"             },
-        { .q = "a + b[c[d]+e]", .a = "a + (b[(c[d]) + e])"  },
+        { .q = "a[b+c]",        .a = "a[...]"               },
+        { .q = "a[a+]",         .a = "a[...]",              },  // NOTE(mal): No error because "a+" remains unparsed
+        { .q = "a + b[c[d]+e]", .a = "a + (b[...])"         },
         { .q = "a++ + b",       .a = "(a++) + b"            },
         { .q = "a.b(c)",        .a = "(a . b)(...)"         },
         { .q = "a*b.x+c",       .a = "(a * (b . x)) + c"    },
@@ -358,7 +355,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "* + +a",        .a = "*(+(+a))"             },
         { .q = "+ + *a",        .a = "+(+(*a))"             },
         { .q = "!a",            .a = "!a"                   },
-        { .q = "*f()[10]",      .a = "*((f(...))[10])"      },
+        { .q = "*f()[10]",      .a = "*((f(...))[...])"     },
         
         { .q = "a >> b << c",   .a = "(a >> b) << c"        },
         { .q = "a < b <= c",    .a = "(a < b) <= c"         },
@@ -368,7 +365,9 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "a & &b",        .a = "a & (&b)"             },
         
         { .q = "\"a\" + b + c", .a = "(\"a\" + b) + c"      },
-        
+        { .q = "a{b+c}",        .a = "a{...}"               },  // NOTE(mal): Non-standard postfix set-like operators
+        { .q = "a[b+c)",        .a = "a[...)"               },
+
         { .q = "(a",            .a = "",                    ExpressionErrorKind_MD, 0},
         { .q = "a)",            .a = "",                    ExpressionErrorKind_MD, 1},
         { .q = "/a",            .a = "",                    ExpressionErrorKind_Expr, 0},
@@ -376,8 +375,6 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "a+",            .a = "",                    ExpressionErrorKind_Expr, 2},
         { .q = "a 1",           .a = "",                    ExpressionErrorKind_Expr, 2},
         { .q = "a + (a+)",      .a = "",                    ExpressionErrorKind_Expr, 7},
-        // TODO(mal): This test should not generate an error when [] is postfix and a+ remains unparsed
-        { .q = "a[a+]",         .a = "",                    ExpressionErrorKind_Expr, 4},
     };
     
     for(MD_u32 i_test = 0; i_test < MD_ArrayCount(tests); i_test+=1)

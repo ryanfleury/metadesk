@@ -780,12 +780,14 @@ typedef struct MD_ExprParseCtx MD_ExprParseCtx;
 struct MD_ExprParseCtx
 {
     MD_ExprOprTable *op_table;
-    
+
+#define MD_POSTFIX_SETLIKE_OP_COUNT 5   // (), [], {}, [), (]
     struct
     {
-        MD_ExprOpr *call_op;
-        MD_ExprOpr *subscript_op;
+        MD_ExprOpr *postfix_set_ops[MD_POSTFIX_SETLIKE_OP_COUNT];
+        MD_NodeFlags postfix_set_flags[MD_POSTFIX_SETLIKE_OP_COUNT];
     } accel;
+#undef MD_POSTFIX_SETLIKE_OP_COUNT
     
     MD_MessageList errors;
 };

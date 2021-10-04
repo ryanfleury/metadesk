@@ -3378,14 +3378,12 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
             error_str = MD_S8Fmt(arena, "Invalid operator kind.");
         }
         else if(op_kind != MD_ExprOprKind_Postfix &&
-                (MD_S8Match(op_s, MD_S8Lit("[]"), 0) || MD_S8Match(op_s, MD_S8Lit("()"), 0))){
+                (MD_S8Match(op_s, MD_S8Lit("[]"), 0) || MD_S8Match(op_s, MD_S8Lit("()"), 0) ||
+                 MD_S8Match(op_s, MD_S8Lit("[)"), 0) || MD_S8Match(op_s, MD_S8Lit("(]"), 0) ||
+                 MD_S8Match(op_s, MD_S8Lit("{}"), 0))){
             error_str =
                 MD_S8Fmt(arena, "Ignored operator \"%.*s\". \"%.*s\" is only allowed as unary postfix",
                          MD_S8VArg(op_s), MD_S8VArg(op_s));
-        }
-        else if(MD_S8Match(op_s, MD_S8Lit("[)"), 0) || MD_S8Match(op_s, MD_S8Lit("(]"), 0) ||
-                MD_S8Match(op_s, MD_S8Lit("{}"), 0)){
-            error_str = MD_S8Fmt(arena, "Ignored forbidden operator \"%.*s\".", MD_S8VArg(op_s));
         }
         else
         {
@@ -3529,9 +3527,21 @@ MD_ExprParse_MakeContext(MD_ExprOprTable *op_table)
 {
     MD_ExprParseCtx result = MD_ZERO_STRUCT;
     result.op_table = op_table;
-    
-    result.accel.call_op        = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("()"));
-    result.accel.subscript_op   = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Binary,  MD_S8Lit("[]"));
+
+    result.accel.postfix_set_ops[0] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("()"));
+    result.accel.postfix_set_flags[0] = MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight;
+
+    result.accel.postfix_set_ops[1] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("[]"));
+    result.accel.postfix_set_flags[1] = MD_NodeFlag_HasBracketLeft | MD_NodeFlag_HasBracketRight;
+
+    result.accel.postfix_set_ops[2] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("{}"));
+    result.accel.postfix_set_flags[2] = MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight;
+
+    result.accel.postfix_set_ops[3] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("[)"));
+    result.accel.postfix_set_flags[3] = MD_NodeFlag_HasBracketLeft | MD_NodeFlag_HasParenRight;
+
+    result.accel.postfix_set_ops[4] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("(]"));
+    result.accel.postfix_set_flags[4] = MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasBracketRight;
     
     return(result);
 }
@@ -3661,8 +3671,6 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
     // TODO(allen): nil
     MD_Expr* result = 0;
     
-    MD_ExprOpr *subscript_op = ctx->accel.subscript_op;
-    
     result = MD_ExprParse_Atom(arena, ctx, iter, first, opl);
     if(ctx->errors.max_message_kind == MD_MessageKind_Null)
     {
@@ -3687,39 +3695,40 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                     break;
                 }
             }
-            
-            else if(subscript_op != 0 && subscript_op->precedence >= min_precedence &&
-                    (node->flags & MD_NodeFlag_HasBracketLeft) &&
-                    (node->flags & MD_NodeFlag_HasBracketRight))
-            {
-                *iter = MD_NodeNextWithLimit(*iter, opl);
-                // NOTE(mal): Array subscript
-                MD_Expr* sub_expr = MD_ExprParse_TopLevel(arena, ctx, node->first_child, MD_NilNode());
-                if(ctx->errors.max_message_kind == MD_MessageKind_Null)
-                {
-                    result = MD_Expr_NewOp(arena, subscript_op, node, result, sub_expr);
-                }
-                else{
-                    break;
-                }
-            }
-            
-            else if(ctx->accel.call_op && ctx->accel.call_op->precedence >= min_precedence &&
-                    (node->flags & MD_NodeFlag_HasParenLeft) &&
-                    (node->flags & MD_NodeFlag_HasParenRight))
-            { // NOTE: call
-                *iter = MD_NodeNextWithLimit(*iter, opl);
-                result = MD_Expr_NewOp(arena, ctx->accel.call_op, node, result, 0);
-            }
-            else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Postfix,
-                                            min_precedence, &op))
-            {
-                result = MD_Expr_NewOp(arena, op, node, result, 0);
-            }
+
             else
             {
-                break;  // NOTE: Due to lack of progress
+                MD_b32 found_postfix_setlike_operator = 0;
+                for(MD_u32 i_op = 0;
+                    i_op < MD_ArrayCount(ctx->accel.postfix_set_ops);
+                    ++i_op)
+                {
+                    MD_ExprOpr *op = ctx->accel.postfix_set_ops[i_op];
+                    if(op && op->precedence >= min_precedence &&
+                       node->flags == ctx->accel.postfix_set_flags[i_op])
+                    {
+                        *iter = MD_NodeNextWithLimit(*iter, opl);
+                        result = MD_Expr_NewOp(arena, op, node, result, 0);
+                        found_postfix_setlike_operator = 1;
+                        break;
+                    }
+                }
+
+                if(!found_postfix_setlike_operator)
+                {
+                    if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Postfix,
+                                               min_precedence, &op))
+                    {
+                        result = MD_Expr_NewOp(arena, op, node, result, 0);
+                    }
+                    else
+                    {
+                        break;  // NOTE: Due to lack of progress
+                    }
+                }
+
             }
+            
         }
     }
     
