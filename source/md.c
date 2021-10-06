@@ -3372,18 +3372,36 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         
         // error checking
         MD_String8 error_str = MD_ZERO_STRUCT;
+
+        MD_Token op_token = MD_TokenFromString(op_s);
+        MD_b32 is_setlike_op =
+            (op_s.size == 2 &&
+             (MD_S8Match(op_s, MD_S8Lit("[]"), 0) || MD_S8Match(op_s, MD_S8Lit("()"), 0) ||
+              MD_S8Match(op_s, MD_S8Lit("[)"), 0) || MD_S8Match(op_s, MD_S8Lit("(]"), 0) ||
+              MD_S8Match(op_s, MD_S8Lit("{}"), 0)));
+
         if(op_kind != MD_ExprOprKind_Prefix && op_kind != MD_ExprOprKind_Postfix &&
            op_kind != MD_ExprOprKind_Binary && op_kind != MD_ExprOprKind_BinaryRightAssociative)
         {
             error_str = MD_S8Fmt(arena, "Invalid operator kind.");
         }
-        else if(op_kind != MD_ExprOprKind_Postfix &&
-                (MD_S8Match(op_s, MD_S8Lit("[]"), 0) || MD_S8Match(op_s, MD_S8Lit("()"), 0) ||
-                 MD_S8Match(op_s, MD_S8Lit("[)"), 0) || MD_S8Match(op_s, MD_S8Lit("(]"), 0) ||
-                 MD_S8Match(op_s, MD_S8Lit("{}"), 0))){
+        else if(is_setlike_op && op_kind != MD_ExprOprKind_Postfix)
+        {
             error_str =
                 MD_S8Fmt(arena, "Ignored operator \"%.*s\". \"%.*s\" is only allowed as unary postfix",
                          MD_S8VArg(op_s), MD_S8VArg(op_s));
+        }
+        else if(!is_setlike_op &&
+                (op_token.kind != MD_TokenKind_Identifier && op_token.kind != MD_TokenKind_Symbol))
+        {
+            error_str = MD_S8Fmt(arena, "Ignored operator \"%.*s\" because it is neither a symbol "
+                                 "nor an identifier token", MD_S8VArg(op_s));
+        }
+        else if(!is_setlike_op && op_token.string.size < op_s.size)
+        {
+            error_str = MD_S8Fmt(arena, "Ignored operator \"%.*s\" because its prefix \"%.*s\" "
+                                 "constitutes a standalone operator",
+                                 MD_S8VArg(op_s), MD_S8VArg(op_token.string));
         }
         else
         {

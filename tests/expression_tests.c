@@ -300,6 +300,23 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
                   op_table.errors.node_count == 1 && 
                   op_table.errors.first->user_ptr == minus_node);
         
+        // NOTE: Multitoken operator
+        operator_list = (MD_ExprOprList){0};
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("+ +"),
+                       23 /* arbitrary MD_ExprOprKind */, plus_node);
+        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
+                  op_table.errors.node_count == 1 &&
+                  op_table.errors.first->user_ptr == plus_node);
+
+        // NOTE: Wrong token kind operator
+        operator_list = (MD_ExprOprList){0};
+        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("123"),
+                       23 /* arbitrary MD_ExprOprKind */, plus_node);
+        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
+                  op_table.errors.node_count == 1 &&
+                  op_table.errors.first->user_ptr == plus_node);
     }
     
     MD_ExprOprList operator_list = {0};
