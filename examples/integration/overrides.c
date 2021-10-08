@@ -53,12 +53,15 @@ void  examp_free(ExampleAllocator *a, void *ptr);
 // override memory to use malloc/free
 
 // @notes A common practice in setting up allocator overrides is to use a pass
-//  through opaque user context pointer. We took a look at that for *long time*
-//  and just really don't like the amount of baggage it adds to the entire API.
-//  Instead we recommend handling the context pointer with a global for single
-//  threaded use cases, or with a pointer in thread local storage for
-//  multi-threaded cases.
+//  through opaque user context pointer. Metadesk does something different.
+//  We recommend passing the context pointer with a global in single threaded
+//  cases, and with a pointer in thread local storage in multi-threaded cases.
 ExampleAllocator* md_example_allocator = 0;
+
+// @notes In this example the allocator only provides alloc & free, but the
+//  Metadesk override group we want to plug into has reserve commit, decommit &
+//  release. This is okay though, we can turn commit & decommit into no-ops and
+//  reserve & release as equivalent to alloc & free.
 
 void* md_reserve_by_example_allocator(unsigned long long size);
 void  md_release_by_example_allocator(void *ptr, unsigned long long ignore);
@@ -68,11 +71,25 @@ void  md_release_by_example_allocator(void *ptr, unsigned long long ignore);
 #define MD_IMPL_Decommit(p,z) ((void)0)
 #define MD_IMPL_Release       md_release_by_example_allocator
 
+// @notes Since we are turning commit & decommit into no-ops it doesn't make
+//  sense for the Metadesk arena to have a reserve size larger than it's
+//  commit size anymore. The default for reserve size is 64 megabytes, which
+//  is usually too large of an alloc block size, and the default commit size
+//  is 64 kilabytes, which is usually too small. So we set both to 1 megabyte.
+//
+// Pro-Tip: (N << 20) is a nice shorthand for N megabytes, and
+//          (N << 10) is N kilabytes.
+
 #define MD_DEFAULT_ARENA_RES_SIZE (1 << 20)
 #define MD_DEFAULT_ARENA_CMT_SIZE (1 << 20)
 
 
 // override file loading
+
+// @notes We'll also demonstrate another override, this time one that relies
+//  on Metadesk-provided types. The actual override here is pointless, as it's
+//  just another implementation of "LoadEntireFile" on stdio.h, which is what
+//  the default provided by the library is as well.
 
 MD_String8 md_load_entire_file_by_stdio(MD_Arena *arena, MD_String8 filename);
 
@@ -196,4 +213,16 @@ examp_free(ExampleAllocator *a, void *ptr)
     }
     free(node);
 }
+
+//~ final notes ///////////////////////////////////////////////////////////////
+
+// @notes The Metadesk override system uses macro overriding. This means it
+//  does not provide a mechanism for dynamically dispatching to different
+//  implementations of the overridable operations. But you can always plug in
+//  your own dynamic dispatch into the macro if you really need it. We
+//  recommend against trying to instantiate the library twice in the same
+//  program with different overrides, because that will lead to separate
+//  instances of our thread local context variables which will make Metadesk
+//  more resource intensive than it needs to be, and may lead to surprising
+//  behavior.
 
