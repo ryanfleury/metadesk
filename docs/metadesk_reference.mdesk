@@ -1930,6 +1930,16 @@ MD_ParseWholeFile:
 }
 
 @send(Nodes)
+@doc('Returns the format string for code locations that matches normal encodings of code locations (in error or warning messages by compilers, namely). This string is @code `"%.*s:%i:%i"`. Used with @code "MD_CodeLocVArg", can be used for easily printing code locations.')
+@see(MD_CodeLocVArg)
+@macro MD_FmtCodeLoc: {}
+
+@send(Nodes)
+@doc("Expands to the appropriate C format string arguments for an MD_CodeLoc @code 'loc' matching the format string for code-locations provided by MD_FmtCodeLoc.")
+@see(MD_FmtCodeLoc)
+@macro MD_CodeLocVArg: {loc}
+
+@send(Nodes)
 @doc("Prints a message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
 @see(MD_PrintMessageFmt)
 @func MD_PrintMessage: {
