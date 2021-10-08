@@ -1710,7 +1710,15 @@ MD_ParseWholeFile:
         return: *MD_Node,
 };
 
-// TODO(allen): MD_FirstNodeWithFlags
+@send(Nodes)
+@doc("Given a starting node @code 'first', will scan across the node's siblings in-order to find a node that has flags that overlap the passed @code 'flags'. Useful when, for example, finding the set of node ranges delimited by commas or semicolons inside of a single `MD_Node` children list.")
+@see(MD_NodeFlags)
+@func MD_FirstNodeWithFlags:
+{
+    first: *MD_Node,
+    flags: MD_NodeFlags,
+    return: *MD_Node,
+}
 
 @send(Nodes)
 @doc("Finds the child index of @code 'node', with @code '0' being the first child, @code '1' being the second, and so on.")
@@ -1820,9 +1828,26 @@ MD_ParseWholeFile:
 };
 
 @send(Nodes)
+@doc("Returns @code '1' if @code 'node' has a child with a string matching @code 'string', with the matching rules being controlled by @code 'flags', or @code '0' otherwise.")
+@see(MD_ChildFromIndex)
+@see(MD_ChildFromString)
+@see(MD_NodeHasTag)
+@func MD_NodeHasChild: {
+    @doc("The node whose children are to be searched.")
+        node: *MD_Node,
+    @doc("The string that should match a child in @code 'node'.")
+        string: MD_String8,
+    @doc("Controls what is considered a match, when comparing against @code 'string'.")
+        flags: MD_MatchFlags,
+    @doc("@code '1' if a suitable child was found, or @code '0' otherwise.")
+        return: MD_b32,
+};
+
+@send(Nodes)
 @doc("Returns @code '1' if @code 'node' has a tag with a string matching @code 'tag_string', with the matching rules being controlled by @code 'flags', or @code '0' otherwise.")
 @see(MD_TagFromIndex)
 @see(MD_TagFromString)
+@see(MD_NodeHasChild)
 @func MD_NodeHasTag: {
     @doc("The node whose tags are to be searched.")
         node: *MD_Node,
@@ -1849,6 +1874,40 @@ MD_ParseWholeFile:
 };
 
 @send(Nodes)
+@doc("If @code 'node' is of kind @code 'MD_NodeKind_Reference', will follow the chain of @code 'ref_target's until the final referenced node.")
+@func MD_ResolveNodeFromReference:
+{
+    node: *MD_Node,
+    return: *MD_Node,
+}
+
+@send(Nodes)
+@doc("Moves to the next sibling of @code 'node', unless it is @code 'opl', in which case it returns a nil node.")
+@see(MD_NilNode)
+@func MD_NodeNextWithLimit:
+{
+    node: *MD_Node,
+    opl: *MD_Node,
+    return: *MD_Node,
+}
+
+@send(Nodes)
+@doc("Gets the string of the comment that immediately preceeded @code 'node', if any.")
+@func MD_PrevCommentFromNode:
+{
+    node: *MD_Node,
+    return: MD_String8,
+}
+
+@send(Nodes)
+@doc("Gets the string of the comment that immediately followed @code 'node', if any.")
+@func MD_PrevCommentFromNode:
+{
+    node: *MD_Node,
+    return: MD_String8,
+}
+
+@send(Nodes)
 @doc("A helper macro for building for-loops over entire lists of nodes. Place inside of the parentheses of a for-loop, e.g. @code 'for(MD_EachNode(child, node->first_child))', to use.")
 @macro MD_EachNode:
 {
@@ -1858,23 +1917,21 @@ MD_ParseWholeFile:
         first,
 };
 
-@send(Nodes)
-@doc("A helper macro for building for-loops over entire lists of node references. Place inside of the parentheses of a for-loop, e.g. @code 'for(MD_EachNodeRef(child, node->first_child))', to use.")
-@macro MD_EachNodeRef:
-{
-    @doc("The name of the dereferenced node from the iterator, as it will be available in the for-loop.")
-        it,
-    @doc("The first reference node to iterate on.")
-        first,
-};
-
 ////////////////////////////////
 //~ Error/Warning Helpers
 
 @send(Nodes)
+@doc("Returns a string encoding the name of the passed @code 'kind' value.")
+@see(MD_MessageKind)
+@func MD_StringFromMessageKind:
+{
+    kind: MD_MessageKind,
+    return: MD_String8,
+}
+
+@send(Nodes)
 @doc("Prints a message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
 @see(MD_PrintMessageFmt)
-@see(MD_PrintNodeMessage)
 @func MD_PrintMessage: {
     @doc("The file to print the message to.")
         out: *FILE,
@@ -1889,7 +1946,6 @@ MD_ParseWholeFile:
 @send(Nodes)
 @doc("Prints a C format string message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
 @see(MD_PrintMessage)
-@see(MD_PrintNodeMessage)
 @func MD_PrintMessageFmt: {
     @doc("The file to print the message to.")
         out: *FILE,
@@ -1900,21 +1956,6 @@ MD_ParseWholeFile:
     @doc("The format string to form the message contents.")
         fmt: *char,
     "..."
-};
-
-@send(Nodes)
-@see(MD_PrintMessage)
-@see(MD_PrintMessageFmt)
-@doc("Prints a message to @code 'out', corresponding with the source code location of @code 'node'.")
-@func MD_PrintNodeMessage: {
-    @doc("The file to print the message to.")
-        out: *FILE,
-    @doc("The node for which the message is intended.")
-        node: *MD_Node,
-    @doc("The kind/severity of the message.")
-        kind: MD_MessageKind,
-    @doc("The message contents.")
-        str: MD_String8,
 };
 
 ////////////////////////////////
