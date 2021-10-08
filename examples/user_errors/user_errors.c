@@ -1,5 +1,5 @@
 /*
-** Example: user-errors
+** Example: user errors
 **
 ** This example shows how to print custom error messages.
 **
@@ -10,8 +10,6 @@
 #include "md.h"
 #include "md.c"
 
-// @notes For simple single-threaded memory management in a run-once-and-exit
-//  utility, a single global arena is our recommended approach.
 static MD_Arena *arena = 0;
 
 

@@ -1,5 +1,5 @@
 /* 
-** Example: parse-check
+** Example: parse check
 **
  ** This example shows how to use the metadesk library to parse metadesk files,
 ** print errors, and dump verbose feedback on the resulting metadesk trees.

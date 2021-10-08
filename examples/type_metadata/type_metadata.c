@@ -1,5 +1,5 @@
 /*
-** Example: type-metadata
+** Example: type metadata
 **
 ** TODO full commentary
 **
@@ -1152,7 +1152,8 @@ main(int argc, char **argv)
         fclose(c);
     }
     
-    // print state
+    // print diagnostics of the parse analysis
+#if 0
     for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)
@@ -1207,4 +1208,5 @@ main(int argc, char **argv)
                    MD_S8VArg(map_case->out->string));
         }
     }
+#endif
 }

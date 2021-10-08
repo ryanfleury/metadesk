@@ -1,13 +1,13 @@
 /* 
-** Example: datadesk-like-template
+** Example: data desk like template
 **
  ** This example is setup as a copy-pastable template for creating metadesk
 ** based metaprograms that have the same structure as datadesk metaprograms.
 **
-** Datadesk was a precursor language to metadesk. This example is mostly meant
-** to help datadesk users understand metadesk and migrate onto it.
+** Data Desk was a precursor language to metadesk. This example is mostly meant
+** to help Data Desk users understand metadesk and migrate onto it.
 ** 
-** A "datadesk-like" metaprogram is passed the input metacode files on the
+** A "data-desk-like" metaprogram is passed the input metacode files on the
 ** command line. These files are parsed. Then a set of three user-defined
  ** functions that form the "custom layer" are called. The "custom layer"
  ** defines all the additional analysis and code generation.
@@ -24,7 +24,7 @@
 static MD_Arena *arena = 0;
 
 
-//~ Declare user defined functions (the datadesk "custom layer") //////////////
+//~ Declare user defined functions (the data desk "custom layer") //////////////
 
 static void Initialize(void);        // Runs at the beginning of generation.
 static void TopLevel(MD_Node *node); // Runs once for each top-level node from each file.

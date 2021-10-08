@@ -1,0 +1,62 @@
+EXAMPLES:
+
+
+1. "hello world" intro/hello_world.c
+ Just enough C code to setup a from-scratch metadesk program, parse
+ "hello world", and print the results.
+
+ This example is a "build test", to make sure your compiler is finiding the
+ source files and can build them.
+
+
+2. "parse check" intro/parse_check.c
+ An example utility that parses files specified on the command line, reports
+ any errors from the metadesk parser, and then prints the results.
+
+ This example includes lots of notes about the basics of setting up a metadesk
+ parsing program from scratch, and getting used to the helpers in the library.
+
+
+3. intro/hello_world.mdesk, intro/labels.mdes, intro/sets.mdesk
+ These files include examples of the features of the metadesk language. We
+ recommend putting these through the "parse check" example utility to see how
+ different language constructs get parsed, if you want to get more familiar
+ with the language side of metadesk.
+
+
+4. "data desk like template" intro/data_desk_like_template.c
+ An example for users of Data Desk, the pre-cursor to Metadesk.
+
+
+5. "user errors" user_errors/*
+ This example shows how you can mix in your own error reporting with the errors
+ that come back from the metadesk parser.
+
+
+6. "type metadata" type_metadata/*
+ A common use case for a metaprogramming system in C is to mark up type
+ information with metadata. This example shows the "Metadesk way" of
+ implementing that use case. This is the biggest example included and closely
+ matches what a typical metadesk based metaprogram grows to look like over
+ time. It includes:
+  analyzing a metadesk parse tree
+  doing error checks
+  generating C types, functions, a data tables
+  generating type serialization metadata
+  generating enum string tables
+  generating enum mapping functions
+  printing diagnostics
+  including generated files into a final program
+ 
+ Commentary in this example focuses on strategies for setting up an effective
+ metaprogram.
+
+
+7. "overrides" integration/overrides.c
+ When including the Metadesk library into an existing codebase, the overrides
+ system in the library will let you plug in existing implementations you have
+ for many of the basic requirements of the library. This can also be useful if
+ you want to make your program CRT-free, or direct metadesk allocations to your
+ own custom allocator.
+
+

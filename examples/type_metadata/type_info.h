@@ -1,5 +1,5 @@
 /*
-** Example: type-metadata
+** Example: type metadata
 **
 ** This is a hand written header to be included into the final program to
 ** define types that will be used to layout the metadata tables created by the

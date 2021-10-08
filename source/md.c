@@ -4,26 +4,26 @@
 ** Overrides & Options Macros
 **
 ** Overridable
-**  "memset" ** REQUIRED (default crt-based implementation)
+**  "memset" ** REQUIRED
 **   #define MD_IMPL_Memset             (void*, int, uint64) -> void*
 **   #define MD_IMPL_Memmove            (void*, void*, uint64) -> void*
 **
-**  "file iteration" ** OPTIONAL (default for win32 and linux)
+**  "file iteration" ** OPTIONAL (required for the metadesk FileIter helpers to work)
 **   #define MD_IMPL_FileIterBegin      (MD_FileIter*, MD_String8) -> Boolean
 **   #define MD_IMPL_FileIterNext       (MD_Arena*, MD_FileIter*) -> MD_FileInfo
 **   #define MD_IMPL_FileIterEnd        (MD_FileIter*) -> void
 **
-**  "file load" ** OPTIONAL (default for win32 and linux)
+**  "file load" ** OPTIONAL (required for MD_ParseWholeFile to work)
 **   #define MD_IMPL_LoadEntireFile     (MD_Arena*, MD_String8 filename) -> MD_String8   
 **
-**  "low level memory" ** OPTIONAL (required for default arena) (default for win32 and linux)
+**  "low level memory" ** OPTIONAL (required when relying on the default arenas)
 **   #define MD_IMPL_Reserve            (uint64) -> void*
 **   #define MD_IMPL_Commit             (void*, uint64) -> MD_b32
 **   #define MD_IMPL_Decommit           (void*, uint64) -> void
 **   #define MD_IMPL_Release            (void*, uint64) -> void
 **
-**  "arena" ** REQUIRED (default available)
-**   #define MD_IMPL_Arena              <type>
+**  "arena" ** REQUIRED
+**   #define MD_IMPL_Arena              <type> (must set before including md.h)
 **   #define MD_IMPL_ArenaAlloc         () -> MD_IMPL_Arena*
 **   #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
 **   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> uint64
@@ -32,12 +32,12 @@
 **   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, uint64) -> void
 **   #define MD_IMPL_ArenaHeaderSize    uint64
 **
-**  "scratch" ** REQUIRED (default available)
+**  "scratch" ** REQUIRED
 **   #define MD_IMPL_GetScratch         (MD_IMPL_Arena**, uint64) -> MD_IMPL_Arena*
 **  "scratch constants" ** OPTIONAL (required for default scratch)
 **   #define MD_IMPL_ScratchCount       uint64 [default 2]
 **
-**  "sprintf" ** OPTIONAL (default available)
+**  "sprintf" ** REQUIRED
 **   #define MD_IMPL_Vsnprintf          (char*, uint64, char const*, va_list) -> uint64
 **
 ** Default Implementation Controls

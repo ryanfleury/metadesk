@@ -1,5 +1,5 @@
 /*
-** Example: type-metadata
+** Example: type metadata
 **
 ** TODO full commentary
 **
