@@ -69,7 +69,7 @@ int main(int argc, char **argv)
     //  MD_Node pointer in the for loop that iterates through each node in the
     //  list. The second parameter is a pointer to the first node of the list.
     //  Generally we past the `first_child` of a list or parent MD_Node, but we
-    // don't always have to.
+    //  don't always have to.
     for (MD_EachNode(root_it, list->first_child))
     {
         

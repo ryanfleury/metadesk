@@ -3,44 +3,44 @@
 #if !defined(MD_C)
 #define MD_C
 
-/* NOTE(allen): Notes on overrides/macro options:
+/* NOTE(allen): Overrides & Options Macros:
 **
-** Overridable :
-**  "memset" ** REQUIRED (default crt-based implementation available)
-**   #define MD_IMPL_Memset             (void*, int, MD_u64) -> void*
-**   #define MD_IMPL_Memmove            (void*, void*, MD_u64) -> void*
+** Overridable
+**  "memset" ** REQUIRED (default crt-based implementation)
+**   #define MD_IMPL_Memset             (void*, int, uint64) -> void*
+**   #define MD_IMPL_Memmove            (void*, void*, uint64) -> void*
 **
-**  "file iteration" ** OPTIONAL
-**   #define MD_IMPL_FileIterBegin      (MD_FileIter*, MD_String8) -> MD_b32
+**  "file iteration" ** OPTIONAL (default for win32 and linux)
+**   #define MD_IMPL_FileIterBegin      (MD_FileIter*, MD_String8) -> Boolean
 **   #define MD_IMPL_FileIterNext       (MD_Arena*, MD_FileIter*) -> MD_FileInfo
 **   #define MD_IMPL_FileIterEnd        (MD_FileIter*) -> void
 **
-**  "file load" ** OPTIONAL
+**  "file load" ** OPTIONAL (default for win32 and linux)
 **   #define MD_IMPL_LoadEntireFile     (MD_Arena*, MD_String8 filename) -> MD_String8   
 **
-**  "low level memory" ** OPTIONAL (required for default arena)
-**   #define MD_IMPL_Reserve            (MD_u64) -> void*
-**   #define MD_IMPL_Commit             (void*, MD_u64) -> MD_b32
-**   #define MD_IMPL_Decommit           (void*, MD_u64) -> void
-**   #define MD_IMPL_Release            (void*, MD_u64) -> void
+**  "low level memory" ** OPTIONAL (required for default arena) (default for win32 and linux)
+**   #define MD_IMPL_Reserve            (uint64) -> void*
+**   #define MD_IMPL_Commit             (void*, uint64) -> MD_b32
+**   #define MD_IMPL_Decommit           (void*, uint64) -> void
+**   #define MD_IMPL_Release            (void*, uint64) -> void
 **
-**  "arena" ** REQUIRED (default implementation available)
+**  "arena" ** REQUIRED (default available)
 **   #define MD_IMPL_Arena              <type>
 **   #define MD_IMPL_ArenaAlloc         () -> MD_IMPL_Arena*
 **   #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
-**   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> MD_u64
-**   #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, MD_u64) -> void*
-**   #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, MD_u64) -> void
-**   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, MD_u64) -> void
-**   #define MD_IMPL_ArenaHeaderSize    MD_u64
+**   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> uint64
+**   #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, uint64) -> void*
+**   #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, uint64) -> void
+**   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, uint64) -> void
+**   #define MD_IMPL_ArenaHeaderSize    uint64
 **
-**  "scratch" ** REQUIRED (default implementation available)
-**   #define MD_IMPL_GetScratch         (MD_IMPL_Arena**, MD_u64) -> MD_IMPL_Arena*
+**  "scratch" ** REQUIRED (default available)
+**   #define MD_IMPL_GetScratch         (MD_IMPL_Arena**, uint64) -> MD_IMPL_Arena*
 **  "scratch constants" ** OPTIONAL (required for default scratch)
-**   #define MD_IMPL_ScratchCount       MD_u64 / default 2
+**   #define MD_IMPL_ScratchCount       uint64 [default 2]
 **
-**  "sprintf" ** OPTIONAL (default implementation available)
-**   #define MD_IMPL_Vsnprintf          (char * buf, int count, char const * fmt, va_list va) -> int
+**  "sprintf" ** OPTIONAL (default available)
+**   #define MD_IMPL_Vsnprintf          (char*, uint64, char const*, va_list) -> uint64
 **
 ** Default Implementation Controls
 **  These controls default to '1' i.e. 'enabled'
@@ -666,8 +666,6 @@ MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count)
 //~/////////////////////////////////////////////////////////////////////////////
 //////////////////////// MD Library Implementation /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-
-#define MD_UNTERMINATED_TOKEN_LEN_CAP 20
 
 #if MD_DEFAULT_SPRINTF
 #define STB_SPRINTF_IMPLEMENTATION
@@ -3372,14 +3370,14 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         
         // error checking
         MD_String8 error_str = MD_ZERO_STRUCT;
-
+        
         MD_Token op_token = MD_TokenFromString(op_s);
         MD_b32 is_setlike_op =
-            (op_s.size == 2 &&
-             (MD_S8Match(op_s, MD_S8Lit("[]"), 0) || MD_S8Match(op_s, MD_S8Lit("()"), 0) ||
-              MD_S8Match(op_s, MD_S8Lit("[)"), 0) || MD_S8Match(op_s, MD_S8Lit("(]"), 0) ||
-              MD_S8Match(op_s, MD_S8Lit("{}"), 0)));
-
+        (op_s.size == 2 &&
+         (MD_S8Match(op_s, MD_S8Lit("[]"), 0) || MD_S8Match(op_s, MD_S8Lit("()"), 0) ||
+          MD_S8Match(op_s, MD_S8Lit("[)"), 0) || MD_S8Match(op_s, MD_S8Lit("(]"), 0) ||
+          MD_S8Match(op_s, MD_S8Lit("{}"), 0)));
+        
         if(op_kind != MD_ExprOprKind_Prefix && op_kind != MD_ExprOprKind_Postfix &&
            op_kind != MD_ExprOprKind_Binary && op_kind != MD_ExprOprKind_BinaryRightAssociative)
         {
@@ -3545,19 +3543,19 @@ MD_ExprParse_MakeContext(MD_ExprOprTable *op_table)
 {
     MD_ExprParseCtx result = MD_ZERO_STRUCT;
     result.op_table = op_table;
-
+    
     result.accel.postfix_set_ops[0] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("()"));
     result.accel.postfix_set_flags[0] = MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasParenRight;
-
+    
     result.accel.postfix_set_ops[1] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("[]"));
     result.accel.postfix_set_flags[1] = MD_NodeFlag_HasBracketLeft | MD_NodeFlag_HasBracketRight;
-
+    
     result.accel.postfix_set_ops[2] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("{}"));
     result.accel.postfix_set_flags[2] = MD_NodeFlag_HasBraceLeft | MD_NodeFlag_HasBraceRight;
-
+    
     result.accel.postfix_set_ops[3] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("[)"));
     result.accel.postfix_set_flags[3] = MD_NodeFlag_HasBracketLeft | MD_NodeFlag_HasParenRight;
-
+    
     result.accel.postfix_set_ops[4] = MD_ExprOprFromKindString(op_table, MD_ExprOprKind_Postfix, MD_S8Lit("(]"));
     result.accel.postfix_set_flags[4] = MD_NodeFlag_HasParenLeft | MD_NodeFlag_HasBracketRight;
     
@@ -3713,7 +3711,7 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                     break;
                 }
             }
-
+            
             else
             {
                 MD_b32 found_postfix_setlike_operator = 0;
@@ -3731,7 +3729,7 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                         break;
                     }
                 }
-
+                
                 if(!found_postfix_setlike_operator)
                 {
                     if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Postfix,
@@ -3744,7 +3742,7 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                         break;  // NOTE: Due to lack of progress
                     }
                 }
-
+                
             }
             
         }

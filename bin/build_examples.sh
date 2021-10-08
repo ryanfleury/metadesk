@@ -21,6 +21,7 @@ if [ -d $examps/type_metadata/generated/type_info_meta.h ]; then
 bin/bld_core.sh unit type_info     $examps/type_metadata/type_info_final_program.c
 fi
 
+bin/bld_core.sh unit overrides     $examps/advanced_usages/overrides.c
 
 echo
 
