@@ -4,6 +4,11 @@
 ** Overrides & Options Macros
 **
 ** Overridable
+**  "basic types" ** REQUIRED
+**   #define/typedef MD_i8, MD_i16, MD_i32, MD_i64
+**   #define/typedef MD_u8, MD_u16, MD_u32, MD_u64
+**   #define/typedef MD_f32, MD_f64
+**
 **  "memset" ** REQUIRED
 **   #define MD_IMPL_Memset             (void*, int, uint64) -> void*
 **   #define MD_IMPL_Memmove            (void*, void*, uint64) -> void*
@@ -42,6 +47,7 @@
 **
 ** Default Implementation Controls
 **  These controls default to '1' i.e. 'enabled'
+**   #define MD_DEFAULT_BASIC_TYPES -> construct "basic types" from stdint.h header
 **   #define MD_DEFAULT_MEMSET    -> construct "memset" from CRT
 **   #define MD_DEFAULT_FILE_ITER -> construct "file iteration" from OS headers
 **   #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS headers

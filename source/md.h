@@ -29,6 +29,9 @@
 #define MD_VERSION_MIN 0
 
 //~ Set default values for controls
+#if !defined(MD_DEFAULT_BASIC_TYPES)
+# define MD_DEFAULT_BASIC_TYPES 1
+#endif
 #if !defined(MD_DEFAULT_MEMSET)
 # define MD_DEFAULT_MEMSET 1
 #endif
@@ -374,9 +377,11 @@
 
 //~ Basic Types
 
-#include <stdint.h>
 #include <stdarg.h>
 
+#if defined(MD_DEFAULT_BASIC_TYPES)
+
+#include <stdint.h>
 typedef int8_t   MD_i8;
 typedef int16_t  MD_i16;
 typedef int32_t  MD_i32;
@@ -385,12 +390,15 @@ typedef uint8_t  MD_u8;
 typedef uint16_t MD_u16;
 typedef uint32_t MD_u32;
 typedef uint64_t MD_u64;
-typedef int8_t   MD_b8;
-typedef int16_t  MD_b16;
-typedef int32_t  MD_b32;
-typedef int64_t  MD_b64;
 typedef float    MD_f32;
 typedef double   MD_f64;
+
+#endif
+
+typedef MD_i8  MD_b8;
+typedef MD_i16 MD_b16;
+typedef MD_i32 MD_b32;
+typedef MD_i64 MD_b64;
 
 //~ Default Arena
 

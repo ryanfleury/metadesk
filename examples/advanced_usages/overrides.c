@@ -1,12 +1,27 @@
 /*
 ** Example: overrides
 **
-** TODO full commentary
+** This example shows using the overrides system in Metadesk to plug in a
+** custom memory allocator and file loading routine. There are more options
+** in the overrides than are presented here. A full list of the overrides
+** options is kept in md.c 'Overrides & Options Macros'
+**
+** A few of the reasons one might want to use the Metadesk overrides are:
+**  1. Plugging in a custom allocator to control the memory allocations
+**  2. Plugging in a custom arena implementation for more seamless 
+**     interoperation between the codebase and library
+**  3. Provide implementation for unsupported OSes without having to modify
+ **     md.h or md.c
+**  4. Remove dependency on CRT
+**  5. Remove dependency on OS headers
 **
 */
 
-
 //~ example allocator /////////////////////////////////////////////////////////
+
+// @notes This isn't really "the example" but we need something to play the
+//  role of a custom allocator, imagine this is any alloc & free style
+//  allocator you might already have in a codebase.
 
 typedef struct ExampleAllocatorNode{
     struct ExampleAllocatorNode *next;
@@ -25,6 +40,11 @@ void  examp_free(ExampleAllocator *a, void *ptr);
 
 //~ include metadesk header ///////////////////////////////////////////////////
 
+// @notes We include the metadesk header before we define the overrides because
+//  some overrides require that metadesk base types be visible. There are
+//  exceptions to this pattern, in particular overrides for types need to be
+//  defined before including md.h, we aren't going that far here.
+
 #include "md.h"
 
 
@@ -32,6 +52,12 @@ void  examp_free(ExampleAllocator *a, void *ptr);
 
 // override memory to use malloc/free
 
+// @notes A common practice in setting up allocator overrides is to use a pass
+//  through opaque user context pointer. We took a look at that for *long time*
+//  and just really don't like the amount of baggage it adds to the entire API.
+//  Instead we recommend handling the context pointer with a global for single
+//  threaded use cases, or with a pointer in thread local storage for
+//  multi-threaded cases.
 ExampleAllocator* md_example_allocator = 0;
 
 void* md_reserve_by_example_allocator(unsigned long long size);
@@ -40,7 +66,7 @@ void  md_release_by_example_allocator(void *ptr, unsigned long long ignore);
 #define MD_IMPL_Reserve       md_reserve_by_example_allocator
 #define MD_IMPL_Commit(p,z)   (1)
 #define MD_IMPL_Decommit(p,z) ((void)0)
-#define MD_IMPL_Release(p,z)  md_release_by_example_allocator
+#define MD_IMPL_Release       md_release_by_example_allocator
 
 
 // override file loading
