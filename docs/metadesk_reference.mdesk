@@ -125,8 +125,10 @@ main:
         node_count: MD_u64,
     @doc("The size of all strings in the list summed together.")
         total_size: MD_u64,
-    first: *MD_String8Node,
-    last: *MD_String8Node,
+    @doc("A pointer to the first node in the list.")
+        first: *MD_String8Node,
+    @doc("A pointer to the last node in the list.")
+        last: *MD_String8Node,
 };
 
 @send(Strings)
@@ -1380,57 +1382,79 @@ main:
 //~ Map Table Data Structure
 
 @send(Map)
+@doc("Returns a 64-bit hash of the input string. Used in implementing string-to-slot mapping in MD_MapKeyStr.")
+@see(MD_MapKeyStr)
 @func MD_HashStr: {
     string: MD_String8,
     return: MD_u64,
 };
 
 @send(Map)
+@doc("Returns a 64-bit hash of the passed pointer. Used in implementing pointer-to-slot mapping in MD_MapKeyPtr.")
+@see(MD_MapKeyPtr)
 @func MD_HashPtr: {
     p: *void,
 };
 
 @send(Map)
-MD_MapMakeBucketCount: {
+@doc("Constructs a new MD_Map on @code 'arena' with the specified @code 'bucket_count'.")
+@see(MD_MapMake)
+@func MD_MapMakeBucketCount: {
     arena: *MD_Arena,
     bucket_count: MD_u64,
     return: MD_Map,
 };
 
 @send(Map)
-MD_MapMake: {
+@doc("Constructs a new MD_Map on @code 'arena' with a default bucket count that fits common cases. MD_MapMakeBucketCount can be used as an alternative for constructing an MD_Map with a specific number of buckets.")
+@see(MD_MapMakeBucketCount)
+@func MD_MapMake: {
     arena: *MD_Arena,
     return: MD_Map,
 };
 
 @send(Map)
-MD_MapKeyStr: {
+@doc("Forms a MD_Map key from a string.")
+@see(MD_HashStr)
+@func MD_MapKeyStr: {
     string: MD_String8,
     return: MD_MapKey,
 };
 
 @send(Map)
-MD_MapKeyPtr: {
+@doc("Forms a MD_Map key from a pointer.")
+@see(MD_HashPtr)
+@func MD_MapKeyPtr: {
     ptr: *void,
     return: MD_MapKey,
 };
 
 @send(Map)
-MD_MapLookup: {
+@doc("Returns a pointer to the stored MD_MapSlot that is associated with @code 'key' inside of @code 'map', if it exists.")
+@see(MD_MapSlot)
+@see(MD_MapScan)
+@see(MD_MapKeyStr)
+@see(MD_MapKeyPtr)
+@func MD_MapLookup: {
     map: *MD_Map,
     key: MD_MapKey,
     return: *MD_MapSlot,
 };
 
 @send(Map)
-MD_MapScan: {
+@doc("Given a pointer to an existing MD_MapSlot (constructed from a function like MD_MapLookup), scans to the next MD_MapSlot in the table's hash-chain that uses the same key. Useful in cases when you are mapping one key to multiple values, instead of assuming a one-to-one mapping.")
+@see(MD_MapLookup)
+@see(MD_MapKeyStr)
+@see(MD_MapKeyPtr)
+@func MD_MapScan: {
     first_slot: *MD_MapSlot,
     key: MD_MapKey,
     return: *MD_MapSlot,
 };
 
 @send(Map)
-MD_MapInsert: {
+@doc("Inserts a new value associated with @code 'key' into @code 'map'. Allocates a new slot for the value with @code 'arena'.")
+@func MD_MapInsert: {
     arena: *MD_Arena,
     map: *MD_Map,
     key: MD_MapKey,
@@ -1439,7 +1463,9 @@ MD_MapInsert: {
 };
 
 @send(Map)
-MD_MapOverwrite: {
+@doc("Overwrites the first existing slot associated with @code 'key' with a new value, or allocates a new slot if an existing slot does not already exist.")
+@func MD_MapOverwrite: {
+    arena: *MD_Arena,
     map: *MD_Map,
     key: MD_MapKey,
     val: *void,
