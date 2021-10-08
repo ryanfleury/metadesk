@@ -68,6 +68,9 @@ void  md_release_by_example_allocator(void *ptr, unsigned long long ignore);
 #define MD_IMPL_Decommit(p,z) ((void)0)
 #define MD_IMPL_Release       md_release_by_example_allocator
 
+#define MD_DEFAULT_ARENA_RES_SIZE (1 << 20)
+#define MD_DEFAULT_ARENA_CMT_SIZE (1 << 20)
+
 
 // override file loading
 

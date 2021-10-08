@@ -27,15 +27,16 @@
 **   #define MD_IMPL_Decommit           (void*, uint64) -> void
 **   #define MD_IMPL_Release            (void*, uint64) -> void
 **
+**
 **  "arena" ** REQUIRED
 **   #define MD_IMPL_Arena              <type> (must set before including md.h)
+**   #define MD_IMPL_ArenaMinPos        uint64
 **   #define MD_IMPL_ArenaAlloc         () -> MD_IMPL_Arena*
 **   #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
 **   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> uint64
 **   #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, uint64) -> void*
 **   #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, uint64) -> void
 **   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, uint64) -> void
-**   #define MD_IMPL_ArenaHeaderSize    uint64
 **
 **  "scratch" ** REQUIRED
 **   #define MD_IMPL_GetScratch         (MD_IMPL_Arena**, uint64) -> MD_IMPL_Arena*
@@ -44,6 +45,10 @@
 **
 **  "sprintf" ** REQUIRED
 **   #define MD_IMPL_Vsnprintf          (char*, uint64, char const*, va_list) -> uint64
+**
+** Static Parameters to the Default Arena Implementation
+**   #define MD_DEFAULT_ARENA_RES_SIZE  uint64 [default 64 megabytes]
+**   #define MD_DEFAULT_ARENA_CMT_SIZE  uint64 [default 64 kilabytes]
 **
 ** Default Implementation Controls
 **  These controls default to '1' i.e. 'enabled'
@@ -413,7 +418,7 @@ MD_LINUX_Release(void *ptr, MD_u64 size)
 # define MD_DEFAULT_ARENA_CMT_SIZE (64 << 10)
 #endif
 
-#define MD_DEFAULT_ARENA_VERY_BIG (MD_DEFAULT_ARENA_RES_SIZE - MD_IMPL_ArenaHeaderSize)/2
+#define MD_DEFAULT_ARENA_VERY_BIG (MD_DEFAULT_ARENA_RES_SIZE - MD_IMPL_ArenaMinPos)/2
 
 //- "low level memory" implementation check
 #if !defined(MD_IMPL_Reserve)
@@ -429,8 +434,8 @@ MD_LINUX_Release(void *ptr, MD_u64 size)
 # error Missing implementation for MD_IMPL_Release
 #endif
 
-#define MD_IMPL_ArenaHeaderSize 64
-MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_size_check);
+#define MD_IMPL_ArenaMinPos 64
+MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaMinPos, arena_def_size_check);
 
 #define MD_IMPL_ArenaAlloc     MD_ArenaDefaultAlloc
 #define MD_IMPL_ArenaRelease   MD_ArenaDefaultRelease
@@ -442,7 +447,7 @@ MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_si
 static MD_ArenaDefault*
 MD_ArenaDefaultAlloc__Size(MD_u64 cmt, MD_u64 res)
 {
-    MD_Assert(MD_IMPL_ArenaHeaderSize < cmt && cmt <= res);
+    MD_Assert(MD_IMPL_ArenaMinPos < cmt && cmt <= res);
     MD_u64 cmt_clamped = MD_ClampTop(cmt, res);
     MD_ArenaDefault *result = 0;
     void *mem = MD_IMPL_Reserve(res);
@@ -452,7 +457,7 @@ MD_ArenaDefaultAlloc__Size(MD_u64 cmt, MD_u64 res)
         result->prev = 0;
         result->current = result;
         result->base_pos = 0;
-        result->pos = MD_IMPL_ArenaHeaderSize;
+        result->pos = MD_IMPL_ArenaMinPos;
         result->cmt = cmt_clamped;
         result->cap = res;
         result->align = 8;
@@ -512,7 +517,7 @@ MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size)
             MD_ArenaDefault *new_arena = 0;
             if (size > MD_DEFAULT_ARENA_VERY_BIG)
             {
-                MD_u64 big_size_unrounded = size + MD_IMPL_ArenaHeaderSize;
+                MD_u64 big_size_unrounded = size + MD_IMPL_ArenaMinPos;
                 MD_u64 big_size = MD_AlignPow2(big_size_unrounded, (4 << 10));
                 new_arena = MD_ArenaDefaultAlloc__Size(big_size, big_size);
             }
@@ -564,7 +569,7 @@ static void
 MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos)
 {
     // pop chunks in the chain
-    MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, pos);
+    MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaMinPos, pos);
     {
         MD_ArenaDefault *node = arena->current;
         for (MD_ArenaDefault *prev = 0;
@@ -581,7 +586,7 @@ MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos)
     {
         MD_ArenaDefault *current = arena->current;
         MD_u64 local_pos_unclamped = pos - current->base_pos;
-        MD_u64 local_pos = MD_ClampBot(local_pos_unclamped, MD_IMPL_ArenaHeaderSize);
+        MD_u64 local_pos = MD_ClampBot(local_pos_unclamped, MD_IMPL_ArenaMinPos);
         current->pos = local_pos;
     }
 }
@@ -613,8 +618,8 @@ MD_ArenaDefaultSetAutoAlign(MD_ArenaDefault *arena, MD_u64 align)
 #if !defined(MD_IMPL_ArenaSetAutoAlign)
 # error Missing implementation for MD_IMPL_ArenaSetAutoAlign
 #endif
-#if !defined(MD_IMPL_ArenaHeaderSize)
-# error Missing implementation for MD_IMPL_ArenaHeaderSize
+#if !defined(MD_IMPL_ArenaMinPos)
+# error Missing implementation for MD_IMPL_ArenaMinPos
 #endif
 
 //~/////////////////////////////////////////////////////////////////////////////
@@ -728,7 +733,7 @@ MD_ArenaPutBack(MD_Arena *arena, MD_u64 size)
 {
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 new_pos = pos - size;
-    MD_u64 new_pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, new_pos);
+    MD_u64 new_pos_clamped = MD_ClampBot(MD_IMPL_ArenaMinPos, new_pos);
     MD_IMPL_ArenaPopTo(arena, new_pos_clamped);
 }
 
@@ -754,7 +759,7 @@ MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary)
 MD_FUNCTION void
 MD_ArenaClear(MD_Arena *arena)
 {
-    MD_IMPL_ArenaPopTo(arena, MD_IMPL_ArenaHeaderSize);
+    MD_IMPL_ArenaPopTo(arena, MD_IMPL_ArenaMinPos);
 }
 
 MD_FUNCTION MD_ArenaTemp
