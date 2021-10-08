@@ -1,11 +1,32 @@
 // LICENSE AT END OF FILE (MIT).
 
-//~ Metadesk Library
-
-// TODO(allen): Welcome & user directory comment here
+/*
+** Weclome to Metadesk!
+** 
+** Metadesk is a data description language designed to look like a programming
+** language, and this is the accompanying parser library. While you are free to
+** use it however you see fit, here are a couple of the uses we have intended
+** to support:
+**  + quickly writing a C or C++ metaprogram from scratch
+**  + building "low budget" domain specific scripting languages, such as
+**    marked-up website content, or asset metadata
+**  + creating robust and flexible config systems for applications
+** 
+** If it's your first time working with metadesk you may want to take a look at
+** the examples included with library. The examples_directory.txt file will
+** help you find your way to intro content, and to whatever more advanced
+** aspects of the library you might like to learn more about.
+** 
+** Direct issues, questions, suggestions, requests, etc to:
+** https://github.com/Dion-Systems/metadesk
+** 
+*/
 
 #ifndef MD_H
 #define MD_H
+
+#define MD_VERSION_MAJ 1
+#define MD_VERSION_MIN 0
 
 //~ Set default values for controls
 #if !defined(MD_DEFAULT_MEMSET)
@@ -780,7 +801,7 @@ typedef struct MD_ExprParseCtx MD_ExprParseCtx;
 struct MD_ExprParseCtx
 {
     MD_ExprOprTable *op_table;
-
+    
 #define MD_POSTFIX_SETLIKE_OP_COUNT 5   // (), [], {}, [), (]
     struct
     {

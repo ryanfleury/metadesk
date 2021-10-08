@@ -1,9 +1,7 @@
 // LICENSE AT END OF FILE (MIT).
 
-#if !defined(MD_C)
-#define MD_C
-
-/* NOTE(allen): Overrides & Options Macros:
+/* 
+** Overrides & Options Macros
 **
 ** Overridable
 **  "memset" ** REQUIRED (default crt-based implementation)
@@ -52,6 +50,9 @@
 **   #define MD_DEFAULT_SPRINTF   -> construct "vsnprintf" from internal implementaion
 **
 */
+
+#if !defined(MD_C)
+#define MD_C
 
 //~/////////////////////////////////////////////////////////////////////////////
 /////////////////////////// CRT Implementation /////////////////////////////////
