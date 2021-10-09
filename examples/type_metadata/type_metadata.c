@@ -34,7 +34,7 @@
 **  type_info_final_program.c - In addition to the metaprogram this example
 **                    includes a "final program", i.e. one that depends on
 **                    generated code. There is more commentary there.
-**  generated/*     - This is the output folder where the generated files
+**  generated/ *    - This is the output folder where the generated files
 **                    should be saved by the metaprogram.
 **  types.mdesk     - Sample input for this metaprogram. The code generated
 **                    from this metadesk file will be necessary to make

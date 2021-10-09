@@ -30,12 +30,20 @@ $build_path/type_metadata.exe $examps_path/type_metadata/types.mdesk
 echo
 
 if [ -f $examps_path/type_metadata/generated/meta_types.h ]; then
-echo ~~~ Building Program ~~~
-$bin_path/bld_core.sh unit type_info $examps/type_metadata/type_info_final_program.c
-else
-echo !!! Skipping Program !!!
-fi
+echo ~~~ Building Final Program ~~~
+$bin_path/bld_core.sh unit type_info_final $examps/type_metadata/type_info_final_program.c
 echo
+
+echo ~~~ Running Final Program ~~~
+$build_path/type_info_final
+echo
+
+else
+
+echo !!! Skipping Final Program !!!
+echo
+
+fi
 
 ###### Restore Path ###########################################################
 cd $og_path

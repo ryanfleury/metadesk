@@ -1,7 +1,8 @@
 /*
 ** Example: type metadata
 **
-** TODO full commentary
+** The header file for the metaprogram's main file. There isn't much commentary
+** here, this file is just to help us keep the example organized.
 **
 */
 
