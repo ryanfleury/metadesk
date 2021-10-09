@@ -349,7 +349,7 @@ gen_equip_struct_members(void)
                 // resolved type:
                 if (got_list)
                 {
-                    MD_Node *array_count = MD_NilNode();
+                    GEN_TypeMember *array_count = 0;
                     MD_Node *array_tag = MD_TagFromString(type_name_node, MD_S8Lit("array"), 0);
                     if (!MD_NodeIsNil(array_tag))
                     {
@@ -362,13 +362,34 @@ gen_equip_struct_members(void)
                         }
                         else
                         {
-                            array_count = MD_ChildFromString(type_root_node, array_count_referencer->string, 0);
-                            if (MD_NodeIsNil(array_count))
+                            MD_Node *array_count_member_node =
+                                MD_ChildFromString(type_root_node, array_count_referencer->string, 0);
+                            if (MD_NodeIsNil(array_count_member_node))
                             {
                                 MD_CodeLoc loc = MD_CodeLocFromNode(array_count_referencer);
                                 MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
                                                    "'%.*s' is not a member of %.*s",
                                                    MD_S8VArg(array_count_referencer->string), MD_S8VArg(type_name));
+                            }
+                            else
+                            {
+                                for (GEN_TypeMember *member_it = first_member;
+                                     member_it != 0;
+                                     member_it = member_it->next)
+                                {
+                                    if (member_it->node == array_count_member_node)
+                                    {
+                                        array_count = member_it;
+                                        break;
+                                    }
+                                }
+                                if (array_count == 0)
+                                {
+                                    MD_CodeLoc loc = MD_CodeLocFromNode(array_count_referencer);
+                                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                                       "'%.*s' comes after this array",
+                                                       MD_S8VArg(array_count_referencer->string), MD_S8VArg(type_name));
+                                }
                             }
                         }
                     }
@@ -377,6 +398,7 @@ gen_equip_struct_members(void)
                     member->node = member_node;
                     member->type = type_info;
                     member->array_count = array_count;
+                    member->member_index = member_count;
                     MD_QueuePush(first_member, last_member, member);
                     member_count += 1;
                 }
@@ -824,8 +846,7 @@ gen_type_definitions_from_types(FILE *out)
                 {
                     MD_String8 type_name = member->type->node->string;
                     MD_String8 member_name = member->node->string;
-                    int is_array = (!MD_NodeIsNil(member->array_count));
-                    if (is_array)
+                    if (member->array_count != 0)
                     {
                         fprintf(out, "%.*s *%.*s;\n", MD_S8VArg(type_name), MD_S8VArg(member_name));
                     }
@@ -945,9 +966,9 @@ gen_struct_member_tables_from_types(FILE *out)
                 MD_String8 member_name = member->node->string;
                 MD_String8 member_type_name = member->type->node->string;
                 int array_count_member_index = -1;
-                if (!MD_NodeIsNil(member->array_count))
+                if (member->array_count != 0)
                 {
-                    array_count_member_index = MD_IndexFromNode(member->array_count);
+                    array_count_member_index = member->array_count->member_index;
                 }
                 fprintf(out, "{\"%.*s\", %d, %d, &%.*s_type_info},\n",
                         MD_S8VArg(member_name), (int)member_name.size,

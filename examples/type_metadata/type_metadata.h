@@ -47,7 +47,9 @@ struct GEN_TypeMember
     GEN_TypeMember *next;
     MD_Node *node;
     GEN_TypeInfo *type;
-    MD_Node *array_count;
+    struct GEN_TypeMember *array_count;
+    //MD_Node *array_count;
+    int member_index;
 };
 
 typedef struct GEN_TypeEnumerant GEN_TypeEnumerant;
@@ -119,8 +121,6 @@ void gen_equip_map_in_out_types(void);
 void gen_equip_map_cases(void);
 void gen_check_duplicate_cases(void);
 void gen_check_complete_map_cases(void);
-
-// TODO: check array member indexes point to members from before the array
 
 //~ generators ////////////////////////////////////////////////////////////////
 void gen_type_definitions_from_types(FILE *out);
