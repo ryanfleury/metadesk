@@ -34,6 +34,8 @@ EXAMPLES:
 
 
 6. "type metadata" type_metadata/*
+ (Start exploring this example at type_metadata/type_metadata.c)
+
  A common use case for a metaprogramming system in C is to mark up type
  information with metadata. This example shows the "Metadesk way" of
  implementing that use case. This is the biggest example included and closely

@@ -1,7 +1,44 @@
 /*
 ** Example: type metadata
 **
-** TODO full commentary
+** This example is full of commentary on strategies for setting up Metadesk
+** programs. There are many many ways a system like this could be built,
+** this example only demonstrates one way. Everything here should be taken as
+** our best attempt to pass on insights about using Metadesk, and not as the
+** "one true way".
+**
+** This example shows what a typical Metadesk based metaprogram for generating
+** type metadata looks like. Metadesk can be used for all sorts of other
+** purposes, managing data tables, authoring content, configuration systems,
+** and more, but a very common reason that a C programmer reaches for a
+** metaprogramming system is to make up for C's lack of type metadata.
+**
+** The "Metadesk way" of solving this problem is to move the hand written type
+** definitions into metadesk files, and to generate the C structs AND the 
+** tables for type metadata from the metaprogram.
+**
+** A more common approach is to mark up C types and create a custom parser
+** for the modified C hybdrid. That approach requires a lot of heuristics to
+** deal with the complex grammar of C code, and is especially hard to make
+** both robust and reusable. The Metadesk way makes the problem a lot more
+** simple, if you are comfortable with generating C types instead of writing
+** them by hand in C.
+**
+**
+** Files:
+**  type_metadata.h - This example is big enough that we pulled out the types
+**                    and function declarations from the metaprogram to keep
+**                    things organized.
+**  type_info.h     - This header is included in the "final program" and
+**                    defines the types that will form the tables of metdata.
+**  type_info_final_program.c - In addition to the metaprogram this example
+**                    includes a "final program", i.e. one that depends on
+**                    generated code. There is more commentary there.
+**  generated/*     - This is the output folder where the generated files
+**                    should be saved by the metaprogram.
+**  types.mdesk     - Sample input for this metaprogram. The code generated
+**                    from this metadesk file will be necessary to make
+**                    type_info_final_program.c compile.
 **
 */
 
