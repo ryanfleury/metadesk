@@ -39,6 +39,7 @@
 **  types.mdesk     - Sample input for this metaprogram. The code generated
 **                    from this metadesk file will be necessary to make
 **                    type_info_final_program.c compile.
+**  bad_types.mdesk - Sample input for seeing some of the error checking work.
 **
 */
 
@@ -198,7 +199,7 @@ gen_gather_types_and_maps(MD_Node *list)
                 {
                     MD_CodeLoc loc = MD_CodeLocFromNode(node);
                     MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                                       "Unrecognized type kind '%.*s'\n",
+                                       "Unrecognized type kind '%.*s'",
                                        MD_S8VArg(tag_arg_str));
                 }
                 else
@@ -1188,12 +1189,14 @@ gen_function_definitions_from_maps(FILE *out)
 int
 main(int argc, char **argv)
 {
+#if 1
     char *argv_dummy[2] = {
         0,
-        "W:/metadesk/examples/type_metadata/types.mdesk"
+        "W:/metadesk/examples/type_metadata/bad_types.mdesk"
     };
     argc = 2;
     argv = argv_dummy;
+#endif
     
     // setup the global arena
     arena = MD_ArenaAlloc();

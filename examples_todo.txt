@@ -3,10 +3,10 @@ Example Programs:
 [x] Metadesk parse checker
 [x] User error checking
 [x] Data Desk like setup
-[ ] Example type metadata
+[x] Example type metadata
     [x] Cleanup & Simplification Pass
-    [ ] Commentary
-    [ ] Example Type File With Errors
+    [x] Commentary
+    [x] Example Type File With Errors
 [ ] Example of simple expression parser
 [ ] Example of C-like expression parser (with value and type expressions)
 [ ] Example(s) of using overrides
