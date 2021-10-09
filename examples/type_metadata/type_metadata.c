@@ -780,8 +780,21 @@ gen_check_complete_map_cases(void)
 
 //~ generators ////////////////////////////////////////////////////////////////
 
-// @notes Each generator function does all of the generation for one of the
-//  generated features we want. TODO keep going here.
+// @notes Each generator function handles generating every instance of a
+//  particular function. This means that there is only one place where the
+//  generator gets called and only one place where the generated code gets
+//  written. This keeps things simple but may be quite limiting depending on
+//  the use case.
+//
+//  For instance, to have multiple groups of types and metadata generated to
+//  different .h/.c file pairs, we could make the output file name a parameter
+//  on the command line, and run the generator multiple times with different
+//  metadesk files.
+//
+//  If we wanted to support references to entities accross files we would have
+//  to handle all the files in one run of the generator, and the generator
+//  functions would need to be called with different 'entities' for different
+//  output files.
 
 void
 gen_type_definitions_from_types(FILE *out)
@@ -801,7 +814,8 @@ gen_type_definitions_from_types(FILE *out)
             case GEN_TypeKind_Struct:
             {
                 MD_String8 struct_name = type->node->string;
-                fprintf(out, "typedef struct %.*s %.*s;\n", MD_S8VArg(struct_name), MD_S8VArg(struct_name));
+                fprintf(out, "typedef struct %.*s %.*s;\n",
+                        MD_S8VArg(struct_name), MD_S8VArg(struct_name));
                 fprintf(out, "struct %.*s\n", MD_S8VArg(struct_name));
                 fprintf(out, "{\n");
                 for (GEN_TypeMember *member = type->first_member;
