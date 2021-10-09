@@ -44,7 +44,8 @@ U8 raw_buffer[] = {
 #include <assert.h>
 
 int
-print_data_from_type_info(U8 **ptr_inout, U8 *opl, TypeInfo *type_info, int indent){
+print_data_from_type_info(U8 **ptr_inout, U8 *opl, TypeInfo *type_info, int indent)
+{
     static char spaces[] = 
         "                                                                ";
     
@@ -108,19 +109,15 @@ print_data_from_type_info(U8 **ptr_inout, U8 *opl, TypeInfo *type_info, int inde
                 // decode single members
                 if (member->array_count_member_index == -1)
                 {
-                    // save the offset of this member for later
-                    U8 *ptr_og = *ptr_inout;
-                    // decode this member
+                    if (member_type_info == &U32_type_info && *ptr_inout + 4 <= opl)
+                    {
+                        member_value_memory[i] = *(U32*)*ptr_inout;
+                    }
                     fprintf(stdout, "%.*s%.*s: ", indent, spaces, member->name_length, member->name);
                     if (!print_data_from_type_info(ptr_inout, opl, member_type_info, indent + 1))
                     {
                         result = 0;
                         goto finish;
-                    }
-                    // if we see a U32 we want to remember it in case it's an array count
-                    if (member_type_info == &U32_type_info)
-                    {
-                        member_value_memory[i] = *(U32*)ptr_og;
                     }
                 }
                 
@@ -176,13 +173,14 @@ print_data_from_type_info(U8 **ptr_inout, U8 *opl, TypeInfo *type_info, int inde
 int
 main(int argc, char **argv)
 {
-    // decode the raw buffer
+    // decode the raw buffer of shape data
     U8 *ptr = raw_buffer;
     U8 *opl = ptr + sizeof(raw_buffer);
     for (;ptr < opl;)
     {
         // decode a shape discriminator
-        if (ptr + sizeof(Shape) > opl){
+        if (ptr + sizeof(Shape) > opl)
+        {
             fprintf(stdout, "Could not decode shape discriminator\n");
             break;
         }
@@ -191,7 +189,8 @@ main(int argc, char **argv)
         
         // get type info
         TypeInfo *type_info = type_info_from_shape(shape);
-        if (type_info == 0){
+        if (type_info == 0)
+        {
             fprintf(stdout, "Unrecognized shape discriminator\n");
             break;
         }

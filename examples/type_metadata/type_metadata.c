@@ -54,6 +54,18 @@ static MD_Arena *arena = 0;
 FILE *error_file = 0;
 
 // node maps
+
+// @notes As we analyze the Metadesk tree we create more data. In this example
+//  the new data is stored in two major types GEN_TypeInfo and GEN_MapInfo.
+//  We form a list for each type of these "processed" types holds a pointer
+//  back to the original MD_Node that generated it, and room for information
+//  that will be equiped to the "processed" type in later stages of analysis.
+//  We also use the MD_Map helper to create a string -> pointer mapping so that
+//  we can look up the "processed" info pointers by name after the initial
+//  gather stage.
+//
+// TODO notes on managing output files.
+
 GEN_TypeInfo *first_type = 0;
 GEN_TypeInfo *last_type = 0;
 MD_Map type_map = {0};
@@ -77,6 +89,12 @@ GEN_TypeInfo*
 gen_resolve_type_info_from_string(MD_String8 name)
 {
     GEN_TypeInfo *result = 0;
+    // @notes The MD_Map helper is a "flexibly" typed hash table. It's keys can
+    //  be a mix of strings and pointers. Here MD_MapKeyStr(name) is making the
+    //  `name` string into a key for the map. The lookup function returns a
+    //  "map slot" because the map is not restricted to storing just one value
+    //  per key, if we were using it that way we could use MD_MapScan to
+    //  iterate through the map slots.
     MD_MapSlot *slot = MD_MapLookup(&type_map, MD_MapKeyStr(name));
     if (slot != 0)
     {
@@ -136,6 +154,15 @@ gen_map_case_from_enumerant(GEN_MapInfo *map, GEN_TypeEnumerant *enumerant)
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 
+// @notes The first stage of processing is to loop over the top level nodes
+//  from each parse. We are using the tags `@type` and `@map` to mark the nodes
+//  that this generator will process. Whenever we see one of those tags we
+//  create a GEN_TypeInfo or GEN_MapInfo to gather up information from the
+//  stages of analysis, and we insert the new info pointer into the appropriate
+//  map. On the types we do a little bit of the analysis right in this function
+//  to figure out which "type kind" it is, this lets us avoid ever having info
+//  where the kind field is not one of the expected values.
+
 void
 gen_gather_types_and_maps(MD_Node *list)
 {
@@ -149,6 +176,8 @@ gen_gather_types_and_maps(MD_Node *list)
             
             if (!MD_NodeIsNil(type_tag))
             {
+                // TODO(allen): check for duplicates
+                
                 GEN_TypeKind kind = GEN_TypeKind_Null;
                 MD_Node   *tag_arg_node = type_tag->first_child;
                 MD_String8 tag_arg_str = tag_arg_node->string;
@@ -185,6 +214,8 @@ gen_gather_types_and_maps(MD_Node *list)
             // gather map
             if (MD_NodeHasTag(node, MD_S8Lit("map"), 0))
             {
+                // TODO(allen): check for duplicates
+                
                 GEN_MapInfo *map_info = MD_PushArrayZero(arena, GEN_MapInfo, 1);
                 map_info->node = node;
                 MD_QueuePush(first_map, last_map, map_info);
@@ -225,6 +256,10 @@ gen_check_duplicate_member_names(void)
         }
     }
 }
+
+// @notes In the next few stages of analysis we 'equip' the info nodes we 
+//  gathered with further information by examining the sub-trees rooted at the 
+//  metadesk nodes we saw durring the gather phase.
 
 void
 gen_equip_basic_type_size(void)
@@ -745,9 +780,14 @@ gen_check_complete_map_cases(void)
 
 //~ generators ////////////////////////////////////////////////////////////////
 
+// @notes Each generator function does all of the generation for one of the
+//  generated features we want. TODO keep going here.
+
 void
 gen_type_definitions_from_types(FILE *out)
 {
+    // @notes This Metadesk helper generates a comment that points back here.
+    //  Generating a comment like this can help a lot to with issues later.
     MD_PrintGenNoteCComment(out);
     
     for (GEN_TypeInfo *type = first_type;
@@ -1163,6 +1203,13 @@ main(int argc, char **argv)
     gen_check_duplicate_cases();
     gen_check_complete_map_cases();
     
+    // @notes Here we explicitly use one block to generate each output file.
+    //  This approach makes it a lot easier to understand where the contents
+    //  of generated files come from, because it's all layed out it one place.
+    //  However if the number of output files grows, this can get out of hand
+    //  and the situation may start calling for more automation of the output
+    //  files. There is a large amount of judgement calling in this part!
+    
     // generate header file
     {
         FILE *h = fopen("meta_types.h", "wb");
@@ -1177,20 +1224,22 @@ main(int argc, char **argv)
     
     // generate definitions file
     {
-        // open output file
         FILE *c = fopen("meta_types.c", "wb");
-        
         gen_struct_member_tables_from_types(c);
         gen_enum_member_tables_from_types(c);
         gen_type_info_definitions_from_types(c);
         gen_function_definitions_from_maps(c);
-        
-        // close output file
         fclose(c);
     }
     
+    
+    // @notes The generated code doesn't go straight to stdout, and has a lot
+    //  of transforms applied. When writing the analyzers, it's often useful to
+    //  have a way to directly dump the results of analysis right to stdout to
+    //  see what's going on.
+    
     // print diagnostics of the parse analysis
-#if 0
+#if 1
     for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)

@@ -120,6 +120,8 @@ void gen_equip_map_cases(void);
 void gen_check_duplicate_cases(void);
 void gen_check_complete_map_cases(void);
 
+// TODO: check array member indexes point to members from before the array
+
 //~ generators ////////////////////////////////////////////////////////////////
 void gen_type_definitions_from_types(FILE *out);
 void gen_function_declarations_from_maps(FILE *out);
