@@ -597,6 +597,8 @@ MD_ArenaDefaultSetAutoAlign(MD_ArenaDefault *arena, MD_u64 align)
     arena->align = align;
 }
 
+// TODO(allen): Arena absorb
+
 #endif
 
 //- "arena" implementation checks

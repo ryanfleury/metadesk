@@ -8,12 +8,21 @@ root_path=$PWD
 build_path=$root_path/build
 examps=$root_path/examples
 
+# Setup a big list of files for a few of the examples
+big_list=          $examps/intro/hello_world.mdesk
+bit_list=$big_list $examps/intro/labels.mdesk
+bit_list=$big_list $examps/intro/sets.mdesk
+bit_list=$big_list $examps/type_metadata/types.mdesk
+bit_list=$big_list $examps/type_metadata/bad_types.mdesk
+bit_list=$big_list $examps/expr/expr_intro.mdesk
+bit_list=$big_list $examps/expr/expr_c_like.mdesk
+
 echo ~~~ Running Memory Management Example ~~~
-$build_path/memory_management.exe $examps/intro/hello_world.mdesk $examps/intro/labels.mdesk $examps/intro/sets.mdesk
+$build_path/memory_management.exe $big_list
 echo
 
 echo ~~~ Running Multi-Threaded Parse Example ~~~
-$build_path/multi_threaded.exe $examps/intro/hello_world.mdesk $examps/intro/labels.mdesk $examps/intro/sets.mdesk
+$build_path/multi_threaded.exe $big_list
 echo
 
 echo ~~~ Running Type Metadata Generator Example ~~~
