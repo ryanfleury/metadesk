@@ -75,21 +75,6 @@ parse_worker_win32(LPVOID parameter)
 int
 main(int argc, char **argv)
 {
-#if 1
-    char *argv_dummy[8] = {
-        0,
-        "W:\\metadesk\\examples\\intro\\hello_world.mdesk",
-        "W:\\metadesk\\examples\\intro\\labels.mdesk",
-        "W:\\metadesk\\examples\\intro\\sets.mdesk",
-        "W:\\metadesk\\examples\\type_metadata\\types.mdesk",
-        "W:\\metadesk\\examples\\type_metadata\\bad_types.mdesk",
-        "W:\\metadesk\\examples\\expr\\expr_intro.mdesk",
-        "W:\\metadesk\\examples\\expr\\expr_c_like.mdesk",
-    };
-    argc = 8;
-    argv = argv_dummy;
-#endif
-    
     // make sure we have something to parse
     if (argc <= 1)
     {
