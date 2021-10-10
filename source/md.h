@@ -1085,6 +1085,7 @@ MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 
 MD_FUNCTION MD_Node *MD_MakeList(MD_Arena *arena);
+MD_FUNCTION void     MD_ListConcatInPlace(MD_Node *list, MD_Node *to_push);
 MD_FUNCTION MD_Node *MD_PushNewReference(MD_Arena *arena, MD_Node *list, MD_Node *target);
 
 //~ Introspection Helpers

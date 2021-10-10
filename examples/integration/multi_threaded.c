@@ -49,14 +49,8 @@ parse_worker_loop(ThreadData *thread_data)
         }
         MD_String8 file_name = MD_S8CString(task->tasks[task_index]);
         MD_ParseResult parse = MD_ParseWholeFile(thread_data->arena, file_name);
-        if (parse.errors.first != 0)
-        {
-            MD_MessageListConcat(&thread_data->errors, &parse.errors);
-        }
-        else
-        {
-            MD_PushNewReference(thread_data->arena, thread_data->list, parse.node);
-        }
+        MD_MessageListConcat(&thread_data->errors, &parse.errors);
+        MD_PushNewReference(thread_data->arena, thread_data->list, parse.node);
     }
     
     atomic_inc_u64(&task->thread_counter);
@@ -144,5 +138,37 @@ main(int argc, char **argv)
 #endif
     }
     
-    // TODO(allen): combine results
+    // print results
+    for (int i = 0; i < THREAD_COUNT; i += 1)
+    {
+        fprintf(stdout, "on thread %d:\n", i);
+        
+        // print the name of each root
+        for (MD_EachNode(root_it, threads[i].list->first_child))
+        {
+            MD_Node *root = MD_ResolveNodeFromReference(root_it);
+            fprintf(stdout, "%.*s\n", MD_S8VArg(root->string));
+        }
+        
+        // print the errors from this thread
+        MD_MessageList errors = threads[i].errors; 
+        for (MD_Message *message = errors.first;
+             message != 0;
+             message = message->next)
+        {
+            MD_CodeLoc loc = MD_CodeLocFromNode(message->node);
+            MD_PrintMessage(stdout, loc, message->kind, message->string);
+        }
+    }
+    
+    // combine results
+    MD_Arena *arena = threads[0].arena;
+    MD_Node *list = threads[0].list;
+    MD_MessageList errors = threads[0].errors; 
+    for (int i = 1; i < THREAD_COUNT; i += 1)
+    {
+        MD_ArenaDefaultAbsorb(arena, threads[i].arena);
+        MD_ListConcatInPlace(list, threads[i].list);
+        MD_MessageListConcat(&errors, &threads[i].errors);
+    }
 }

@@ -597,7 +597,20 @@ MD_ArenaDefaultSetAutoAlign(MD_ArenaDefault *arena, MD_u64 align)
     arena->align = align;
 }
 
-// TODO(allen): Arena absorb
+static void
+MD_ArenaDefaultAbsorb(MD_ArenaDefault *arena, MD_ArenaDefault *sub_arena)
+{
+    MD_ArenaDefault *current = arena->current;
+    MD_u64 base_pos_shift = current->base_pos + current->cap;
+    for (MD_ArenaDefault *node = sub_arena->current;
+         node != 0;
+         node = node->prev)
+    {
+        node->base_pos += base_pos_shift;
+    }
+    sub_arena->prev = arena->current;
+    arena->current = sub_arena->current;
+}
 
 #endif
 
@@ -2926,9 +2939,9 @@ MD_MessageListPush(MD_MessageList *list, MD_Message *message)
 MD_FUNCTION void
 MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
 {
-    if(list->last)
+    if(to_push->node_count != 0)
     {
-        if(to_push->node_count != 0)
+        if(list->last != 0)
         {
             list->last->next = to_push->first;
             list->last = to_push->last;
@@ -2938,12 +2951,12 @@ MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
                 list->max_message_kind = to_push->max_message_kind;
             }
         }
+        else
+        {
+            *list = *to_push;
+        }
+        MD_MemoryZeroStruct(to_push);
     }
-    else
-    {
-        *list = *to_push;
-    }
-    MD_MemoryZeroStruct(to_push);
 }
 
 //~ Location Conversions
@@ -2996,7 +3009,7 @@ MD_CodeLocFromNode(MD_Node *node)
 MD_FUNCTION MD_b32
 MD_NodeIsNil(MD_Node *node)
 {
-    return node == 0 || node == &_md_nil_node || node->kind == MD_NodeKind_Nil;
+    return(node == 0 || node == &_md_nil_node || node->kind == MD_NodeKind_Nil);
 }
 
 MD_FUNCTION MD_Node *
@@ -3043,6 +3056,25 @@ MD_MakeList(MD_Arena *arena)
     MD_String8 empty = {0};
     MD_Node *result = MD_MakeNode(arena, MD_NodeKind_List, empty, empty, 0);
     return(result);
+}
+
+MD_FUNCTION void
+MD_ListConcatInPlace(MD_Node *list, MD_Node *to_push)
+{
+    if (!MD_NodeIsNil(to_push->first_child))
+    {
+        if (!MD_NodeIsNil(list->first_child))
+        {
+            list->last_child->next = to_push->first_child;
+            list->last_child = to_push->last_child;
+        }
+        else
+        {
+            list->first_child = to_push->first_child;
+            list->last_child = to_push->last_child;
+        }
+        to_push->first_child = to_push->last_child = MD_NilNode();
+    }
 }
 
 MD_FUNCTION MD_Node*
