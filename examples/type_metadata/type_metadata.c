@@ -64,8 +64,6 @@ FILE *error_file = 0;
 //  We also use the MD_Map helper to create a string -> pointer mapping so that
 //  we can look up the "processed" info pointers by name after the initial
 //  gather stage.
-//
-// TODO notes on managing output files.
 
 GEN_TypeInfo *first_type = 0;
 GEN_TypeInfo *last_type = 0;
@@ -111,14 +109,6 @@ gen_resolve_type_info_from_referencer(MD_Node *reference)
     return(result);
 }
 
-void
-gen_type_resolve_error(MD_Node *reference)
-{
-    MD_CodeLoc loc = MD_CodeLocFromNode(reference);
-    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                       "could not resolve type name '%.*s'", MD_S8VArg(reference->string));
-}
-
 GEN_TypeEnumerant*
 gen_enumerant_from_name(GEN_TypeInfo *enum_type, MD_String8 name)
 {
@@ -153,6 +143,57 @@ gen_map_case_from_enumerant(GEN_MapInfo *map, GEN_TypeEnumerant *enumerant)
     return(result);
 }
 
+MD_Node*
+gen_get_symbol_md_node_by_name(MD_String8 name)
+{
+    MD_Node *result = MD_NilNode();
+    MD_MapSlot *type_slot = MD_MapLookup(&type_map, MD_MapKeyStr(name));
+    if (type_slot != 0)
+    {
+        GEN_TypeInfo *type_info = (GEN_TypeInfo*)type_slot->val;
+        result = type_info->node;
+    }
+    MD_MapSlot *map_slot = MD_MapLookup(&map_map, MD_MapKeyStr(name));
+    if (map_slot != 0)
+    {
+        GEN_MapInfo *map_info = (GEN_MapInfo*)map_slot->val;
+        result = map_info->node;
+    }
+    return(result);
+}
+
+void
+gen_type_resolve_error(MD_Node *reference)
+{
+    MD_CodeLoc loc = MD_CodeLocFromNode(reference);
+    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                       "could not resolve type name '%.*s'", MD_S8VArg(reference->string));
+}
+
+void
+gen_duplicate_symbol_error(MD_Node *new_node, MD_Node *existing_node)
+{
+    MD_CodeLoc loc = MD_CodeLocFromNode(new_node);
+    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                       "Symbol name '%.*s' is already used",
+                       MD_S8VArg(new_node->string));
+    MD_CodeLoc existing_loc = MD_CodeLocFromNode(existing_node); 
+    MD_PrintMessageFmt(error_file, existing_loc, MD_MessageKind_Note,
+                       "See '%.*s' is already used",
+                       MD_S8VArg(existing_node->string));
+}
+
+void
+gen_check_and_do_duplicate_symbol_error(MD_Node *new_node)
+{
+    MD_Node *existing = gen_get_symbol_md_node_by_name(new_node->string);
+    if (!MD_NodeIsNil(existing))
+    {
+        gen_duplicate_symbol_error(new_node, existing);
+    }
+}
+
+
 //~ analyzers /////////////////////////////////////////////////////////////////
 
 // @notes The first stage of processing is to loop over the top level nodes
@@ -177,7 +218,7 @@ gen_gather_types_and_maps(MD_Node *list)
             
             if (!MD_NodeIsNil(type_tag))
             {
-                // TODO(allen): check for duplicates
+                gen_check_and_do_duplicate_symbol_error(node);
                 
                 GEN_TypeKind kind = GEN_TypeKind_Null;
                 MD_Node   *tag_arg_node = type_tag->first_child;
@@ -215,7 +256,7 @@ gen_gather_types_and_maps(MD_Node *list)
             // gather map
             if (MD_NodeHasTag(node, MD_S8Lit("map"), 0))
             {
-                // TODO(allen): check for duplicates
+                gen_check_and_do_duplicate_symbol_error(node);
                 
                 GEN_MapInfo *map_info = MD_PushArrayZero(arena, GEN_MapInfo, 1);
                 map_info->node = node;
@@ -1189,15 +1230,6 @@ gen_function_definitions_from_maps(FILE *out)
 int
 main(int argc, char **argv)
 {
-#if 1
-    char *argv_dummy[2] = {
-        0,
-        "W:/metadesk/examples/type_metadata/bad_types.mdesk"
-    };
-    argc = 2;
-    argv = argv_dummy;
-#endif
-    
     // setup the global arena
     arena = MD_ArenaAlloc();
     
