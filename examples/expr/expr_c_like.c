@@ -1,7 +1,11 @@
 /* 
 ** Example: c like expressions
 **
-** TODO
+** This example has the setup for parsing C expressions with the Metadesk
+** expression parser.
+**
+** In the accompanying expr_c_like.mdesk there are more comments about using
+** the expression system from the side of the Metadesk files.
 **
 */
 
@@ -135,23 +139,24 @@ print_expression(FILE *out, MD_Expr *expr)
             
             case MD_ExprOprKind_Prefix:
             {
-                fprintf(out, "%.*s", MD_S8VArg(op->string));
+                MD_Node *node = expr->md_node;
+                fprintf(out, "%.*s(", MD_S8VArg(op->string));
                 print_expression(out, expr->unary_operand);
+                fprintf(out, ")");
             }break;
             
             case MD_ExprOprKind_Postfix:
             {
+                fprintf(out, "(");
                 print_expression(out, expr->unary_operand);
                 MD_String8 op_string = op->string;
-                // TODO(allen): formalize 'set delimiter mask' into the library
-                MD_u64 set_delimiter_mask = 0x3F;
-                if ((expr->md_node->flags & set_delimiter_mask) != 0)
+                if ((expr->md_node->flags & MD_NodeFlag_MaskSetDelimiters) != 0)
                 {
-                    fprintf(out, "%c...%c", op_string.str[0], op_string.str[1]);
+                    fprintf(out, ")%c...%c", op_string.str[0], op_string.str[1]);
                 }
                 else
                 {
-                    fprintf(out, "%.*s", MD_S8VArg(op_string));
+                    fprintf(out, ")%.*s", MD_S8VArg(op_string));
                 }
             }break;
             
