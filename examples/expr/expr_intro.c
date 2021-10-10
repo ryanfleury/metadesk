@@ -14,10 +14,39 @@ static MD_Arena *arena = 0;
 
 //~ expression setup and helpers //////////////////////////////////////////////
 
+enum
+{
+    OpAdd,
+    OpMul,
+};
+
 void
 print_expression(FILE *out, MD_Expr *expr)
 {
-    // TODO(allen): finish
+    MD_ExprOpr *op = expr->op;
+    if (op == 0)
+    {
+        MD_Node *node = expr->md_node;
+        if (node->raw_string.size != 0 &&
+            MD_NodeIsNil(node->first_child))
+        {
+            fprintf(out, "%.*s", MD_S8VArg(node->raw_string));
+        }
+        else
+        {
+            MD_CodeLoc loc = MD_CodeLocFromNode(node);
+            MD_PrintMessage(stderr, loc, MD_MessageKind_Error,
+                            MD_S8Lit("the expression system does not expect this kind of node"));
+        }
+    }
+    else
+    {
+        fprintf(out, "(");
+        print_expression(out, expr->left);
+        fprintf(out, " %.*s ", MD_S8VArg(op->string));
+        print_expression(out, expr->right);
+        fprintf(out, ")");
+    }
 }
 
 
@@ -82,7 +111,7 @@ int main(int argc, char **argv)
             }
             
             // print the expression
-            fprintf(stdout, "%s = ");
+            fprintf(stdout, "%.*s = ", MD_S8VArg(node->string));
             print_expression(stdout, parse.expr);
             fprintf(stdout, ";\n");
         }

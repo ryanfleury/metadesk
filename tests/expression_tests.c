@@ -160,9 +160,11 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
                MD_S8Match(op_s, MD_S8Lit("{}"), 0) || MD_S8Match(op_s, MD_S8Lit("[)"), 0) || 
                MD_S8Match(op_s, MD_S8Lit("(]"), 0))
             {
-                MD_S8ListPush(arena, l, MD_S8Substring(op_s, 0, 1));
-                MD_S8ListPush(arena, l, MD_S8Lit("..."));
-                MD_S8ListPush(arena, l, MD_S8Substring(op_s, 1, 2));
+                MD_u8 buf[5];
+                buf[0] = op_s.str[0];
+                buf[1] = buf[2] = buf[3] = '.';
+                buf[4] = op_s.str[1];
+                MD_S8ListPush(arena, l, MD_S8(buf, sizeof(buf)));
             }
             else
             {

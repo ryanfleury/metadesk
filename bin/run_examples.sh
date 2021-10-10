@@ -8,6 +8,12 @@ root_path=$PWD
 build_path=$root_path/build
 examps=$root_path/examples
 
+echo ~~~ Running Expression Intro ~~~
+$build_path/expr_intro.exe $examps/expr/expr_intro.mdesk
+echo
+
+exit
+
 echo ~~~ Running Type Metadata Generator Example ~~~
 cd $examps/type_metadata/generated
 $build_path/type_metadata.exe $examps/type_metadata/types.mdesk

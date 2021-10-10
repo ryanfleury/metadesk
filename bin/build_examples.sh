@@ -11,6 +11,10 @@ bin/bld_core.sh show_ctx
 
 examps="examples"
 
+bin/bld_core.sh unit expr_intro     $examps/expr/expr_intro.c
+
+exit
+
 bin/bld_core.sh unit hello_world    $examps/intro/hello_world.c
 bin/bld_core.sh unit parse_check    $examps/intro/parse_check.c
 bin/bld_core.sh unit data_desk_like $examps/intro/data_desk_like_template.c
