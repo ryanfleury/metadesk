@@ -561,21 +561,28 @@ enum
     MD_NodeFlag_HasBraceLeft               = (1<<4),
     MD_NodeFlag_HasBraceRight              = (1<<5),
     
+    MD_NodeFlag_MaskSetDelimiters          = (0x3F<<0),
+    
     MD_NodeFlag_IsBeforeSemicolon          = (1<<6),
     MD_NodeFlag_IsAfterSemicolon           = (1<<7),
-    
     MD_NodeFlag_IsBeforeComma              = (1<<8),
     MD_NodeFlag_IsAfterComma               = (1<<9),
+    
+    MD_NodeFlag_MaskSeperators             = (0xF<<6),
     
     MD_NodeFlag_StringSingleQuote       = (1<<10),
     MD_NodeFlag_StringDoubleQuote       = (1<<11),
     MD_NodeFlag_StringTick              = (1<<12),
     MD_NodeFlag_StringTriplet           = (1<<13),
     
+    MD_NodeFlag_MaskStringDelimiters    = (0xF<<10),
+    
     MD_NodeFlag_Numeric                 = (1<<14),
     MD_NodeFlag_Identifier              = (1<<15),
     MD_NodeFlag_StringLiteral           = (1<<16),
     MD_NodeFlag_Symbol                  = (1<<17),
+    
+    MD_NodeFlag_MaskLabelKind           = (0xF<<14),
 };
 
 typedef struct MD_Node MD_Node;
