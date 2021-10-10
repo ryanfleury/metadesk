@@ -12,6 +12,10 @@ echo ~~~ Running Expression Intro ~~~
 $build_path/expr_intro.exe $examps/expr/expr_intro.mdesk
 echo
 
+echo ~~~ Running C Like Expression ~~~
+$build_path/expr_c_like.exe $examps/expr/expr_c_like.mdesk
+echo
+
 exit
 
 echo ~~~ Running Type Metadata Generator Example ~~~

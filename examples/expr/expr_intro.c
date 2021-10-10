@@ -111,7 +111,10 @@ int main(int argc, char **argv)
             }
             
             // print the expression
-            fprintf(stdout, "%.*s = ", MD_S8VArg(node->string));
+            if (node->string.size != 0)
+            {
+                fprintf(stdout, "%.*s = ", MD_S8VArg(node->string));
+            }
             print_expression(stdout, parse.expr);
             fprintf(stdout, ";\n");
         }

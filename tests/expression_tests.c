@@ -62,25 +62,21 @@ X(BitwiseXor,          "^",         Binary,                  8) \
 X(BitwiseOr,           "|",         Binary,                  7) \
 X(LogicalAnd,          "&&",        Binary,                  6) \
 X(LogicalOr,           "||",        Binary,                  5) \
-X(Assign,              "=",         BinaryRightAssociative,  4) \
-X(AssignAddition,      "+=",        BinaryRightAssociative,  4) \
-X(AssignSubtraction,   "-=",        BinaryRightAssociative,  4) \
-X(AssignMultiplication,"*=",        BinaryRightAssociative,  4) \
-X(AssignDivision,      "/=",        BinaryRightAssociative,  4) \
-X(AssignModulo,        "%=",        BinaryRightAssociative,  4) \
-X(AssignLeftShift,     "<<=",       BinaryRightAssociative,  4) \
-X(AssignRightShift,    ">>=",       BinaryRightAssociative,  4) \
-X(AssignBitwiseAnd,    "&=",        BinaryRightAssociative,  4) \
-X(AssignBitwiseXor,    "^=",        BinaryRightAssociative,  4) \
-X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  4) \
+X(Assign,              "=",         BinaryRightAssociative,  3) \
+X(AssignAddition,      "+=",        BinaryRightAssociative,  3) \
+X(AssignSubtraction,   "-=",        BinaryRightAssociative,  3) \
+X(AssignMultiplication,"*=",        BinaryRightAssociative,  3) \
+X(AssignDivision,      "/=",        BinaryRightAssociative,  3) \
+X(AssignModulo,        "%=",        BinaryRightAssociative,  3) \
+X(AssignLeftShift,     "<<=",       BinaryRightAssociative,  3) \
+X(AssignRightShift,    ">>=",       BinaryRightAssociative,  3) \
+X(AssignBitwiseAnd,    "&=",        BinaryRightAssociative,  3) \
+X(AssignBitwiseXor,    "^=",        BinaryRightAssociative,  3) \
+X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  3) \
 /* NOTE(mal): These are not in C */ \
 X(PostfixBraceBrace,   "{}",        Postfix,                18) \
 X(PostfixBracketParen, "[)",        Postfix,                18) \
 X(PostfixParenBracket, "(]",        Postfix,                18) \
-
-// TODO(allen): I don't think we want to do this
-// X(Cast                 "()",        Prefix,                 17)
-// X(Comma,               ",",         Binary,                  3)
 
 #define X(name, token, kind, prec) Op_##name,
 typedef enum{

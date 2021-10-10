@@ -790,7 +790,11 @@ typedef struct MD_Expr MD_Expr;
 struct MD_Expr
 {
     struct MD_Expr *parent;
-    struct MD_Expr *left;
+    union
+    {
+        struct MD_Expr *left;
+        struct MD_Expr *unary_operand;
+    };
     struct MD_Expr *right;
     MD_ExprOpr *op;
     MD_Node *md_node;

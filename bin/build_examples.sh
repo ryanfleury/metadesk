@@ -12,6 +12,7 @@ bin/bld_core.sh show_ctx
 examps="examples"
 
 bin/bld_core.sh unit expr_intro     $examps/expr/expr_intro.c
+bin/bld_core.sh unit expr_c_like    $examps/expr/expr_c_like.c
 
 exit
 

@@ -1,0 +1,18 @@
+/*
+** Example: c like expressions
+** 
+** TODO
+*/
+
+a: 100;
+b: ( array[a] );
+c: sizeof xyz;
+d: i*stride + j;
+e: 2.71828;
+f: ( (H << 16) | (H >> 16) );
+g: ( {0, +1, -1} );
+h: foo.bar;
+(i += 1);
+(j = 0);
+(k = i*stride + j);
+l: ( foo(bar, array[k], sizeof c) );

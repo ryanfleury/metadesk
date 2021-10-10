@@ -9,6 +9,6 @@ b: 2;
 c: 3;
 
 w: 100;
-x: a*w + b;
-y: b*w + c;
-z: c*w + a;
+x: a;
+y: b + w*a;
+z: (c + w*(b + w*a));
