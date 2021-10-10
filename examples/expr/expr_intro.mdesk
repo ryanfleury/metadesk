@@ -11,4 +11,4 @@ c: 3;
 w: 100;
 x: a;
 y: b + w*a;
-z: (c + w*(b + w*a));
+z: c + w*b + w*w*a;

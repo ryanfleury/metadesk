@@ -40,11 +40,24 @@ void  examp_free(ExampleAllocator *a, void *ptr);
 
 //~ include metadesk header ///////////////////////////////////////////////////
 
+// @notes Disabling print helpers removes any APIs from the library that depend
+//  on FILE from stdio.h.
+#define MD_DISABLE_PRINT_HELPERS 1
+
+// @notes Here is also a good place to disable the default implementations of 
+//  anything that is overriden to avoid extra includes.
+#define MD_DEFAULT_MEMORY 0
+#define MD_DEFAULT_FILE_LOAD 0
+
+// @notes We can also disable default implementations for "optional" parts,
+//  here we disable the default file iterator without replacing it, which gets
+//  this example off of direct OS header dependencies.
+#define MD_DEFAULT_FILE_ITER 0
+
 // @notes We include the metadesk header before we define the overrides because
 //  some overrides require that metadesk base types be visible. There are
 //  exceptions to this pattern, in particular overrides for types need to be
 //  defined before including md.h, we aren't going that far here.
-
 #include "md.h"
 
 
@@ -126,6 +139,8 @@ md_release_by_example_allocator(void *ptr, unsigned long long ignore)
 
 // override file loading
 
+#include <stdio.h>
+
 MD_String8
 md_load_entire_file_by_stdio(MD_Arena *arena, MD_String8 filename)
 {
@@ -151,16 +166,19 @@ md_load_entire_file_by_stdio(MD_Arena *arena, MD_String8 filename)
 
 int main(int argc, char **argv)
 {
+    // ... where ever program init stuff is happening ...
+    
     // initialize the example allocator
     ExampleAllocator allocator = {0};
     
-    // configure the allocator context
+    // metadesk allocator context gets setup before a call to MD_ArenaAlloc
     md_example_allocator = &allocator;
-    
     
     // setup the global arena
     arena = MD_ArenaAlloc();
-    // ... any normal metadesk usage may go here ...
+    
+    
+    // ... any normal metadesk usage may now happen ...
     
     
     return 0;

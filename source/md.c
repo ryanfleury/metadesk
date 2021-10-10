@@ -127,7 +127,7 @@ MD_CRT_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
 ////////////////////////////////////////////////////////////////////////////////
 
 //- win32 header
-#if (MD_DEFAULT_FILE_ITER || MD_DEFAULT_MEMORY) && MD_OS_WINDOWS
+#if (MD_DEFAULT_FILE_ITER || MD_2DEFAULT_MEMORY) && MD_OS_WINDOWS
 # include <Windows.h>
 # pragma comment(lib, "User32.lib")
 #endif
