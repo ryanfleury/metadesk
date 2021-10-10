@@ -727,6 +727,7 @@ typedef struct MD_MessageList MD_MessageList;
 struct MD_MessageList
 {
     MD_MessageKind max_message_kind;
+    // TODO(allen): rename
     MD_u64 node_count;
     MD_Message *first;
     MD_Message *last;
@@ -780,7 +781,8 @@ struct MD_ExprOprList
 typedef struct MD_ExprOprTable MD_ExprOprTable;
 struct MD_ExprOprTable
 {
-    MD_ExprOprList table[MD_ExprOprKind_COUNT]; // TODO(mal): Hash?
+    // TODO(mal): @upgrade_potential Hash?
+    MD_ExprOprList table[MD_ExprOprKind_COUNT];
     MD_MessageList errors;
 };
 
@@ -791,6 +793,7 @@ struct MD_Expr
     struct MD_Expr *left;
     struct MD_Expr *right;
     MD_b32 is_op;
+    // TODO(allen): this should be MD_ExprOpr*
     MD_u32 op_id;
     void *op_ptr;
     MD_Node *md_node;
@@ -818,6 +821,7 @@ struct MD_ExprParseCtx
     } accel;
 #undef MD_POSTFIX_SETLIKE_OP_COUNT
     
+    // TODO(allen): different message list type here
     MD_MessageList errors;
 };
 
