@@ -1,0 +1,18 @@
+/* 
+** Example: memory management
+**
+** TODO
+*/
+
+//~ includes and globals //////////////////////////////////////////////////////
+
+#include "md.h"
+#include "md.c"
+
+//~ main //////////////////////////////////////////////////////////////////////
+
+int
+main(int argc, char **argv)
+{
+    // TODO(allen)
+}

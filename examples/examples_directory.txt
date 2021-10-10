@@ -53,12 +53,17 @@ EXAMPLES:
  Commentary in this example focuses on strategies for setting up an effective
  metaprogram.
 
+7. TODO
+8. TODO
 
-7. "overrides" integration/overrides.c
+9. "overrides" integration/overrides.c
  When including the Metadesk library into an existing codebase, the overrides
  system in the library will let you plug in existing implementations you have
  for many of the basic requirements of the library. This can also be useful if
  you want to make your program CRT-free, or direct metadesk allocations to your
  own custom allocator.
+
+10. TODO
+11. TODO
 
 
