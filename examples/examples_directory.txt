@@ -53,8 +53,27 @@ EXAMPLES:
  Commentary in this example focuses on strategies for setting up an effective
  metaprogram.
 
-7. TODO
-8. TODO
+
+7. "expressions intro" expr/expr_intro.c, expr/expr_intro.mdesk
+ This example introduces the expression parsing feature built into Metadesk.
+ With it, flat sequences of Metadesk nodes can be parsed as arithmetic
+ expressions.
+
+ This example shows how to setup an operator table, call the expression parser
+ and interpret the expression tree that comes back. It discusses some of the
+ capabilities and limits of the expression system.
+
+
+8. "c like expressions" expr/expr_c_like.c, expr/expr_c_like.mdesk
+ This example has a pre-built operator table setup for parsing C like
+ expressions. This can be used as an advanced example of the expression parser
+ or as a copy-paste template for making an expression parser that matches C.
+ The only C operator that is not supported in some way is the ternary operator.
+ 
+ The metadesk file for this example shows how to deal with a few quirks that
+ arise from the fact that the expression system is layered on top of the
+ Metadesk grammar.
+
 
 9. "overrides" integration/overrides.c
  When including the Metadesk library into an existing codebase, the overrides
@@ -63,7 +82,21 @@ EXAMPLES:
  you want to make your program CRT-free, or direct metadesk allocations to your
  own custom allocator.
 
-10. TODO
-11. TODO
 
+10. "memory management" integration/memory_management.c
+ This example shows how to use Metadesk in situations where the basic
+ allocate-and-never-free strategy isn't good enough. The example discusses the
+ MD_Arena, shows the basics on getting started with it, and has a lot of tips
+ on further ways to use the arenas.
+
+
+11. "multi threaded parse" integration/multi_threaded.c
+ If Metadesk is used to encode metadata in something like an asset pipeline
+ it may become useful to parse multiple Metadesk files in parallel. The library
+ doesn't have any thread safety "built in" to the APIs, but it is designed
+ to make it fairly straight forward to manage the thread safety yourself, and
+ this example shows how.
+
+ This example relies on some of the information explained in the memory
+ management example, so it may be useful to start there.
 

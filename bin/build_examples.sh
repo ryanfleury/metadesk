@@ -11,9 +11,6 @@ bin/bld_core.sh show_ctx
 
 examps="examples"
 
-bin/bld_core.sh unit memory_management  $examps/integration/memory_management.c
-bin/bld_core.sh unit multi_threaded     $examps/integration/multi_threaded.c
-
 bin/bld_core.sh unit hello_world    $examps/intro/hello_world.c
 bin/bld_core.sh unit parse_check    $examps/intro/parse_check.c
 bin/bld_core.sh unit data_desk_like $examps/intro/data_desk_like_template.c
@@ -28,6 +25,9 @@ bin/bld_core.sh unit expr_intro    $examps/expr/expr_intro.c
 bin/bld_core.sh unit expr_c_like   $examps/expr/expr_c_like.c
 
 bin/bld_core.sh unit overrides          $examps/integration/overrides.c
+
+bin/bld_core.sh unit multi_threaded     $examps/integration/multi_threaded.c
+bin/bld_core.sh unit memory_management  $examps/integration/memory_management.c
 
 echo
 

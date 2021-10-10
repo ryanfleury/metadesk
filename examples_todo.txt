@@ -8,12 +8,20 @@ Example Programs:
     [x] Commentary
     [x] Example Type File With Errors
 [ ] Example of simple expression parser
-[ ] Example of C-like expression parser (with value and type expressions)
-[ ] Example(s) of using overrides
     [x] Write
     [ ] Commentary
+[ ] Example of C-like expression parser (with value and type expressions)
+    [x] Write
+    [ ] Commentary
+[ ] Example(s) of using overrides
+    [x] Write
+    [x] Commentary
 [ ] Example memory clearing in long-running program
+    [x] Write
+    [ ] Commentary
 [ ] Example multi-threaded parsing
+    [x] Write
+    [ ] Commentary
 
 Example Metadesk Files:
 [x] Hello world
