@@ -86,7 +86,7 @@ X(PostfixParenBracket, "(]",        Postfix,                18) \
 typedef enum{
     Op_Null,
     OPERATORS
-    Op_COUNT
+        Op_COUNT
 } Op;
 #undef X
 
@@ -123,14 +123,14 @@ static MD_String8 node_raw_contents(MD_Node *node, MD_b32 exclude_outer)
 static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *descs, MD_String8List *l, 
                                        MD_Expr *node, MD_b32 exclude_outer_parens)
 {
-    if(node->is_op)
+    if(node->op != 0)
     {
         if(!exclude_outer_parens)
         {
             MD_S8ListPush(arena, l, MD_S8Lit("("));
         }
         
-        MD_ExprOpr *op = &descs[node->op_id].op;
+        MD_ExprOpr *op = node->op;
         if(op->kind == MD_ExprOprKind_Binary || op->kind == MD_ExprOprKind_BinaryRightAssociative)
         {
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
@@ -154,7 +154,7 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
         else if(op->kind == MD_ExprOprKind_Postfix)
         {
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
-
+            
             MD_String8 op_s = descs[op->op_id].s;
             if(MD_S8Match(op_s, MD_S8Lit("()"), 0) || MD_S8Match(op_s, MD_S8Lit("[]"), 0) || 
                MD_S8Match(op_s, MD_S8Lit("{}"), 0) || MD_S8Match(op_s, MD_S8Lit("[)"), 0) || 
@@ -199,9 +199,9 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
             {
                 MD_S8ListPush(arena, l, MD_S8Lit("["));
             }
-
+            
             MD_S8ListPush(arena, l, MD_S8Lit("..."));
-
+            
             if(node->md_node->flags & MD_NodeFlag_HasParenRight)
             {
                 MD_S8ListPush(arena, l, MD_S8Lit(")"));
@@ -235,7 +235,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
 #undef X 
     
     arena = MD_ArenaAlloc();
-
+    
     /* NOTE: Operator table bake errors */ 
     {
         MD_ExprOprList operator_list = {0};
@@ -257,7 +257,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
                   op_table.errors.node_count == 1 && 
                   op_table.errors.first->user_ptr == plus_node);
-
+        
         // NOTE: () not as unary postfix
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("()"),
@@ -308,7 +308,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
                   op_table.errors.node_count == 1 &&
                   op_table.errors.first->user_ptr == plus_node);
-
+        
         // NOTE: Wrong token kind operator
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("123"),
@@ -384,7 +384,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "\"a\" + b + c", .a = "(\"a\" + b) + c"      },
         { .q = "a{b+c}",        .a = "a{...}"               },  // NOTE(mal): Non-standard postfix set-like operators
         { .q = "a[b+c)",        .a = "a[...)"               },
-
+        
         { .q = "(a",            .a = "",                    ExpressionErrorKind_MD, 0},
         { .q = "a)",            .a = "",                    ExpressionErrorKind_MD, 1},
         { .q = "/a",            .a = "",                    ExpressionErrorKind_Expr, 0},

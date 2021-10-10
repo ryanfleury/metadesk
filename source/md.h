@@ -792,10 +792,7 @@ struct MD_Expr
     struct MD_Expr *parent;
     struct MD_Expr *left;
     struct MD_Expr *right;
-    MD_b32 is_op;
-    // TODO(allen): this should be MD_ExprOpr*
-    MD_u32 op_id;
-    void *op_ptr;
+    MD_ExprOpr *op;
     MD_Node *md_node;
 };
 

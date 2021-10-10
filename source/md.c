@@ -3530,9 +3530,7 @@ MD_FUNCTION MD_Expr*
 MD_Expr_NewOp(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node, MD_Expr *l, MD_Expr *r)
 {
     MD_Expr *result = MD_PushArrayZero(arena, MD_Expr, 1);
-    result->is_op = 1;
-    result->op_id = op->op_id;
-    result->op_ptr = op->op_ptr;
+    result->op = op;
     result->md_node = op_node;
     result->parent = 0;
     result->left = l;
