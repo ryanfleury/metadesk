@@ -13,8 +13,10 @@
 
 //~ multi-threaded parse setup ////////////////////////////////////////////////
 
-#if MD_COMPILER_CL
-# define atomic_inc_u64(p) InterlockedIncrement64((LONG64*)p)
+// for this intrinsic we're assume pre-increment behavior
+
+#if MD_OS_WINDOWS
+# define atomic_inc_then_eval_u64(p) InterlockedIncrement64((LONG64*)p)
 #else
 # error Not implemented for this compiler
 #endif
@@ -42,7 +44,7 @@ parse_worker_loop(ThreadData *thread_data)
     TaskData *task = thread_data->task;
     for (;;)
     {
-        MD_u64 task_index = atomic_inc_u64(&task->task_counter);
+        MD_u64 task_index = atomic_inc_then_eval_u64(&task->task_counter) - 1;
         if (task_index >= task->task_max)
         {
             break;
@@ -53,7 +55,7 @@ parse_worker_loop(ThreadData *thread_data)
         MD_PushNewReference(thread_data->arena, thread_data->list, parse.node);
     }
     
-    atomic_inc_u64(&task->thread_counter);
+    atomic_inc_then_eval_u64(&task->thread_counter);
 }
 
 #if MD_OS_WINDOWS
