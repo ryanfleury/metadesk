@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 cd ..
 
 ###### Script #################################################################
-echo "~~~ Build All Exampes ~~~"
+echo "~~~ Build All Examples ~~~"
 bin/bld_core.sh show_ctx
 
 examps="examples"
