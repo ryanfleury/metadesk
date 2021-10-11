@@ -1,15 +1,61 @@
 /* 
 ** Example: memory management
 **
-** TODO
+** This example shows how to use Metadesk in a program where memory management
+** is important. For example if Metadesk is used as the basis for a config file
+** system in an application, you may need to do things like reloading a config,
+** or managing multiple configs with different arbitrary lifetimes.
+**
+** In the case of the simple metaprogram we manage memory by just having one
+** global arena, and we never free anything. In this case we'll start using
+** multiple arenas to create distinct lifetime "buckets" or "groups".
+**
+** Comments in this example explains a little about how Metadesk arenas work,
+ ** and tips for using them effectively.
+**
 */
 
 //~ includes and globals //////////////////////////////////////////////////////
 
+// @notes In this example we're just using the default implementations of
+//  the low level memory allocators. There's nothing wrong with doing it this
+//  way but in a codebase where something like a config file matters there
+//  may very well already be some custom allocators. Check out the overrides
+//  example for details on how to plug in custom allocators. 
+//
+//  Everything shown here about the Metadesk arena remains true either way, 
+//  because arenas are implemented on top of the low level memory allocator.
+//  Basically you can think of the arena as performing allocation batching with
+//  whatever low level memory allocator is available.
+
 #include "md.h"
 #include "md.c"
 
+
 //~ pretend config file ///////////////////////////////////////////////////////
+
+// @notes In this example we'll pretend we have a config file system, but we
+//  only show the part up to finishing the Metadesk parse. Each ConfigFile will
+//  carry a Metadesk arena, which handles the memory, and every version of the
+//  file data at each stage of processing.
+//
+//  In a real system there would likely be at least one more stage of 
+//  processing where a more processed version of the config that is made from 
+//  analyzing the Metadesk tree.
+//
+//  Here we can release a ConfigFile by simply releasing the arena because we
+//  have followed the simple rule that everything in the ConfigFile is
+//  *allocated on the arena*. If we were doing the analysis phase, we could
+//  keep this working by just writing the analyzer to allocate on the arena
+//  too.
+//
+//  An alternative approach here that could save memory is to use the arena
+//  as an allocator for temporary intermediates. In this approach during the
+//  analysis stage the final data structure would be allocated outside the
+//  arena used for parsing, and everything that the final structure needs would
+//  be copied out. Then the parse could be thrown away. This approach saves
+//  memory at the cost of making problems harder to trouble shoot, and
+//  sometimes more time in analysis to copy things out of the temporary arena.
 
 typedef struct ConfigFile{
     MD_Arena *arena;
@@ -23,12 +69,37 @@ ConfigFile*
 new_config_file_from_file_name(char *file_name_cstr)
 {
     MD_Arena *arena = MD_ArenaAlloc();
+    
+    // @notes MD_PushArray and MD_PushArrayZero are the fundamental allocation
+    //  operations to do with a Metadesk arena. Metadesk APIs that take an
+    //  MD_Arena* parameter are APIs that need to do allocation. When we pass
+    //  an arena in one of these APIs the returned data is allocated using that
+    //  arena and we say that the data is "allocated on the arena".
     ConfigFile *result = MD_PushArrayZero(arena, ConfigFile, 1);
     
+    // @notes We explicitly copy the file name onto the arena so that we can
+    //  be totally sure that it has the same lifetime as everything else in 
+    //  the ConfigFile.
     MD_String8 file_name = MD_S8Copy(arena, MD_S8CString(file_name_cstr));
+    
+    // @notes Here we break down MD_ParseWholeFile into it's two stages
+    //  explicitly so that we can save the contents and the parse in the
+    //  ConfigFile.
     MD_String8 contents = MD_LoadEntireFile(arena, file_name);
     MD_ParseResult parse = MD_ParseWholeString(arena, file_name, contents);
     
+    // @notes This part can be a little bit subtle. First we allocated the
+    //  arena with MD_ArenaAlloc. Then we used the arena to allocate a 
+    //  ConfigFile. Now we are storing a pointer to the arena in the config.
+    //  The subtle part is that if you're used to thinking in terms of
+    //  'ownership' it seems like the config owns the arena, but if we release
+    //  the arena, we also release the config.
+    //
+    //  A different way to think about it is that the arena is a handle that
+    //  manages allocation lifetimes. The ConfigFile and all of the data it
+    //  holds share the same lifetime, so they are all allocated on the same
+    //  "lifetime handle" (i.e. the same arena). The ConfigFile is the root of
+    //  all that data so it also holds the handle for releasing later.
     result->arena = arena;
     result->file_name = file_name;
     result->contents = contents;
@@ -40,11 +111,9 @@ new_config_file_from_file_name(char *file_name_cstr)
 void
 release_config_file(ConfigFile *file)
 {
-    if (file != 0)
-    {
-        MD_ArenaRelease(file->arena);
-    }
+    MD_ArenaRelease(file->arena);
 }
+
 
 //~ just to simulate new config files coming from somewhere ///////////////////
 
@@ -76,6 +145,10 @@ main(int argc, char **argv)
     in_files_count = argc - 1;
     in_file_names = argv + 1;
     
+    
+    // @notes The idea here is to simulate a situation where an allocate and
+    //  never free strategy would lead to growing memory usage over time
+    //  (i.e. a memory leak).
     
     // pretend there are unpredictable lifetimes tied to real-time events
     {
