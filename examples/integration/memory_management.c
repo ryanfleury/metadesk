@@ -174,3 +174,41 @@ main(int argc, char **argv)
         release_config_file(files[2]);
     }
 }
+
+// @notes A final note on "scratch arenas".
+//
+//  Often it is useful to use an arena for a temporary allocation that will be
+//  thrown away by the end of the current scope. One could create a new arena
+//  with MD_ArenaAlloc and later release it with MD_ArenaRelease, but this
+//  sort of case is perfect for using the thread-local scratch pool.
+//
+//  To get an arena for scratch work from the pool one uses:
+//   MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+//  To allocate with it:
+//   MD_WhateverArenaApi(scratch.arena, ...);
+//  And to release it:
+//   MD_ReleaseScratch(scratch);
+//
+//  If an arena is being used for allocating something to return to the caller
+//  it is important that it not also be the scratch, or else when the scratch
+//  release happens, all of the memory that was supposed to stay allocated
+//  for the caller to see will also be released (or worse, marked as released
+//  but still valid looking for some time).
+//
+//  To avoid this when getting a scratch arena the API MD_GetScratch allows you
+//  to specify arenas you are already using, to force it to pick one you are
+//  not using. In 99.99% of cases a call to this API either looks like:
+//   MD_GetScratch(0, 0);
+//  Or
+//   MD_GetScratch(&arena, 1);
+//
+//  If there are more than one arena already in use when a new scratch is 
+//  needed they can all be specified by packing them into an array:
+//   MD_Arena *arena_conflicts[2] = {arena1, arena2};
+//   MD_GetScratch(arena_conflicts, 2);
+//
+//  Watch out! If the scratch pool doesn't have a non-conflicting arena then
+//  it will return a null handle, likely leading to a crash. This can be 
+//  avoided by defining a higher value for #define MD_IMPL_ScratchCount.
+//  But it's generally possible and a lot better to avoid this path.
+
