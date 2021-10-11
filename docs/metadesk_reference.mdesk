@@ -1940,56 +1940,88 @@ MD_ParseWholeFile:
 @macro MD_CodeLocVArg: {loc}
 
 @send(Nodes)
-@doc("Prints a message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
-@see(MD_PrintMessageFmt)
-@func MD_PrintMessage: {
-    @doc("The file to print the message to.")
-        out: *FILE,
-    @doc("The source code location for which the message is intended.")
+@doc("Provides a standard way to format a message string that is associated with an MD_CodeLoc and an MD_MessageKind.")
+@func MD_FormatMessage:
+{
+    @doc("The arena to use for allocating the string.")
+        arena: *MD_Arena,
+    @doc("The location to associate this message with.")
         loc: MD_CodeLoc,
-    @doc("The kind/severity of the message.")
+    @doc("The MD_MessageKind to associate this message with.")
         kind: MD_MessageKind,
-    @doc("The message contents.")
-        str: MD_String8,
-};
+    @doc("The contents of the message.")
+        string: MD_String8,
+    return: MD_String8,
+}
 
 @send(Nodes)
-@doc("Prints a C format string message to @code 'out', corresponding with the source code location encoded by @code 'loc'.")
-@see(MD_PrintMessage)
-@func MD_PrintMessageFmt: {
-    @doc("The file to print the message to.")
-        out: *FILE,
-    @doc("The source code location for which the message is intended.")
+@doc("Formats and prints a standardly-formatted string that is associated with an MD_CodeLoc and MD_MessageKind, in the same format that MD_FormatMessage uses. Relies on @code 'MD_DISABLE_PRINT_HELPERS' not being set, as it relies on @code 'fprintf' and the passed @code 'FILE *'.")
+@see(MD_FormatMessage)
+@see(MD_PrintMessageFmt)
+@func MD_PrintMessage:
+{
+    @doc("The output file stream to which the formatted message is printed.")
+        file: *FILE,
+    @doc("The location to associate this message with.")
         loc: MD_CodeLoc,
-    @doc("The kind/severity of the message.")
+    @doc("The MD_MessageKind to associate this message with.")
         kind: MD_MessageKind,
-    @doc("The format string to form the message contents.")
+    @doc("The contents of the message.")
+        string: MD_String8,
+}
+
+@send(Nodes)
+@doc("Formats and prints a standardly-formatted string (being derived from a C-style format-string) that is associated with an MD_CodeLoc and MD_MessageKind, in the same format that MD_FormatMessage uses. Relies on @code 'MD_DISABLE_PRINT_HELPERS' not being set, as it relies on @code 'fprintf' and the passed @code 'FILE *'.")
+@see(MD_FormatMessage)
+@see(MD_PrintMessage)
+@func MD_PrintMessageFmt:
+{
+    @doc("The output file stream to which the formatted message is printed.")
+        file: *FILE,
+    @doc("The location to associate this message with.")
+        loc: MD_CodeLoc,
+    @doc("The MD_MessageKind to associate this message with.")
+        kind: MD_MessageKind,
+    @doc("The C-style format C-string for the message.")
         fmt: *char,
-    "..."
-};
+    "...",
+}
+
+@send(Nodes)
+@doc("Uses @code 'fprintf' to print a C-style comment that specifies the location of the code that was used to generate it. Useful when correlating generated code with associated generator code.")
+@macro MD_PrintGenNoteCComment:
+{
+    @doc("The @code 'FILE*' to which the comment is printed.")
+        f
+}
 
 ////////////////////////////////
 //~ Tree Comparison/Verification
 
 @send(Nodes)
-@doc("Compares the passed MD_Node nodes @code 'a' and @code 'b', and determines whether or not they match. @code 'flags' determines the rules used in the matching algorithm, including tag-sensitivity and case-sensitivity.")
+@doc("Compares the passed MD_Node nodes @code 'a' and @code 'b' non-recursively, and determines whether or not they match. @code 'flags' determines the rules used in the matching algorithm, including tag-sensitivity and case-sensitivity.")
 @see(MD_S8Match)
 @see(MD_MatchFlags)
-@func MD_NodeMatch: {
+@func MD_NodeMatch:
+{
     a: *MD_Node,
     b: *MD_Node,
     flags: MD_MatchFlags,
     return: MD_b32,
-};
+}
 
 @send(Nodes)
 @doc("Compares the passed MD_Node trees @code 'a' and @code 'b' recursively, and determines whether or not they and their children match. @code 'flags' determines the rules used in the matching algorithm, including tag-sensitivity and case-sensitivity.")
-@func MD_NodeDeepMatch: {
+@see(MD_NodeMatch)
+@see(MD_S8Match)
+@see(MD_MatchFlags)
+@func MD_NodeDeepMatch:
+{
     a: *MD_Node,
     b: *MD_Node,
     flags: MD_MatchFlags,
     return: MD_b32,
-};
+}
 
 ////////////////////////////////
 //~ Expression Parsing
@@ -1999,7 +2031,39 @@ MD_ParseWholeFile:
 ////////////////////////////////
 //~ Generation
 
-// TODO
+@send(StringGeneration)
+@doc("Writes to @code 'out', writing legal Metadesk strings that documents details of @code 'node'.")
+@func MD_DebugDumpFromNode:
+{
+    @doc("The arena to use for string allocation.")
+        arena: *MD_Arena,
+    @doc("The string list to push to.")
+        out: *MD_String8List,
+    @doc("The node for which details are printed.")
+        node: *MD_Node,
+    @doc("The indentation level to generate strings for, with each indentation level implying one occurrence of @code 'indent_string'.")
+        indent: int,
+    @doc("The string to output per-indentation level.")
+        indent_string: MD_String8,
+    @doc("Used to control which aspects of @code 'node' are generated.")
+        flags: MD_GenerateFlags,
+}
+
+@send(StringGeneration)
+@doc("Writes to @code 'out', writing legal Metadesk strings that attempt to reconstruct the code that was parsed to form @code 'node' as closely as possible.")
+@func MD_DebugDumpFromNode:
+{
+    @doc("The arena to use for string allocation.")
+        arena: *MD_Arena,
+    @doc("The string list to push to.")
+        out: *MD_String8List,
+    @doc("The node for which details are printed.")
+        node: *MD_Node,
+    @doc("The indentation level to generate strings for, with each indentation level implying one occurrence of @code 'indent_string'.")
+        indent: int,
+    @doc("The string to output per-indentation level.")
+        indent_string: MD_String8,
+}
 
 ////////////////////////////////
 //~ Command Line Argument Helper
@@ -2009,6 +2073,8 @@ MD_ParseWholeFile:
 @see(MD_MakeCmdLineFromOptions)
 @func MD_StringListFromArgCV:
 {
+    @doc("The arena to allocate with.")
+        arena: *MD_Arena,
     @doc("The number of command line arguments. Traditionally referred to as @code 'argc'.")
         argument_count: int;
     @doc("A pointer to the command line arguments. Traditionally referred to as @code 'argv'.")
@@ -2018,37 +2084,46 @@ MD_ParseWholeFile:
 
 @send(CommandLineHelper)
 @doc("Parses an MD_String8List as a set of command line options.")
+@see(MD_CmdLine)
 @see(MD_StringListFromArgCV)
 @see(MD_CmdLineValuesFromString)
 @see(MD_CmdLineB32FromString)
 @func MD_MakeCmdLineFromOptions:
 {
-    arena: *MD_Arena,
-    options: MD_String8List;
+    @doc("The arena to allocate with.")
+        arena: *MD_Arena,
+    @doc("An MD_String8List encoding the list of command line arguments. Can be produced from a traditional @code 'argc' and @code 'argv' pair using MD_StringListFromArgCV.")
+        options: MD_String8List;
     return: MD_CmdLine;
 }
 
 @send(CommandLineHelper)
 @doc("Gets the list of values associated with @code 'name' in the parsed command line arguments.")
+@see(MD_CmdLine)
 @see(MD_MakeCmdLineFromOptions)
 @see(MD_CmdLineB32FromString)
 @see(MD_CmdLineI64FromString)
 @func MD_CmdLineValuesFromString:
 {
-    cmdln: MD_CmdLine;
-    name: MD_String8;
+    @doc("Parsed command line data from MD_MakeCmdLineFromOptions.")
+        cmdln: MD_CmdLine;
+    @doc("The name of the command line option.")
+        name: MD_String8;
     return: MD_String8List;
 }
 
 @send(CommandLineHelper)
 @doc("Determines whether a command line argument explicitly passed an option matching @code 'name'.")
+@see(MD_CmdLine)
 @see(MD_MakeCmdLineFromOptions)
 @see(MD_CmdLineB32FromString)
 @see(MD_CmdLineValuesFromString)
 @func MD_CmdLineB32FromString:
 {
-    cmdln: MD_CmdLine;
-    name: MD_String8;
+    @doc("Parsed command line data from MD_MakeCmdLineFromOptions.")
+        cmdln: MD_CmdLine;
+    @doc("The name of the command line option.")
+        name: MD_String8;
     return: MD_b32;
 }
 
@@ -2059,8 +2134,10 @@ MD_ParseWholeFile:
 @doc("Gets the list of values associated with @code 'name' in the parsed command line arguments, treats them as a string representation of a 64-bit signed integer value, and returns that integer value.")
 @func MD_CmdLineI64FromString:
 {
-    cmdln: MD_CmdLine;
-    name: MD_String8;
+    @doc("Parsed command line data from MD_MakeCmdLineFromOptions.")
+        cmdln: MD_CmdLine;
+    @doc("The name of the command line option.")
+        name: MD_String8;
     return: MD_i64;
 }
 
@@ -2069,241 +2146,41 @@ MD_ParseWholeFile:
 
 @send(FileSystemHelper)
 @doc("Uses the C standard library to load the contents of the file with @code 'filename' into an MD_String8.")
-@func MD_LoadEntireFile: {
-    arena: *MD_Arena,
-    filename: MD_String8,
+@func MD_LoadEntireFile:
+{
+    @doc("The arena to use for allocating.")
+        arena: *MD_Arena,
+    @doc("The filename of the file that is to be loaded.")
+        filename: MD_String8,
     return: MD_String8,
-};
+}
 
 @send(FileSystemHelper)
-@doc("Increments an MD_FileIter iterator, and returns the iterated-onto file metadata.")
-@func MD_FileIterIncrement: {
+@doc("Uses lower level operating system APIs to begin iterating a file-system directory. Initializes the opaque structure @code 'it' to do so.")
+@see(MD_FileIter)
+@see(MD_FileIterEnd)
+@see(MD_FileIterNext)
+@func MD_FileIterBegin:
+{
+    it: *MD_FileIter,
+    path: MD_String8,
+}
+
+@send(FileSystemHelper)
+@doc("Uses lower level operating system APIs to retrieve the next file in a file-system directory, and advance to the next one, with state being stored in @code 'it'. Requires calling MD_FileIterBegin on @code 'it' first. Returns the iterated file's information.")
+@see(MD_FileIter)
+@see(MD_FileIterBegin)
+@see(MD_FileIterEnd)
+@func MD_FileIterNext:
+{
     arena: *MD_Arena,
-    @doc("The MD_FileIter to increment. To begin iterating and iterate to the first file, zero-initialize the iterator.")
-        it: *MD_FileIter,
-    @doc("The path to the folder that should be iterated.")
-        path: MD_String8,
-    @doc("A pointer to an MD_FileInfo, into which the file metadata is returned.")
-        out_info: *MD_FileInfo,
-    @doc("@code '1' if a new file was iterated onto, and @code '0' if the iteration is over.")
-        return: MD_b32,
-};
+    it: *MD_FileIter,
+    return: MD_FileInfo,
+}
 
-////////////////////////////////
-//~ C Helper
-////////////////////////////////
-
-
-////////////////////////////////
-//~ Expression and Type-Expression parser helper types.
-
-// VERY_IMPORTANT_NOTE(rjf): If this enum is ever changed, ensure that
-// it is kept in-sync with the MD_ExprPrecFromExprKind function.
-
-@send(ExpressionParsingHelper)
-@enum MD_C_ExprKind: {
-    Nil,
-    
-    // NOTE(rjf): Atom
-    Atom,
-    
-    // NOTE(rjf): Access
-    Dot,
-    Arrow,
-    Call,
-    Subscript,
-    Dereference,
-    Reference,
-    
-    // NOTE(rjf): Arithmetic
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Mod,
-    
-    // NOTE(rjf): Comparison
-    IsEqual,
-    IsNotEqual,
-    LessThan,
-    GreaterThan,
-    LessThanEqualTo,
-    GreaterThanEqualTo,
-    
-    // NOTE(rjf): Bools
-    BoolAnd,
-    BoolOr,
-    BoolNot,
-    
-    // NOTE(rjf): Bitwise
-    BitAnd,
-    BitOr,
-    BitNot,
-    BitXor,
-    LeftShift,
-    RightShift,
-    
-    // NOTE(rjf): Unary numeric
-    Negative,
-    
-    // NOTE(rjf): Type
-    Pointer,
-    Array,
-    Volatile,
-    Const,
-    
-    MAX,
-};
-
-@send(ExpressionParsingHelper)
-@enum MD_C_ExprKindGroup: {
-    Nil,
-    Atom,
-    Binary,
-    PreUnary,
-    PostUnary,
-    Type,
-};
-
-@send(ExpressionParsingHelper)
-@typedef(MD_i32) MD_C_ExprPrec;
-
-@send(ExpressionParsingHelper)
-@struct MD_C_Expr: {
-    node: *MD_Node,
-    kind: MD_ExprKind,
-    parent: *MD_C_Expr,
-    sub: ([2]*MD_C_Expr),
-};
-
-////////////////////////////////
-//~ Expression and Type-Expression Helper
-
-@send(ExpressionParsingHelper)
-@func MD_C_NilExpr: {
-    return: *MD_C_Expr,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_ExprIsNil: {
-    expr: *MD_C_Expr,
-    return: MD_b32,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_PreUnaryExprKindFromNode: {
-    node: *MD_Node,
-    return: MD_ExprKind,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_BinaryExprKindFromNode: {
-    node: *MD_Node,
-    return: MD_ExprKind,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_ExprPrecFromExprKind: {
-    kind: MD_ExprKind,
-    return: MD_ExprPrec,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_MakeExpr: {
-    arena: *MD_Arena,
-    node: *MD_Node,
-    kind: MD_ExprKind,
-    left: *MD_C_Expr,
-    right: *MD_C_Expr,
-    return: *MD_C_Expr,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_ParseAsExpr: {
-    arena: *MD_Arena,
-    first: *MD_Node,
-    last: *MD_Node,
-    return: *MD_C_Expr,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_ParseAsType: {
-    arena: *MD_Arena,
-    first: *MD_Node,
-    last: *MD_Node,
-    return: *MD_C_Expr,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_EvaluateExpr_I64: {
-    expr: *MD_C_Expr,
-    return: MD_i64,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_EvaluateExpr_F64: {
-    expr: *MD_C_Expr,
-    return: MD_f64,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_ExprMatch: {
-    a: *MD_C_Expr,
-    b: *MD_C_Expr,
-    str_flags: MD_StringMatchFlags,
-    return: MD_b32,
-};
-
-@send(ExpressionParsingHelper)
-@func MD_C_ExprDeepMatch: {
-    a: *MD_C_Expr,
-    b: *MD_C_Expr,
-    str_flags: MD_StringMatchFlags,
-    return: MD_b32,
-};
-
-////////////////////////////////
-//~ C Language Generation
-
-@send(StringGeneration)
-@func MD_C_Generate_String: {
-    file: *FILE,
-    node: *MD_Node,
-};
-
-@send(StringGeneration)
-@func MD_C_Generate_Struct: {
-    file: *FILE,
-    node: *MD_Node,
-};
-
-@send(StringGeneration)
-@func MD_C_Generate_Decl: {
-    file: *FILE,
-    node: *MD_Node,
-};
-
-@send(StringGeneration)
-@func MD_C_Generate_DeclByNameAndType: {
-    file: *FILE,
-    name: MD_String8,
-    type: *MD_C_Expr,
-};
-
-@send(StringGeneration)
-@func MD_C_Generate_Expr: {
-    file: *FILE,
-    expr: *MD_C_Expr,
-};
-
-@send(StringGeneration)
-@func MD_C_Generate_TypeLHS: {
-    file: *FILE,
-    type: *MD_C_Expr,
-};
-
-@send(StringGeneration)
-@func MD_C_Generate_TypeRHS: {
-    file: *FILE,
-    type: *MD_C_Expr,
-};
+@send(FileSystemHelper)
+@doc("Uses lower level operating system APIs to end iterating a file-system directory. Call once @code 'it' is done being used.")
+@func MD_FileIterEnd:
+{
+    it: *MD_FileIter,
+}
