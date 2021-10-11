@@ -2,7 +2,7 @@
 ** Example: data desk like template
 **
  ** This example is setup as a copy-pastable template for creating metadesk
-** based metaprograms that have the same structure as datadesk metaprograms.
+** based metaprograms that have the same structure as data desk metaprograms.
 **
 ** Data Desk was a precursor language to metadesk. This example is mostly meant
 ** to help Data Desk users understand metadesk and migrate onto it.

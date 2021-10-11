@@ -94,16 +94,16 @@ command_list =
         },
     },
     {
-        .name = "type_info_example",
+        .name = "type_metadata_example",
         .out = "*run*",
         .footer_panel = false,
         .save_dirty_files = true,
         .cursor_at_end = false,
         .cmd =
         {
-          { "git_bash bin\\type_info_example.sh", .os = "win" },
-          { "bin/type_info_example.sh", .os = "linux" },
-          { "bin/type_info_example.sh", .os = "mac" },
+          { "git_bash bin\\type_metadata_example.sh", .os = "win" },
+          { "bin/type_metadata_example.sh", .os = "linux" },
+          { "bin/type_metadata_example.sh", .os = "mac" },
         },
     },
 };
@@ -112,4 +112,4 @@ fkey_command[1] = "build_tests";
 fkey_command[2] = "run_tests";
 fkey_command[3] = "build_examples";
 fkey_command[4] = "run_examples";
-fkey_command[5] = "type_info_example";
+fkey_command[5] = "type_metadata_example";

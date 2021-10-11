@@ -4,6 +4,11 @@
 ** Overrides & Options Macros
 **
 ** Overridable
+**  "basic types" ** REQUIRED
+**   #define/typedef MD_i8, MD_i16, MD_i32, MD_i64
+**   #define/typedef MD_u8, MD_u16, MD_u32, MD_u64
+**   #define/typedef MD_f32, MD_f64
+**
 **  "memset" ** REQUIRED
 **   #define MD_IMPL_Memset             (void*, int, uint64) -> void*
 **   #define MD_IMPL_Memmove            (void*, void*, uint64) -> void*
@@ -22,15 +27,16 @@
 **   #define MD_IMPL_Decommit           (void*, uint64) -> void
 **   #define MD_IMPL_Release            (void*, uint64) -> void
 **
+**
 **  "arena" ** REQUIRED
 **   #define MD_IMPL_Arena              <type> (must set before including md.h)
+**   #define MD_IMPL_ArenaMinPos        uint64
 **   #define MD_IMPL_ArenaAlloc         () -> MD_IMPL_Arena*
 **   #define MD_IMPL_ArenaRelease       (MD_IMPL_Arena*) -> void
 **   #define MD_IMPL_ArenaGetPos        (MD_IMPL_Arena*) -> uint64
 **   #define MD_IMPL_ArenaPush          (MD_IMPL_Arena*, uint64) -> void*
 **   #define MD_IMPL_ArenaPopTo         (MD_IMPL_Arena*, uint64) -> void
 **   #define MD_IMPL_ArenaSetAutoAlign  (MD_IMPL_Arena*, uint64) -> void
-**   #define MD_IMPL_ArenaHeaderSize    uint64
 **
 **  "scratch" ** REQUIRED
 **   #define MD_IMPL_GetScratch         (MD_IMPL_Arena**, uint64) -> MD_IMPL_Arena*
@@ -40,8 +46,13 @@
 **  "sprintf" ** REQUIRED
 **   #define MD_IMPL_Vsnprintf          (char*, uint64, char const*, va_list) -> uint64
 **
+** Static Parameters to the Default Arena Implementation
+**   #define MD_DEFAULT_ARENA_RES_SIZE  uint64 [default 64 megabytes]
+**   #define MD_DEFAULT_ARENA_CMT_SIZE  uint64 [default 64 kilabytes]
+**
 ** Default Implementation Controls
 **  These controls default to '1' i.e. 'enabled'
+**   #define MD_DEFAULT_BASIC_TYPES -> construct "basic types" from stdint.h header
 **   #define MD_DEFAULT_MEMSET    -> construct "memset" from CRT
 **   #define MD_DEFAULT_FILE_ITER -> construct "file iteration" from OS headers
 **   #define MD_DEFAULT_MEMORY    -> construct "low level memory" from OS headers
@@ -116,7 +127,7 @@ MD_CRT_LoadEntireFile(MD_Arena *arena, MD_String8 filename)
 ////////////////////////////////////////////////////////////////////////////////
 
 //- win32 header
-#if (MD_DEFAULT_FILE_ITER || MD_DEFAULT_MEMORY) && MD_OS_WINDOWS
+#if (MD_DEFAULT_FILE_ITER || MD_2DEFAULT_MEMORY) && MD_OS_WINDOWS
 # include <Windows.h>
 # pragma comment(lib, "User32.lib")
 #endif
@@ -407,7 +418,7 @@ MD_LINUX_Release(void *ptr, MD_u64 size)
 # define MD_DEFAULT_ARENA_CMT_SIZE (64 << 10)
 #endif
 
-#define MD_DEFAULT_ARENA_VERY_BIG (MD_DEFAULT_ARENA_RES_SIZE - MD_IMPL_ArenaHeaderSize)/2
+#define MD_DEFAULT_ARENA_VERY_BIG (MD_DEFAULT_ARENA_RES_SIZE - MD_IMPL_ArenaMinPos)/2
 
 //- "low level memory" implementation check
 #if !defined(MD_IMPL_Reserve)
@@ -423,8 +434,8 @@ MD_LINUX_Release(void *ptr, MD_u64 size)
 # error Missing implementation for MD_IMPL_Release
 #endif
 
-#define MD_IMPL_ArenaHeaderSize 64
-MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_size_check);
+#define MD_IMPL_ArenaMinPos 64
+MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaMinPos, arena_def_size_check);
 
 #define MD_IMPL_ArenaAlloc     MD_ArenaDefaultAlloc
 #define MD_IMPL_ArenaRelease   MD_ArenaDefaultRelease
@@ -436,7 +447,7 @@ MD_StaticAssert(sizeof(MD_ArenaDefault) <= MD_IMPL_ArenaHeaderSize, arena_def_si
 static MD_ArenaDefault*
 MD_ArenaDefaultAlloc__Size(MD_u64 cmt, MD_u64 res)
 {
-    MD_Assert(MD_IMPL_ArenaHeaderSize < cmt && cmt <= res);
+    MD_Assert(MD_IMPL_ArenaMinPos < cmt && cmt <= res);
     MD_u64 cmt_clamped = MD_ClampTop(cmt, res);
     MD_ArenaDefault *result = 0;
     void *mem = MD_IMPL_Reserve(res);
@@ -446,7 +457,7 @@ MD_ArenaDefaultAlloc__Size(MD_u64 cmt, MD_u64 res)
         result->prev = 0;
         result->current = result;
         result->base_pos = 0;
-        result->pos = MD_IMPL_ArenaHeaderSize;
+        result->pos = MD_IMPL_ArenaMinPos;
         result->cmt = cmt_clamped;
         result->cap = res;
         result->align = 8;
@@ -506,7 +517,7 @@ MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size)
             MD_ArenaDefault *new_arena = 0;
             if (size > MD_DEFAULT_ARENA_VERY_BIG)
             {
-                MD_u64 big_size_unrounded = size + MD_IMPL_ArenaHeaderSize;
+                MD_u64 big_size_unrounded = size + MD_IMPL_ArenaMinPos;
                 MD_u64 big_size = MD_AlignPow2(big_size_unrounded, (4 << 10));
                 new_arena = MD_ArenaDefaultAlloc__Size(big_size, big_size);
             }
@@ -558,7 +569,7 @@ static void
 MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos)
 {
     // pop chunks in the chain
-    MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, pos);
+    MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaMinPos, pos);
     {
         MD_ArenaDefault *node = arena->current;
         for (MD_ArenaDefault *prev = 0;
@@ -575,7 +586,7 @@ MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos)
     {
         MD_ArenaDefault *current = arena->current;
         MD_u64 local_pos_unclamped = pos - current->base_pos;
-        MD_u64 local_pos = MD_ClampBot(local_pos_unclamped, MD_IMPL_ArenaHeaderSize);
+        MD_u64 local_pos = MD_ClampBot(local_pos_unclamped, MD_IMPL_ArenaMinPos);
         current->pos = local_pos;
     }
 }
@@ -584,6 +595,21 @@ static void
 MD_ArenaDefaultSetAutoAlign(MD_ArenaDefault *arena, MD_u64 align)
 {
     arena->align = align;
+}
+
+static void
+MD_ArenaDefaultAbsorb(MD_ArenaDefault *arena, MD_ArenaDefault *sub_arena)
+{
+    MD_ArenaDefault *current = arena->current;
+    MD_u64 base_pos_shift = current->base_pos + current->cap;
+    for (MD_ArenaDefault *node = sub_arena->current;
+         node != 0;
+         node = node->prev)
+    {
+        node->base_pos += base_pos_shift;
+    }
+    sub_arena->prev = arena->current;
+    arena->current = sub_arena->current;
 }
 
 #endif
@@ -607,8 +633,8 @@ MD_ArenaDefaultSetAutoAlign(MD_ArenaDefault *arena, MD_u64 align)
 #if !defined(MD_IMPL_ArenaSetAutoAlign)
 # error Missing implementation for MD_IMPL_ArenaSetAutoAlign
 #endif
-#if !defined(MD_IMPL_ArenaHeaderSize)
-# error Missing implementation for MD_IMPL_ArenaHeaderSize
+#if !defined(MD_IMPL_ArenaMinPos)
+# error Missing implementation for MD_IMPL_ArenaMinPos
 #endif
 
 //~/////////////////////////////////////////////////////////////////////////////
@@ -722,7 +748,7 @@ MD_ArenaPutBack(MD_Arena *arena, MD_u64 size)
 {
     MD_u64 pos = MD_IMPL_ArenaGetPos(arena);
     MD_u64 new_pos = pos - size;
-    MD_u64 new_pos_clamped = MD_ClampBot(MD_IMPL_ArenaHeaderSize, new_pos);
+    MD_u64 new_pos_clamped = MD_ClampBot(MD_IMPL_ArenaMinPos, new_pos);
     MD_IMPL_ArenaPopTo(arena, new_pos_clamped);
 }
 
@@ -748,7 +774,7 @@ MD_ArenaPushAlign(MD_Arena *arena, MD_u64 boundary)
 MD_FUNCTION void
 MD_ArenaClear(MD_Arena *arena)
 {
-    MD_IMPL_ArenaPopTo(arena, MD_IMPL_ArenaHeaderSize);
+    MD_IMPL_ArenaPopTo(arena, MD_IMPL_ArenaMinPos);
 }
 
 MD_FUNCTION MD_ArenaTemp
@@ -2913,9 +2939,9 @@ MD_MessageListPush(MD_MessageList *list, MD_Message *message)
 MD_FUNCTION void
 MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
 {
-    if(list->last)
+    if(to_push->node_count != 0)
     {
-        if(to_push->node_count != 0)
+        if(list->last != 0)
         {
             list->last->next = to_push->first;
             list->last = to_push->last;
@@ -2925,12 +2951,12 @@ MD_MessageListConcat(MD_MessageList *list, MD_MessageList *to_push)
                 list->max_message_kind = to_push->max_message_kind;
             }
         }
+        else
+        {
+            *list = *to_push;
+        }
+        MD_MemoryZeroStruct(to_push);
     }
-    else
-    {
-        *list = *to_push;
-    }
-    MD_MemoryZeroStruct(to_push);
 }
 
 //~ Location Conversions
@@ -2983,7 +3009,7 @@ MD_CodeLocFromNode(MD_Node *node)
 MD_FUNCTION MD_b32
 MD_NodeIsNil(MD_Node *node)
 {
-    return node == 0 || node == &_md_nil_node || node->kind == MD_NodeKind_Nil;
+    return(node == 0 || node == &_md_nil_node || node->kind == MD_NodeKind_Nil);
 }
 
 MD_FUNCTION MD_Node *
@@ -3030,6 +3056,25 @@ MD_MakeList(MD_Arena *arena)
     MD_String8 empty = {0};
     MD_Node *result = MD_MakeNode(arena, MD_NodeKind_List, empty, empty, 0);
     return(result);
+}
+
+MD_FUNCTION void
+MD_ListConcatInPlace(MD_Node *list, MD_Node *to_push)
+{
+    if (!MD_NodeIsNil(to_push->first_child))
+    {
+        if (!MD_NodeIsNil(list->first_child))
+        {
+            list->last_child->next = to_push->first_child;
+            list->last_child = to_push->last_child;
+        }
+        else
+        {
+            list->first_child = to_push->first_child;
+            list->last_child = to_push->last_child;
+        }
+        to_push->first_child = to_push->last_child = MD_NilNode();
+    }
 }
 
 MD_FUNCTION MD_Node*
@@ -3519,9 +3564,7 @@ MD_FUNCTION MD_Expr*
 MD_Expr_NewOp(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node, MD_Expr *l, MD_Expr *r)
 {
     MD_Expr *result = MD_PushArrayZero(arena, MD_Expr, 1);
-    result->is_op = 1;
-    result->op_id = op->op_id;
-    result->op_ptr = op->op_ptr;
+    result->op = op;
     result->md_node = op_node;
     result->parent = 0;
     result->left = l;

@@ -29,6 +29,9 @@
 #define MD_VERSION_MIN 0
 
 //~ Set default values for controls
+#if !defined(MD_DEFAULT_BASIC_TYPES)
+# define MD_DEFAULT_BASIC_TYPES 1
+#endif
 #if !defined(MD_DEFAULT_MEMSET)
 # define MD_DEFAULT_MEMSET 1
 #endif
@@ -374,9 +377,11 @@
 
 //~ Basic Types
 
-#include <stdint.h>
 #include <stdarg.h>
 
+#if defined(MD_DEFAULT_BASIC_TYPES)
+
+#include <stdint.h>
 typedef int8_t   MD_i8;
 typedef int16_t  MD_i16;
 typedef int32_t  MD_i32;
@@ -385,12 +390,15 @@ typedef uint8_t  MD_u8;
 typedef uint16_t MD_u16;
 typedef uint32_t MD_u32;
 typedef uint64_t MD_u64;
-typedef int8_t   MD_b8;
-typedef int16_t  MD_b16;
-typedef int32_t  MD_b32;
-typedef int64_t  MD_b64;
 typedef float    MD_f32;
 typedef double   MD_f64;
+
+#endif
+
+typedef MD_i8  MD_b8;
+typedef MD_i16 MD_b16;
+typedef MD_i32 MD_b32;
+typedef MD_i64 MD_b64;
 
 //~ Default Arena
 
@@ -553,21 +561,28 @@ enum
     MD_NodeFlag_HasBraceLeft               = (1<<4),
     MD_NodeFlag_HasBraceRight              = (1<<5),
     
+    MD_NodeFlag_MaskSetDelimiters          = (0x3F<<0),
+    
     MD_NodeFlag_IsBeforeSemicolon          = (1<<6),
     MD_NodeFlag_IsAfterSemicolon           = (1<<7),
-    
     MD_NodeFlag_IsBeforeComma              = (1<<8),
     MD_NodeFlag_IsAfterComma               = (1<<9),
+    
+    MD_NodeFlag_MaskSeperators             = (0xF<<6),
     
     MD_NodeFlag_StringSingleQuote       = (1<<10),
     MD_NodeFlag_StringDoubleQuote       = (1<<11),
     MD_NodeFlag_StringTick              = (1<<12),
     MD_NodeFlag_StringTriplet           = (1<<13),
     
+    MD_NodeFlag_MaskStringDelimiters    = (0xF<<10),
+    
     MD_NodeFlag_Numeric                 = (1<<14),
     MD_NodeFlag_Identifier              = (1<<15),
     MD_NodeFlag_StringLiteral           = (1<<16),
     MD_NodeFlag_Symbol                  = (1<<17),
+    
+    MD_NodeFlag_MaskLabelKind           = (0xF<<14),
 };
 
 typedef struct MD_Node MD_Node;
@@ -719,6 +734,7 @@ typedef struct MD_MessageList MD_MessageList;
 struct MD_MessageList
 {
     MD_MessageKind max_message_kind;
+    // TODO(allen): rename
     MD_u64 node_count;
     MD_Message *first;
     MD_Message *last;
@@ -772,7 +788,8 @@ struct MD_ExprOprList
 typedef struct MD_ExprOprTable MD_ExprOprTable;
 struct MD_ExprOprTable
 {
-    MD_ExprOprList table[MD_ExprOprKind_COUNT]; // TODO(mal): Hash?
+    // TODO(mal): @upgrade_potential Hash?
+    MD_ExprOprList table[MD_ExprOprKind_COUNT];
     MD_MessageList errors;
 };
 
@@ -780,11 +797,13 @@ typedef struct MD_Expr MD_Expr;
 struct MD_Expr
 {
     struct MD_Expr *parent;
-    struct MD_Expr *left;
+    union
+    {
+        struct MD_Expr *left;
+        struct MD_Expr *unary_operand;
+    };
     struct MD_Expr *right;
-    MD_b32 is_op;
-    MD_u32 op_id;
-    void *op_ptr;
+    MD_ExprOpr *op;
     MD_Node *md_node;
 };
 
@@ -810,6 +829,7 @@ struct MD_ExprParseCtx
     } accel;
 #undef MD_POSTFIX_SETLIKE_OP_COUNT
     
+    // TODO(allen): different message list type here
     MD_MessageList errors;
 };
 
@@ -1072,6 +1092,7 @@ MD_FUNCTION void     MD_PushChild(MD_Node *parent, MD_Node *new_child);
 MD_FUNCTION void     MD_PushTag(MD_Node *node, MD_Node *tag);
 
 MD_FUNCTION MD_Node *MD_MakeList(MD_Arena *arena);
+MD_FUNCTION void     MD_ListConcatInPlace(MD_Node *list, MD_Node *to_push);
 MD_FUNCTION MD_Node *MD_PushNewReference(MD_Arena *arena, MD_Node *list, MD_Node *target);
 
 //~ Introspection Helpers

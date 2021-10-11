@@ -1,0 +1,72 @@
+/*
+** Example: c like expressions
+** 
+** Input for the expression parser in expr_c_like.c
+**
+** Many of the expressions in this example have to be expressed in slightly
+** unusual ways (from the perspective of C) to make them work in the Metadesk
+** grammar before the expression parser deals with them. Each of those cases in
+** this file have comments explaining it. - The rule of thumb is that sometimes
+** an expression needs to be placed in parentheses if it gets complicated.
+** 
+** It may be useful to review intro/sets.mdesk to understand some the cases.
+*/
+
+a: 100;
+
+// @notes If we just have `b: array[a];` here the Metadesk parser will emit a
+//  warning and the tree won't have the shape we actually intend. We want:
+//   b: (array [a])
+//  But we would actually get
+//   b: array
+//   [a]
+//  This happens because `b` is an "implicitly delimited" set, which _CANNOT_
+//  contain explicitly delimited sets like `[a]`
+//  Adding the parentheses makes this into an "explicitly delimited" set which
+//  _CAN_ contain `[a]`.
+b: ( array[a] );
+
+
+c: sizeof xyz;
+d: i*stride + j;
+e: 2.71828;
+
+// @notes The Metadesk expression parser uses parentheses like any common
+//  expression parser, but we have to remember that before the expression
+//  parser sees those parentheses, they actually get handled by the main
+//  Metadesk parser and turned into set nodes.
+//
+//  If we just have `f: (H << 16) | (H >> 16);` here, then the tree we would
+//  get from the Metadesk parser is:
+//   f: (H << 16)
+//   |
+//   (H >> 16)
+//
+//  Again the solution is to use an extra set of parentheses to tell the
+//  Metadesk parser that `(H << 16) | (H >> 16)` are all children of `f`.
+f: ( (H << 16) | (H >> 16) );
+
+// @notes This time the problem is that we want the set delimiters `{}` to be
+//  visible to the expression parser. If we just have `g: {0, +1, -1}` then
+//  the shape of the tree becomes:
+//   g: (0, + 1, - 1)
+//
+//  If we want to treat `{...}` as a leaf in an expression in this case we
+//  need an extra set of parentheses so that `{...}` is a child of g and not
+//  just the delimiters of the g node itself.
+g: ( {0, +1, -1} );
+h: foo.bar;
+
+// @notes In these cases we want a nameless node that just contains an
+//  expression. We need parentheses so that these form sets. An alternative in
+//  this case is to have the C code do more work to use the `;` separators to
+//  find the beginning and ending of expressions like these. What we have here
+//  keeps things very simple.
+(i += 1);
+(j = 0);
+(k = i*stride + j);
+
+// @notes This one is pretty much the same as the first one, postfix index and
+//  postfix call operators both introduce an explicitly delimited set, which
+//  can't be contained in an implicitly delimited set.
+l: ( foo(bar, array[k], sizeof c) );

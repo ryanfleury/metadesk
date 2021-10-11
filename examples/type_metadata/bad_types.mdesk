@@ -1,0 +1,42 @@
+/*
+** Example: type metadata
+** 
+** This input for the type_metadata.c metaprogram is here to exercise some of
+** the error checks in the example.
+*/
+
+
+@type(basic) U32: 4;
+
+
+// What is a type?
+@type JustAType;
+
+
+// Really promising: infinite precision 2D points. Just need to figure
+// out how to implement the MagicInt now.
+@type(struct)
+MagicalPoint2D:
+{
+ x: MagicInt;
+ y: MagicInt;
+}
+
+
+// If we serialize the count of an array after the array, how do we find the
+// count?
+@type(struct)
+BackwardsArray:
+{
+ vals: @array(count) U32;
+ count: U32;
+}
+
+
+// These two just won't play nice together.
+@type(basic) TwinType: 4;
+@type(struct)
+TwinType:
+{
+ val: U32;
+}

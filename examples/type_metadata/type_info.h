@@ -1,9 +1,8 @@
 /*
 ** Example: type metadata
 **
-** This is a hand written header to be included into the final program to
-** define types that will be used to layout the metadata tables created by the
-** generator.
+** This is a hand written header to be included into the final program. It
+** defines the types used to layout the generated tables of metadata.
 **
 ** This file *does not* get included into the generator itself.
 **

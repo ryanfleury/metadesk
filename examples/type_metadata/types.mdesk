@@ -1,5 +1,7 @@
 /*
-** Setup as input to the type metadata example
+** Example: type metadata
+** 
+** Input for the type definition system setup by type_metadata.c
 */
 
 @type(basic) U32: 4;

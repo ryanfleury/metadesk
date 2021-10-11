@@ -1,7 +1,45 @@
 /*
 ** Example: type metadata
 **
-** TODO full commentary
+** This example is full of commentary on strategies for setting up Metadesk
+** programs. There are many many ways a system like this could be built,
+** this example only demonstrates one way. Everything here should be taken as
+** our best attempt to pass on insights about using Metadesk, and not as the
+** "one true way".
+**
+** This example shows what a typical Metadesk based metaprogram for generating
+** type metadata looks like. Metadesk can be used for all sorts of other
+** purposes, managing data tables, authoring content, configuration systems,
+** and more, but a very common reason that a C programmer reaches for a
+** metaprogramming system is to make up for C's lack of type metadata.
+**
+** The "Metadesk way" of solving this problem is to move the hand written type
+** definitions into metadesk files, and to generate the C structs AND the 
+** tables for type metadata from the metaprogram.
+**
+** A more common approach is to mark up C types and create a custom parser
+** for the modified C hybdrid. That approach requires a lot of heuristics to
+** deal with the complex grammar of C code, and is especially hard to make
+** both robust and reusable. The Metadesk way makes the problem a lot more
+** simple, if you are comfortable with generating C types instead of writing
+** them by hand in C.
+**
+**
+** Files:
+**  type_metadata.h - This example is big enough that we pulled out the types
+**                    and function declarations from the metaprogram to keep
+**                    things organized.
+**  type_info.h     - This header is included in the "final program" and
+**                    defines the types that will form the tables of metdata.
+**  type_info_final_program.c - In addition to the metaprogram this example
+**                    includes a "final program", i.e. one that depends on
+**                    generated code. There is more commentary there.
+**  generated/ *    - This is the output folder where the generated files
+**                    should be saved by the metaprogram.
+**  types.mdesk     - Sample input for this metaprogram. The code generated
+**                    from this metadesk file will be necessary to make
+**                    type_info_final_program.c compile.
+**  bad_types.mdesk - Sample input for seeing some of the error checking work.
 **
 */
 
@@ -17,6 +55,16 @@ static MD_Arena *arena = 0;
 FILE *error_file = 0;
 
 // node maps
+
+// @notes As we analyze the Metadesk tree we create more data. In this example
+//  the new data is stored in two major types GEN_TypeInfo and GEN_MapInfo.
+//  We form a list for each type of these "processed" types holds a pointer
+//  back to the original MD_Node that generated it, and room for information
+//  that will be equiped to the "processed" type in later stages of analysis.
+//  We also use the MD_Map helper to create a string -> pointer mapping so that
+//  we can look up the "processed" info pointers by name after the initial
+//  gather stage.
+
 GEN_TypeInfo *first_type = 0;
 GEN_TypeInfo *last_type = 0;
 MD_Map type_map = {0};
@@ -40,6 +88,12 @@ GEN_TypeInfo*
 gen_resolve_type_info_from_string(MD_String8 name)
 {
     GEN_TypeInfo *result = 0;
+    // @notes The MD_Map helper is a "flexibly" typed hash table. It's keys can
+    //  be a mix of strings and pointers. Here MD_MapKeyStr(name) is making the
+    //  `name` string into a key for the map. The lookup function returns a
+    //  "map slot" because the map is not restricted to storing just one value
+    //  per key, if we were using it that way we could use MD_MapScan to
+    //  iterate through the map slots.
     MD_MapSlot *slot = MD_MapLookup(&type_map, MD_MapKeyStr(name));
     if (slot != 0)
     {
@@ -53,14 +107,6 @@ gen_resolve_type_info_from_referencer(MD_Node *reference)
 {
     GEN_TypeInfo *result = gen_resolve_type_info_from_string(reference->string);
     return(result);
-}
-
-void
-gen_type_resolve_error(MD_Node *reference)
-{
-    MD_CodeLoc loc = MD_CodeLocFromNode(reference);
-    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                       "could not resolve type name '%.*s'", MD_S8VArg(reference->string));
 }
 
 GEN_TypeEnumerant*
@@ -97,7 +143,67 @@ gen_map_case_from_enumerant(GEN_MapInfo *map, GEN_TypeEnumerant *enumerant)
     return(result);
 }
 
+MD_Node*
+gen_get_symbol_md_node_by_name(MD_String8 name)
+{
+    MD_Node *result = MD_NilNode();
+    MD_MapSlot *type_slot = MD_MapLookup(&type_map, MD_MapKeyStr(name));
+    if (type_slot != 0)
+    {
+        GEN_TypeInfo *type_info = (GEN_TypeInfo*)type_slot->val;
+        result = type_info->node;
+    }
+    MD_MapSlot *map_slot = MD_MapLookup(&map_map, MD_MapKeyStr(name));
+    if (map_slot != 0)
+    {
+        GEN_MapInfo *map_info = (GEN_MapInfo*)map_slot->val;
+        result = map_info->node;
+    }
+    return(result);
+}
+
+void
+gen_type_resolve_error(MD_Node *reference)
+{
+    MD_CodeLoc loc = MD_CodeLocFromNode(reference);
+    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                       "could not resolve type name '%.*s'", MD_S8VArg(reference->string));
+}
+
+void
+gen_duplicate_symbol_error(MD_Node *new_node, MD_Node *existing_node)
+{
+    MD_CodeLoc loc = MD_CodeLocFromNode(new_node);
+    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                       "Symbol name '%.*s' is already used",
+                       MD_S8VArg(new_node->string));
+    MD_CodeLoc existing_loc = MD_CodeLocFromNode(existing_node); 
+    MD_PrintMessageFmt(error_file, existing_loc, MD_MessageKind_Note,
+                       "See '%.*s' is already used",
+                       MD_S8VArg(existing_node->string));
+}
+
+void
+gen_check_and_do_duplicate_symbol_error(MD_Node *new_node)
+{
+    MD_Node *existing = gen_get_symbol_md_node_by_name(new_node->string);
+    if (!MD_NodeIsNil(existing))
+    {
+        gen_duplicate_symbol_error(new_node, existing);
+    }
+}
+
+
 //~ analyzers /////////////////////////////////////////////////////////////////
+
+// @notes The first stage of processing is to loop over the top level nodes
+//  from each parse. We are using the tags `@type` and `@map` to mark the nodes
+//  that this generator will process. Whenever we see one of those tags we
+//  create a GEN_TypeInfo or GEN_MapInfo to gather up information from the
+//  stages of analysis, and we insert the new info pointer into the appropriate
+//  map. On the types we do a little bit of the analysis right in this function
+//  to figure out which "type kind" it is, this lets us avoid ever having info
+//  where the kind field is not one of the expected values.
 
 void
 gen_gather_types_and_maps(MD_Node *list)
@@ -112,6 +218,8 @@ gen_gather_types_and_maps(MD_Node *list)
             
             if (!MD_NodeIsNil(type_tag))
             {
+                gen_check_and_do_duplicate_symbol_error(node);
+                
                 GEN_TypeKind kind = GEN_TypeKind_Null;
                 MD_Node   *tag_arg_node = type_tag->first_child;
                 MD_String8 tag_arg_str = tag_arg_node->string;
@@ -132,7 +240,7 @@ gen_gather_types_and_maps(MD_Node *list)
                 {
                     MD_CodeLoc loc = MD_CodeLocFromNode(node);
                     MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
-                                       "Unrecognized type kind '%.*s'\n",
+                                       "Unrecognized type kind '%.*s'",
                                        MD_S8VArg(tag_arg_str));
                 }
                 else
@@ -148,6 +256,8 @@ gen_gather_types_and_maps(MD_Node *list)
             // gather map
             if (MD_NodeHasTag(node, MD_S8Lit("map"), 0))
             {
+                gen_check_and_do_duplicate_symbol_error(node);
+                
                 GEN_MapInfo *map_info = MD_PushArrayZero(arena, GEN_MapInfo, 1);
                 map_info->node = node;
                 MD_QueuePush(first_map, last_map, map_info);
@@ -188,6 +298,10 @@ gen_check_duplicate_member_names(void)
         }
     }
 }
+
+// @notes In the next few stages of analysis we 'equip' the info nodes we 
+//  gathered with further information by examining the sub-trees rooted at the 
+//  metadesk nodes we saw durring the gather phase.
 
 void
 gen_equip_basic_type_size(void)
@@ -277,7 +391,7 @@ gen_equip_struct_members(void)
                 // resolved type:
                 if (got_list)
                 {
-                    MD_Node *array_count = MD_NilNode();
+                    GEN_TypeMember *array_count = 0;
                     MD_Node *array_tag = MD_TagFromString(type_name_node, MD_S8Lit("array"), 0);
                     if (!MD_NodeIsNil(array_tag))
                     {
@@ -290,13 +404,34 @@ gen_equip_struct_members(void)
                         }
                         else
                         {
-                            array_count = MD_ChildFromString(type_root_node, array_count_referencer->string, 0);
-                            if (MD_NodeIsNil(array_count))
+                            MD_Node *array_count_member_node =
+                                MD_ChildFromString(type_root_node, array_count_referencer->string, 0);
+                            if (MD_NodeIsNil(array_count_member_node))
                             {
                                 MD_CodeLoc loc = MD_CodeLocFromNode(array_count_referencer);
                                 MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
                                                    "'%.*s' is not a member of %.*s",
                                                    MD_S8VArg(array_count_referencer->string), MD_S8VArg(type_name));
+                            }
+                            else
+                            {
+                                for (GEN_TypeMember *member_it = first_member;
+                                     member_it != 0;
+                                     member_it = member_it->next)
+                                {
+                                    if (member_it->node == array_count_member_node)
+                                    {
+                                        array_count = member_it;
+                                        break;
+                                    }
+                                }
+                                if (array_count == 0)
+                                {
+                                    MD_CodeLoc loc = MD_CodeLocFromNode(array_count_referencer);
+                                    MD_PrintMessageFmt(error_file, loc, MD_MessageKind_Error,
+                                                       "'%.*s' comes after this array",
+                                                       MD_S8VArg(array_count_referencer->string), MD_S8VArg(type_name));
+                                }
                             }
                         }
                     }
@@ -305,6 +440,7 @@ gen_equip_struct_members(void)
                     member->node = member_node;
                     member->type = type_info;
                     member->array_count = array_count;
+                    member->member_index = member_count;
                     MD_QueuePush(first_member, last_member, member);
                     member_count += 1;
                 }
@@ -708,9 +844,27 @@ gen_check_complete_map_cases(void)
 
 //~ generators ////////////////////////////////////////////////////////////////
 
+// @notes Each generator function handles generating every instance of a
+//  particular function. This means that there is only one place where the
+//  generator gets called and only one place where the generated code gets
+//  written. This keeps things simple but may be quite limiting depending on
+//  the use case.
+//
+//  For instance, to have multiple groups of types and metadata generated to
+//  different .h/.c file pairs, we could make the output file name a parameter
+//  on the command line, and run the generator multiple times with different
+//  metadesk files.
+//
+//  If we wanted to support references to entities accross files we would have
+//  to handle all the files in one run of the generator, and the generator
+//  functions would need to be called with different 'entities' for different
+//  output files.
+
 void
 gen_type_definitions_from_types(FILE *out)
 {
+    // @notes This Metadesk helper generates a comment that points back here.
+    //  Generating a comment like this can help a lot to with issues later.
     MD_PrintGenNoteCComment(out);
     
     for (GEN_TypeInfo *type = first_type;
@@ -724,7 +878,8 @@ gen_type_definitions_from_types(FILE *out)
             case GEN_TypeKind_Struct:
             {
                 MD_String8 struct_name = type->node->string;
-                fprintf(out, "typedef struct %.*s %.*s;\n", MD_S8VArg(struct_name), MD_S8VArg(struct_name));
+                fprintf(out, "typedef struct %.*s %.*s;\n",
+                        MD_S8VArg(struct_name), MD_S8VArg(struct_name));
                 fprintf(out, "struct %.*s\n", MD_S8VArg(struct_name));
                 fprintf(out, "{\n");
                 for (GEN_TypeMember *member = type->first_member;
@@ -733,8 +888,7 @@ gen_type_definitions_from_types(FILE *out)
                 {
                     MD_String8 type_name = member->type->node->string;
                     MD_String8 member_name = member->node->string;
-                    int is_array = (!MD_NodeIsNil(member->array_count));
-                    if (is_array)
+                    if (member->array_count != 0)
                     {
                         fprintf(out, "%.*s *%.*s;\n", MD_S8VArg(type_name), MD_S8VArg(member_name));
                     }
@@ -854,9 +1008,9 @@ gen_struct_member_tables_from_types(FILE *out)
                 MD_String8 member_name = member->node->string;
                 MD_String8 member_type_name = member->type->node->string;
                 int array_count_member_index = -1;
-                if (!MD_NodeIsNil(member->array_count))
+                if (member->array_count != 0)
                 {
-                    array_count_member_index = MD_IndexFromNode(member->array_count);
+                    array_count_member_index = member->array_count->member_index;
                 }
                 fprintf(out, "{\"%.*s\", %d, %d, &%.*s_type_info},\n",
                         MD_S8VArg(member_name), (int)member_name.size,
@@ -1076,13 +1230,6 @@ gen_function_definitions_from_maps(FILE *out)
 int
 main(int argc, char **argv)
 {
-    char *argv_dummy[2] = {
-        0,
-        "W:/metadesk/examples/type_metadata/types.mdesk"
-    };
-    argc = 2;
-    argv = argv_dummy;
-    
     // setup the global arena
     arena = MD_ArenaAlloc();
     
@@ -1126,6 +1273,13 @@ main(int argc, char **argv)
     gen_check_duplicate_cases();
     gen_check_complete_map_cases();
     
+    // @notes Here we explicitly use one block to generate each output file.
+    //  This approach makes it a lot easier to understand where the contents
+    //  of generated files come from, because it's all layed out it one place.
+    //  However if the number of output files grows, this can get out of hand
+    //  and the situation may start calling for more automation of the output
+    //  files. There is a large amount of judgement calling in this part!
+    
     // generate header file
     {
         FILE *h = fopen("meta_types.h", "wb");
@@ -1140,20 +1294,22 @@ main(int argc, char **argv)
     
     // generate definitions file
     {
-        // open output file
         FILE *c = fopen("meta_types.c", "wb");
-        
         gen_struct_member_tables_from_types(c);
         gen_enum_member_tables_from_types(c);
         gen_type_info_definitions_from_types(c);
         gen_function_definitions_from_maps(c);
-        
-        // close output file
         fclose(c);
     }
     
+    
+    // @notes The generated code doesn't go straight to stdout, and has a lot
+    //  of transforms applied. When writing the analyzers, it's often useful to
+    //  have a way to directly dump the results of analysis right to stdout to
+    //  see what's going on.
+    
     // print diagnostics of the parse analysis
-#if 0
+#if 1
     for (GEN_TypeInfo *type = first_type;
          type != 0;
          type = type->next)

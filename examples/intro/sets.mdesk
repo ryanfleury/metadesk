@@ -95,6 +95,7 @@ baz: foo_again
 // undelimited sets may not contain unlabeled delimited sets
 // the following forms one undelimited set followed by a delimited set
 // the delimited set is a sibling to foo, not a child to foo.
+// this also emits a warning because it's weird.
 foo: bar (baz)
 
 // undelimited sets *may* however contain labeled delimited sets

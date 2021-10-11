@@ -62,31 +62,27 @@ X(BitwiseXor,          "^",         Binary,                  8) \
 X(BitwiseOr,           "|",         Binary,                  7) \
 X(LogicalAnd,          "&&",        Binary,                  6) \
 X(LogicalOr,           "||",        Binary,                  5) \
-X(Assign,              "=",         BinaryRightAssociative,  4) \
-X(AssignAddition,      "+=",        BinaryRightAssociative,  4) \
-X(AssignSubtraction,   "-=",        BinaryRightAssociative,  4) \
-X(AssignMultiplication,"*=",        BinaryRightAssociative,  4) \
-X(AssignDivision,      "/=",        BinaryRightAssociative,  4) \
-X(AssignModulo,        "%=",        BinaryRightAssociative,  4) \
-X(AssignLeftShift,     "<<=",       BinaryRightAssociative,  4) \
-X(AssignRightShift,    ">>=",       BinaryRightAssociative,  4) \
-X(AssignBitwiseAnd,    "&=",        BinaryRightAssociative,  4) \
-X(AssignBitwiseXor,    "^=",        BinaryRightAssociative,  4) \
-X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  4) \
+X(Assign,              "=",         BinaryRightAssociative,  3) \
+X(AssignAddition,      "+=",        BinaryRightAssociative,  3) \
+X(AssignSubtraction,   "-=",        BinaryRightAssociative,  3) \
+X(AssignMultiplication,"*=",        BinaryRightAssociative,  3) \
+X(AssignDivision,      "/=",        BinaryRightAssociative,  3) \
+X(AssignModulo,        "%=",        BinaryRightAssociative,  3) \
+X(AssignLeftShift,     "<<=",       BinaryRightAssociative,  3) \
+X(AssignRightShift,    ">>=",       BinaryRightAssociative,  3) \
+X(AssignBitwiseAnd,    "&=",        BinaryRightAssociative,  3) \
+X(AssignBitwiseXor,    "^=",        BinaryRightAssociative,  3) \
+X(AssignBitwiseOr,     "|=",        BinaryRightAssociative,  3) \
 /* NOTE(mal): These are not in C */ \
 X(PostfixBraceBrace,   "{}",        Postfix,                18) \
 X(PostfixBracketParen, "[)",        Postfix,                18) \
 X(PostfixParenBracket, "(]",        Postfix,                18) \
 
-// TODO(allen): I don't think we want to do this
-// X(Cast                 "()",        Prefix,                 17)
-// X(Comma,               ",",         Binary,                  3)
-
 #define X(name, token, kind, prec) Op_##name,
 typedef enum{
     Op_Null,
     OPERATORS
-    Op_COUNT
+        Op_COUNT
 } Op;
 #undef X
 
@@ -123,14 +119,14 @@ static MD_String8 node_raw_contents(MD_Node *node, MD_b32 exclude_outer)
 static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *descs, MD_String8List *l, 
                                        MD_Expr *node, MD_b32 exclude_outer_parens)
 {
-    if(node->is_op)
+    if(node->op != 0)
     {
         if(!exclude_outer_parens)
         {
             MD_S8ListPush(arena, l, MD_S8Lit("("));
         }
         
-        MD_ExprOpr *op = &descs[node->op_id].op;
+        MD_ExprOpr *op = node->op;
         if(op->kind == MD_ExprOprKind_Binary || op->kind == MD_ExprOprKind_BinaryRightAssociative)
         {
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
@@ -154,15 +150,17 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
         else if(op->kind == MD_ExprOprKind_Postfix)
         {
             parenthesize_exclude_outer(arena, descs, l, node->left, 0);
-
+            
             MD_String8 op_s = descs[op->op_id].s;
             if(MD_S8Match(op_s, MD_S8Lit("()"), 0) || MD_S8Match(op_s, MD_S8Lit("[]"), 0) || 
                MD_S8Match(op_s, MD_S8Lit("{}"), 0) || MD_S8Match(op_s, MD_S8Lit("[)"), 0) || 
                MD_S8Match(op_s, MD_S8Lit("(]"), 0))
             {
-                MD_S8ListPush(arena, l, MD_S8Substring(op_s, 0, 1));
-                MD_S8ListPush(arena, l, MD_S8Lit("..."));
-                MD_S8ListPush(arena, l, MD_S8Substring(op_s, 1, 2));
+                MD_u8 buf[5];
+                buf[0] = op_s.str[0];
+                buf[1] = buf[2] = buf[3] = '.';
+                buf[4] = op_s.str[1];
+                MD_S8ListPush(arena, l, MD_S8(buf, sizeof(buf)));
             }
             else
             {
@@ -199,9 +197,9 @@ static void parenthesize_exclude_outer(MD_Arena *arena, OperatorDescription *des
             {
                 MD_S8ListPush(arena, l, MD_S8Lit("["));
             }
-
+            
             MD_S8ListPush(arena, l, MD_S8Lit("..."));
-
+            
             if(node->md_node->flags & MD_NodeFlag_HasParenRight)
             {
                 MD_S8ListPush(arena, l, MD_S8Lit(")"));
@@ -235,7 +233,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
 #undef X 
     
     arena = MD_ArenaAlloc();
-
+    
     /* NOTE: Operator table bake errors */ 
     {
         MD_ExprOprList operator_list = {0};
@@ -257,7 +255,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
                   op_table.errors.node_count == 1 && 
                   op_table.errors.first->user_ptr == plus_node);
-
+        
         // NOTE: () not as unary postfix
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("()"),
@@ -308,7 +306,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
                   op_table.errors.node_count == 1 &&
                   op_table.errors.first->user_ptr == plus_node);
-
+        
         // NOTE: Wrong token kind operator
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("123"),
@@ -384,7 +382,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         { .q = "\"a\" + b + c", .a = "(\"a\" + b) + c"      },
         { .q = "a{b+c}",        .a = "a{...}"               },  // NOTE(mal): Non-standard postfix set-like operators
         { .q = "a[b+c)",        .a = "a[...)"               },
-
+        
         { .q = "(a",            .a = "",                    ExpressionErrorKind_MD, 0},
         { .q = "a)",            .a = "",                    ExpressionErrorKind_MD, 1},
         { .q = "/a",            .a = "",                    ExpressionErrorKind_Expr, 0},

@@ -1,0 +1,39 @@
+/*
+** Example: expressions intro
+** 
+** TODO
+*/
+
+a: 1;
+b: 2;
+c: 3;
+
+// @notes See expr_c_like.mdesk for an explanation of why these have to be
+//  wrapped in parentheses in some cases.
+l: 5*5 + 1;
+m: (5*(5 + 1));
+n: ((5 + 1)*(5 + 1));
+
+w: 0x100;
+x: a;
+y: b + w*a;
+z: c + w*b + w*w*a;
+
+// @notes The Metadesk expression parser will automatically accept any set with
+//  delimiters as a leaf. In this example we are doing an extra custom check to
+//  disallow these cases.
+range:  ([0,64));
+origin: ({50,100});
+p:      (origin + {0, -20});
+
+// @notes We can also generate errors that point at operators just as easily:
+`no_&`: 5000 & 0xFF;
+
+// @notes The expression parser will produce an error if the series of nodes
+//  that form the expression cannot form a complete expression.
+bad_1: a b c;
+bad_2: z % b;
+
+// @notes Surprising things might count as expressions! Anything can be a leaf
+//  so long as it is not recognized as an operator.
+`good?`: ! + ? * ==;

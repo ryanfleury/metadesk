@@ -1,7 +1,8 @@
 /*
 ** Example: type metadata
 **
-** TODO full commentary
+** The header file for the metaprogram's main file. There isn't much commentary
+** here, this file is just to help us keep the example organized.
 **
 */
 
@@ -46,7 +47,9 @@ struct GEN_TypeMember
     GEN_TypeMember *next;
     MD_Node *node;
     GEN_TypeInfo *type;
-    MD_Node *array_count;
+    struct GEN_TypeMember *array_count;
+    //MD_Node *array_count;
+    int member_index;
 };
 
 typedef struct GEN_TypeEnumerant GEN_TypeEnumerant;
@@ -101,11 +104,17 @@ MD_Node* gen_get_child_value(MD_Node *parent, MD_String8 child_name);
 
 GEN_TypeInfo* gen_resolve_type_info_from_string(MD_String8 name);
 GEN_TypeInfo* gen_resolve_type_info_from_referencer(MD_Node *reference);
-void          gen_type_resolve_error(MD_Node *reference);
 
 GEN_TypeEnumerant* gen_enumerant_from_name(GEN_TypeInfo *enum_type, MD_String8 name);
 
 GEN_MapCase* gen_map_case_from_enumerant(GEN_MapInfo *map, GEN_TypeEnumerant *enumerant);
+
+MD_Node* gen_get_symbol_md_node_by_name(MD_String8 name);
+
+void gen_type_resolve_error(MD_Node *reference);
+void gen_duplicate_symbol_error(MD_Node *new_node, MD_Node *existing_node);
+
+void gen_check_and_do_duplicate_symbol_error(MD_Node *new_node);
 
 //~ analyzers /////////////////////////////////////////////////////////////////
 void gen_gather_types_and_maps(MD_Node *list);
