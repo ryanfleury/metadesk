@@ -132,25 +132,24 @@ main:
 };
 
 @send(Strings)
+"""
+A sample loop over MD_String8List:
+"""
+
+@send(Strings) @code
+"""
+MD_String8List list;
+for (MD_String8Node *node = list.first; node != 0; node = node->next)
 {
-    """
-        A sample loop over MD_String8List:
-    """
-        
-        @code
-        """
-        MD_String8List list;
-    for (MD_String8Node *node = list.first; node != 0; node = node->next)
-    {
-        MD_String8 string = node->string;
-        // ... work on string ...
-    }
-    """
-        
-        """
-        The @code node_count and @code total_size are automatically maintained by the helpers for inserting to the list, and are used in the string joining functions. Hand rolled code for building string lists should take those fields into consideration if the join functions need to work.
-        """
+    MD_String8 string = node->string;
+    // ... work on string ...
 }
+"""
+
+@send(Strings)
+"""
+The @code node_count and @code total_size are automatically maintained by the helpers for inserting to the list, and are used in the string joining functions. Hand rolled code for building string lists should take those fields into consideration if the join functions need to work.
+"""
 
 @send(Strings)
 @doc("Used as optional parameters for MD_S8ListJoin.")
@@ -538,9 +537,6 @@ main:
 {
     @doc("The root node of the Metadesk tree that was parsed.")
         node: *MD_Node;
-    // TODO(rjf): this needs to be removed once ParseTagList is not around
-    @doc("RYAN IF THIS IS IN HERE, IT'S YOUR FAULT.")
-        last_node: *MD_Node;
     @doc("The number of bytes that were parsed. Skipping this many bytes in the parse input string will provide the point at which the parser stopped parsing.")
         string_advance: MD_u64;
     @doc("A list of messages (especially errors) that were encountered during the parse. If this list contains an MD_Message with @code 'MD_MessageKind_FatalError' set as its MD_MessageKind, then the output of the parser should not be trusted.")
