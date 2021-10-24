@@ -223,6 +223,23 @@ static MD_String8 parenthesize(MD_Arena *arena, OperatorDescription *descs, MD_E
     return result;
 }
 
+static MD_MessageList global_message_list = {0};
+static MD_MessageKind global_max_message_kind = MD_MessageKind_Null;
+static void reset_global_messages()
+{
+    global_message_list = (MD_MessageList){0};
+    global_max_message_kind = MD_MessageKind_Null;
+}
+static void bake_operator_error_handler(MD_MessageKind kind, MD_String8 s)
+{
+    // NOTE: Append error to global error list
+    MD_Message *message = MD_PushArrayZero(arena, MD_Message, 1);
+    message->kind = kind;
+    message->string = s;
+    MD_MessageListPush(&global_message_list, message);
+    global_max_message_kind = global_max_message_kind >= kind ? global_max_message_kind: kind;
+}
+
 int main(void)
 {
     OperatorDescription operator_array[Op_COUNT] = {0};
@@ -246,75 +263,77 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_Node *cast_node = MD_MakeNode(arena, MD_NodeKind_Main, cast, cast, 0);
         MD_Node *minus_node = MD_MakeNode(arena, MD_NodeKind_Main, minus, minus, 0);
         MD_Node *plus_node_bis = MD_MakeNode(arena, MD_NodeKind_Main, plus, plus, 0);
+
+        MD_ExprSetBakeOperatorErrorHandler(bake_operator_error_handler);
         
         // NOTE: Wrong operator kind
+        reset_global_messages();
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Null, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
-        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
-                  op_table.errors.node_count == 1 && 
-                  op_table.errors.first->user_ptr == plus_node);
+        MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
+                  global_message_list.node_count == 1);
         
         // NOTE: () not as unary postfix
         operator_list = (MD_ExprOprList){0};
+        reset_global_messages();
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("()"),
                        23 /* arbitrary MD_ExprOprKind */, cast_node);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
-        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
-                  op_table.errors.node_count == 1 && 
-                  op_table.errors.first->user_ptr == cast_node);
+        MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
+                  global_message_list.node_count == 1);
         
         // NOTE: Repeat operator
         operator_list = (MD_ExprOprList){0};
+        reset_global_messages();
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node_bis);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
-        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
-                  op_table.errors.node_count == 1 && 
-                  op_table.errors.first->user_ptr == plus_node_bis);
+        MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
+                  global_message_list.node_count == 1);
         
         operator_list = (MD_ExprOprList){0};
+        reset_global_messages();
         // NOTE: Binary-postfix operator conflict
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Postfix, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node_bis);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
-        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning
-                  && op_table.errors.node_count == 1 && 
-                  op_table.errors.first->user_ptr == plus_node_bis);
+        MD_Assert(global_max_message_kind == MD_MessageKind_Warning
+                  && global_message_list.node_count == 1);
         
         operator_list = (MD_ExprOprList){0};
+        reset_global_messages();
         // NOTE: Same precedence difference associativity conflict
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_BinaryRightAssociative, 1, MD_S8Lit("-"),
                        Op_Addition, minus_node);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
-        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
-                  op_table.errors.node_count == 1 && 
-                  op_table.errors.first->user_ptr == minus_node);
+        MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
+                  global_message_list.node_count == 1);
         
         // NOTE: Multitoken operator
+        reset_global_messages();
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("+ +"),
                        23 /* arbitrary MD_ExprOprKind */, plus_node);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
-        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
-                  op_table.errors.node_count == 1 &&
-                  op_table.errors.first->user_ptr == plus_node);
+        MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
+                  global_message_list.node_count == 1);
         
         // NOTE: Wrong token kind operator
+        reset_global_messages();
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("123"),
                        23 /* arbitrary MD_ExprOprKind */, plus_node);
         op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
-        MD_Assert(op_table.errors.max_message_kind == MD_MessageKind_Warning &&
-                  op_table.errors.node_count == 1 &&
-                  op_table.errors.first->user_ptr == plus_node);
+        MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
+                  global_message_list.node_count == 1);
     }
     
     MD_ExprOprList operator_list = {0};

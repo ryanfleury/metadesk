@@ -790,7 +790,6 @@ struct MD_ExprOprTable
 {
     // TODO(mal): @upgrade_potential Hash?
     MD_ExprOprList table[MD_ExprOprKind_COUNT];
-    MD_MessageList errors;
 };
 
 typedef struct MD_Expr MD_Expr;
@@ -832,6 +831,8 @@ struct MD_ExprParseCtx
     // TODO(allen): different message list type here
     MD_MessageList errors;
 };
+
+typedef void (*MD_BakeOperatorErrorHandler)(MD_MessageKind kind, MD_String8 s);
 
 //~ String Generation Types
 

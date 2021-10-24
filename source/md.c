@@ -2907,15 +2907,6 @@ MD_MakeNodeError(MD_Arena *arena, MD_Node *node, MD_MessageKind kind, MD_String8
     return error;
 }
 
-MD_FUNCTION MD_Message*
-MD_MakeDetachedError(MD_Arena *arena, MD_MessageKind kind, MD_String8 str, void *user_ptr)
-{
-    MD_Node *err_node = MD_MakeErrorMarkerNode(arena, MD_S8Lit(""), 0);
-    MD_Message *result = MD_MakeNodeError(arena, err_node, kind, str);
-    result->user_ptr = user_ptr;
-    return(result);
-}
-
 MD_FUNCTION MD_Message *
 MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents, MD_Token token,
                   MD_MessageKind kind, MD_String8 str)
@@ -3400,6 +3391,15 @@ MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *list,
     op->op_ptr = op_ptr;
 }
 
+MD_GLOBAL MD_BakeOperatorErrorHandler md_bake_operator_error_handler = 0;
+
+MD_FUNCTION MD_BakeOperatorErrorHandler
+MD_ExprSetBakeOperatorErrorHandler(MD_BakeOperatorErrorHandler handler){
+    MD_BakeOperatorErrorHandler old_handler = md_bake_operator_error_handler;
+    md_bake_operator_error_handler = handler;
+    return old_handler;
+}
+
 MD_FUNCTION MD_ExprOprTable
 MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
 {
@@ -3427,7 +3427,8 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         if(op_kind != MD_ExprOprKind_Prefix && op_kind != MD_ExprOprKind_Postfix &&
            op_kind != MD_ExprOprKind_Binary && op_kind != MD_ExprOprKind_BinaryRightAssociative)
         {
-            error_str = MD_S8Fmt(arena, "Invalid operator kind.");
+            error_str = MD_S8Fmt(arena, "Ignored operator \"%.*s\" because its kind value (%d) does not match "
+                                 "any valid operator kind", MD_S8VArg(op_s), op_kind);
         }
         else if(is_setlike_op && op_kind != MD_ExprOprKind_Postfix)
         {
@@ -3469,7 +3470,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
                 {
                     if(op_kind == op2_kind)
                     {
-                        error_str = MD_S8Fmt(arena, "Ignored repeat operator \"%.*s\".", MD_S8VArg(op_s));
+                        error_str = MD_S8Fmt(arena, "Ignored repeat operator \"%.*s\"", MD_S8VArg(op_s));
                     }
                     else if(op_kind != MD_ExprOprKind_Prefix && op2_kind != MD_ExprOprKind_Prefix)
                     {
@@ -3483,13 +3484,9 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         }
         
         // save error
-        if(error_str.size != 0)
+        if(error_str.size != 0 && md_bake_operator_error_handler)
         {
-            // TODO(allen): review: does it make sense to use these kinds of errors
-            // for *this* which isn't derived from metadesk at all?
-            MD_Message *error = MD_MakeDetachedError(arena, MD_MessageKind_Warning,
-                                                     error_str, op->op_ptr);
-            MD_MessageListPush(&result.errors, error);
+                md_bake_operator_error_handler(MD_MessageKind_Warning, error_str);
         }
         
         // save list
