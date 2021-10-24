@@ -263,7 +263,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_Node *cast_node = MD_MakeNode(arena, MD_NodeKind_Main, cast, cast, 0);
         MD_Node *minus_node = MD_MakeNode(arena, MD_NodeKind_Main, minus, minus, 0);
         MD_Node *plus_node_bis = MD_MakeNode(arena, MD_NodeKind_Main, plus, plus, 0);
-
+        
         MD_ExprSetBakeOperatorErrorHandler(bake_operator_error_handler);
         
         // NOTE: Wrong operator kind
@@ -271,7 +271,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Null, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
-        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
@@ -280,7 +280,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         reset_global_messages();
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("()"),
                        23 /* arbitrary MD_ExprOprKind */, cast_node);
-        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
@@ -291,7 +291,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
                        Op_Addition, plus_node);
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node_bis);
-        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
@@ -302,7 +302,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
                        Op_Addition, plus_node);
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Postfix, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node_bis);
-        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning
                   && global_message_list.node_count == 1);
         
@@ -313,7 +313,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
                        Op_Addition, plus_node);
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_BinaryRightAssociative, 1, MD_S8Lit("-"),
                        Op_Addition, minus_node);
-        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
@@ -322,7 +322,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("+ +"),
                        23 /* arbitrary MD_ExprOprKind */, plus_node);
-        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
@@ -331,7 +331,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         operator_list = (MD_ExprOprList){0};
         MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("123"),
                        23 /* arbitrary MD_ExprOprKind */, plus_node);
-        op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
     }
@@ -346,7 +346,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
                        op, node);
     }
     
-    MD_ExprOprTable op_table = MD_ExprBakeOperatorTableFromList(arena, &operator_list);
+    MD_ExprOprTable op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
     
     // NOTE(mal): I'm trying something different for expression parser tests. Normally one would take the
     //            output of MD_ExprParse and compare it against the expected output expression tree.

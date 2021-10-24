@@ -3401,7 +3401,7 @@ MD_ExprSetBakeOperatorErrorHandler(MD_BakeOperatorErrorHandler handler){
 }
 
 MD_FUNCTION MD_ExprOprTable
-MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
+MD_ExprBakeOprTableFromList(MD_Arena *arena, MD_ExprOprList *list)
 {
     MD_ExprOprTable result = MD_ZERO_STRUCT;
     
@@ -3486,7 +3486,7 @@ MD_ExprBakeOperatorTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         // save error
         if(error_str.size != 0 && md_bake_operator_error_handler)
         {
-                md_bake_operator_error_handler(MD_MessageKind_Warning, error_str);
+            md_bake_operator_error_handler(MD_MessageKind_Warning, error_str);
         }
         
         // save list
@@ -3558,7 +3558,7 @@ MD_Expr_NewLeaf(MD_Arena *arena, MD_Node *node)
 }
 
 MD_FUNCTION MD_Expr*
-MD_Expr_NewOp(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node, MD_Expr *l, MD_Expr *r)
+MD_Expr_NewOpr(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node, MD_Expr *l, MD_Expr *r)
 {
     MD_Expr *result = MD_PushArrayZero(arena, MD_Expr, 1);
     result->op = op;
@@ -3694,7 +3694,7 @@ MD_ExprParse_Atom(MD_Arena *arena, MD_ExprParseCtx *ctx, MD_Node **iter,
             MD_ExprParse_MinPrecedence(arena, ctx, iter, first, opl, min_precedence);
         if(ctx->errors.max_message_kind == MD_MessageKind_Null)
         {
-            result = MD_Expr_NewOp(arena, op, node, sub_expr, 0);
+            result = MD_Expr_NewOpr(arena, op, node, sub_expr, 0);
         }
     }
     else if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Null, 1, &op))

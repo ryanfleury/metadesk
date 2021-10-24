@@ -828,7 +828,6 @@ struct MD_ExprParseCtx
     } accel;
 #undef MD_POSTFIX_SETLIKE_OP_COUNT
     
-    // TODO(allen): different message list type here
     MD_MessageList errors;
 };
 
@@ -1157,8 +1156,8 @@ MD_FUNCTION void               MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *l
                                               MD_String8 op_string,
                                               MD_u32 op_id, void *op_ptr);
 
-MD_FUNCTION MD_ExprOprTable    MD_ExprBakeOperatorTableFromList(MD_Arena *arena,
-                                                                MD_ExprOprList *list);
+MD_FUNCTION MD_ExprOprTable    MD_ExprBakeOprTableFromList(MD_Arena *arena,
+                                                           MD_ExprOprList *list);
 MD_FUNCTION MD_ExprOpr*        MD_ExprOprFromKindString(MD_ExprOprTable *table,
                                                         MD_ExprOprKind kind, MD_String8 s);
 
@@ -1166,8 +1165,8 @@ MD_FUNCTION MD_ExprParseResult MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op
                                             MD_Node *first, MD_Node *one_past_last);
 
 MD_FUNCTION MD_Expr* MD_Expr_NewLeaf(MD_Arena *arena, MD_Node *node);
-MD_FUNCTION MD_Expr* MD_Expr_NewOp(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
-                                   MD_Expr *left, MD_Expr *right);
+MD_FUNCTION MD_Expr* MD_Expr_NewOpr(MD_Arena *arena, MD_ExprOpr *op, MD_Node *op_node,
+                                    MD_Expr *left, MD_Expr *right);
 
 MD_FUNCTION MD_ExprParseCtx MD_ExprParse_MakeContext(MD_ExprOprTable *table);
 

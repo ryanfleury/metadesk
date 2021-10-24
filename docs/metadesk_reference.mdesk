@@ -16,7 +16,7 @@ publish
 @def CodeLoc: {}
 @def StringGeneration: {}
 @def Map: {}
-@def ExpressionParsingHelper: {}
+@def ExpressionParser: {}
 @def CommandLineHelper: {}
 @def FileSystemHelper: {}
 
@@ -58,8 +58,8 @@ main:
     @title "Map",
     @paste Map,
     
-    @title "Expression Parsing Helper",
-    @paste ExpressionParsingHelper,
+    @title "Expression Parser",
+    @paste ExpressionParser,
     
     @title "Command Line Helper",
     @paste CommandLineHelper,
@@ -544,9 +544,68 @@ The @code node_count and @code total_size are automatically maintained by the he
 };
 
 ////////////////////////////////
-//~ Expression Parsing
+//~ Expression Parser
 
-// TODO(rjf): this API is not yet ready.
+// TODO(allen): docs
+
+@send(ExpressionParser)
+@enum MD_ExprOprKind:
+{
+    Null,
+    Prefix,
+    Postfix,
+    Binary,
+    BinaryRightAssociative,
+    COUNT,
+};
+
+@send(ExpressionParser)
+@struct MD_ExprOpr:
+{
+    next: *MD_ExprOpr;
+    op_id: MD_u32;
+    kind: MD_ExprOprKind;
+    precedence: MD_u32;
+    string: MD_String8;
+    op_ptr: *void;
+};
+
+@send(ExpressionParser)
+@struct MD_ExprOprList:
+{
+    first: *MD_ExprOpr;
+    last: *MD_ExprOpr;
+    count: MD_u64;
+};
+
+@send(ExpressionParser)
+@struct MD_ExprOprTable:
+{
+    // opaque
+};
+
+@send(ExpressionParser)
+@struct MD_Expr:
+{
+    parent: *MD_Expr;
+    left: *MD_Expr;
+    right: *MD_Expr;
+    op: *MD_ExprOpr;
+    md_node: *MD_Node;
+};
+
+@send(ExpressionParser)
+@struct MD_ExprParseResult:
+{
+    expr: *MD_Expr;
+    errors: MD_MessageList;
+};
+
+@send(ExpressionParser)
+@struct MD_ExprParseCtx:
+{
+    // opaque
+};
 
 ////////////////////////////////
 //~ String Generation Types
@@ -2020,9 +2079,64 @@ MD_ParseWholeFile:
 }
 
 ////////////////////////////////
-//~ Expression Parsing
+//~ Expression Parser
 
-// TODO
+// TODO(allen): add docs
+
+@send(ExpressionParser)
+@func MD_ExprOprPush:
+{
+}
+
+@send(ExpressionParser)
+@func MD_ExprBakeOprTableFromList:
+{
+}
+
+@send(ExpressionParser)
+@func MD_ExprOprFromKindString:
+{
+}
+
+@send(ExpressionParser)
+@func MD_ExprParse:
+{
+}
+
+@send(ExpressionParser)
+@func MD_Expr_NewLeaf:
+{
+}
+
+@send(ExpressionParser)
+@func MD_Expr_NewOpr:
+{
+}
+
+@send(ExpressionParser)
+@func MD_ExprParse_MakeContext:
+{
+}
+
+@send(ExpressionParser)
+@func MD_ExprParse_TopLevel:
+{
+}
+
+@send(ExpressionParser)
+@func MD_ExprParse_OprConsume:
+{
+}
+
+@send(ExpressionParser)
+@func MD_ExprParse_Atom:
+{
+}
+
+@send(ExpressionParser)
+@func MD_ExprParse_MinPrecedence:
+{
+}
 
 ////////////////////////////////
 //~ Generation
