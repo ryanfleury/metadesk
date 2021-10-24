@@ -563,8 +563,8 @@ The @code node_count and @code total_size are automatically maintained by the he
 };
 
 @send(ExpressionParser)
-@see(MD_ExprOprKind)
 @doc("This type caries the primary information regarding an operator in an expression system.")
+@see(MD_ExprOprKind)
 @struct MD_ExprOpr:
 {
     @doc("Internal - used in forming chains of operators.")
@@ -583,6 +583,7 @@ The @code node_count and @code total_size are automatically maintained by the he
 
 @send(ExpressionParser)
 @doc("A simple linked list of MD_ExprOpr nodes. This type is used to gather operators before they are baked down to an optimized operator table.")
+@see(MD_ExprBakeOprTableFromList)
 @struct MD_ExprOprList:
 {
     @doc("First node of the chain.")
@@ -595,29 +596,40 @@ The @code node_count and @code total_size are automatically maintained by the he
 
 @send(ExpressionParser)
 @doc("An operator table determines the set of operators that will be understood by the parser. It's exact strucuture is likely to get rearranged whenever it is upgraded to provide faster operator lookups, so it's contents should all be considered 'internal'.")
+@see(MD_ExprBakeOprTableFromList)
 @struct MD_ExprOprTable:
 {
     // opaque
 };
 
 @send(ExpressionParser)
+@doc("An expression node used as the output type from the expression parser.")
 @struct MD_Expr:
 {
+    @doc("The parent node in the expression tree, null for the root node.")
     parent: *MD_Expr;
+    @doc("The left operand of binary operators - also the operand of unary operators.")
     left: *MD_Expr;
+    @doc("The left operand of binary operators - null for unary operators.")
     right: *MD_Expr;
+    @doc("If this expression node is an operator this points to the operator's primary data. If this expression node is a leaf then this pointer is null.")
     op: *MD_ExprOpr;
+    @doc("A pointer to the metadesk node directly responsible for generating this node of the expression.")
     md_node: *MD_Node;
 };
 
 @send(ExpressionParser)
+@doc("The expression parser returns this, a combined expression node tree and a list of error messages.")
 @struct MD_ExprParseResult:
 {
+    @doc("The root of the expression tree.")
     expr: *MD_Expr;
+    @doc("The list of parser errors.")
     errors: MD_MessageList;
 };
 
 @send(ExpressionParser)
+@doc("The parse context used in expression parsing. Currently considered entirely internal.")
 @struct MD_ExprParseCtx:
 {
     // opaque
@@ -2102,54 +2114,80 @@ MD_ParseWholeFile:
 @send(ExpressionParser)
 @func MD_ExprOprPush:
 {
+ arena: *MD_Arena,
+ list: *MD_ExprOprList,
+ kind: MD_ExprOprKind,
+ precedence: MD_u64,
+ op_string: MD_String8,
+ op_id: MD_u32,
+ op_ptr: *void,
 }
 
 @send(ExpressionParser)
 @func MD_ExprBakeOprTableFromList:
 {
+ arena: *MD_Arena,
+ list: *MD_ExprOprList,
+ return: MD_ExprOprTable,
 }
 
 @send(ExpressionParser)
 @func MD_ExprOprFromKindString:
 {
+ table: *MD_ExprOprTable,
+ kind: MD_ExprOprKind,
+ s: MD_String8,
+ return: *MD_ExprOpr,
 }
 
 @send(ExpressionParser)
 @func MD_ExprParse:
 {
+ arena: *MD_Arena,
+ op_table: *MD_ExprOprTable,
+ first: *MD_Node,
+ one_past_last: *MD_Node,
+ return: MD_ExprParseResult,
 }
 
 @send(ExpressionParser)
+@doc("Allocates and initializes a leaf expression node. Currently considered entirely internal.")
 @func MD_Expr_NewLeaf:
 {
 }
 
 @send(ExpressionParser)
+@doc("Allocates and initializes an operator expression node. Currently considered entirely internal.")
 @func MD_Expr_NewOpr:
 {
 }
 
 @send(ExpressionParser)
+@doc("Initializes an expression parser context. Currently considered entirely internal.")
 @func MD_ExprParse_MakeContext:
 {
 }
 
 @send(ExpressionParser)
+@doc("Parser helper: The root call for a parse of a range of metadesk nodes. Currently considered entirely internal.")
 @func MD_ExprParse_TopLevel:
 {
 }
 
 @send(ExpressionParser)
+@doc("Parse helper: Tries to consume the next node as an operator and return the operator's primary info pointer. Currently considered entirely internal.")
 @func MD_ExprParse_OprConsume:
 {
 }
 
 @send(ExpressionParser)
+@doc("Parse helper: Handles leaves, prefix operators, and parentheses. Currently considered entirely internal.")
 @func MD_ExprParse_Atom:
 {
 }
 
 @send(ExpressionParser)
+@doc("Parse helper: Core of the parsing loop, puts together binary operators, does precedence checking, etc. Currently considered entirely internal.")
 @func MD_ExprParse_MinPrecedence:
 {
 }
