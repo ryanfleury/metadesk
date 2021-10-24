@@ -546,39 +546,55 @@ The @code node_count and @code total_size are automatically maintained by the he
 ////////////////////////////////
 //~ Expression Parser
 
-// TODO(allen): docs
-
 @send(ExpressionParser)
+@doc("This type determines how an operator entered into the expression system is parsed.")
 @enum MD_ExprOprKind:
 {
     Null,
+    @doc("The operator is parsed as a prefix unary operator.")
     Prefix,
+    @doc("The operator is parsed as a postfix unary operator.")
     Postfix,
+    @doc("The operator is parsed as a left-to-right binary operator.")
     Binary,
+    @doc("The operator is parsed as a right-to-left binary operator.")
     BinaryRightAssociative,
     COUNT,
 };
 
 @send(ExpressionParser)
+@see(MD_ExprOprKind)
+@doc("This type caries the primary information regarding an operator in an expression system.")
 @struct MD_ExprOpr:
 {
+    @doc("Internal - used in forming chains of operators.")
     next: *MD_ExprOpr;
+    @doc("User data set on the creation of the operator.")
     op_id: MD_u32;
+    @doc("Determines what kind of associativity the operator has.")
     kind: MD_ExprOprKind;
+    @doc("Determines the precedence level of the operator.")
     precedence: MD_u32;
+    @doc("The string of the operator.")
     string: MD_String8;
+    @doc("User data set on the creation of the operator.")
     op_ptr: *void;
 };
 
 @send(ExpressionParser)
+@doc("A simple linked list of MD_ExprOpr nodes. This type is used to gather operators before they are baked down to an optimized operator table.")
 @struct MD_ExprOprList:
 {
+    @doc("First node of the chain.")
     first: *MD_ExprOpr;
+    @doc("Last node of the chain.")
     last: *MD_ExprOpr;
+    @doc("The number of nodes in the chain.")
     count: MD_u64;
 };
 
 @send(ExpressionParser)
+@doc("An operator table determines the set of operators that will be understood by the parser. It's exact strucuture is likely to get rearranged whenever it is upgraded to provide faster operator lookups, so it's contents should all be considered 'internal'.")
 @struct MD_ExprOprTable:
 {
     // opaque

@@ -206,7 +206,7 @@ int main(int argc, char **argv)
         MD_ExprOprPush(arena, &list, MD_ExprOprKind_Binary, 2, MD_S8Lit("*"), OpMul, 0);
         MD_ExprOprPush(arena, &list, MD_ExprOprKind_Binary, 3, MD_S8Lit("&"), OpIllegal, 0);
         
-        table = MD_ExprBakeOperatorTableFromList(arena, &list);
+        table = MD_ExprBakeOprTableFromList(arena, &list);
     }
     
     // apply expression parsing to each top level node

@@ -3746,7 +3746,7 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                     MD_ExprParse_MinPrecedence(arena, ctx, iter, first, opl, next_min_precedence);
                 if(ctx->errors.max_message_kind == MD_MessageKind_Null)
                 {
-                    result = MD_Expr_NewOp(arena, op, node, result, sub_expr);
+                    result = MD_Expr_NewOpr(arena, op, node, result, sub_expr);
                 }
                 else{
                     break;
@@ -3765,7 +3765,7 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                        node->flags == ctx->accel.postfix_set_flags[i_op])
                     {
                         *iter = MD_NodeNextWithLimit(*iter, opl);
-                        result = MD_Expr_NewOp(arena, op, node, result, 0);
+                        result = MD_Expr_NewOpr(arena, op, node, result, 0);
                         found_postfix_setlike_operator = 1;
                         break;
                     }
@@ -3776,7 +3776,7 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                     if(MD_ExprParse_OprConsume(ctx, iter, opl, MD_ExprOprKind_Postfix,
                                                min_precedence, &op))
                     {
-                        result = MD_Expr_NewOp(arena, op, node, result, 0);
+                        result = MD_Expr_NewOpr(arena, op, node, result, 0);
                     }
                     else
                     {

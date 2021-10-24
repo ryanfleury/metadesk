@@ -227,7 +227,7 @@ MD_ExprOprPush(arena, &list, MD_ExprOprKind_##k, p, MD_S8Lit(t), Op##e, 0);
         C_LIKE_OPS_WITH_SIDE_EFFECTS(PUSH_OP);
 #undef PUSH_OP
         
-        table = MD_ExprBakeOperatorTableFromList(arena, &list);
+        table = MD_ExprBakeOprTableFromList(arena, &list);
     }
     
     // print the verbose parse results
