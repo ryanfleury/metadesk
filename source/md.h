@@ -322,7 +322,6 @@
 #if !defined(MD_FUNCTION)
 # define MD_FUNCTION
 #endif
-#define MD_FUNCTION_IMPL MD_FUNCTION
 
 #if !defined(MD_GLOBAL)
 # define MD_GLOBAL static
@@ -341,7 +340,7 @@
 
 #define MD_AlignPow2(x,b) (((x)+((b)-1))&(~((b)-1)))
 
-//~ Linked List Macros.
+//~ Linked List Macros
 
 // terminator modes
 #define MD_CheckNull(p) ((p)==0)
@@ -432,7 +431,8 @@ typedef MD_i64 MD_b64;
 #if MD_DEFAULT_ARENA
 
 typedef struct MD_ArenaDefault MD_ArenaDefault;
-struct MD_ArenaDefault{
+struct MD_ArenaDefault
+{
     MD_ArenaDefault *prev;
     MD_ArenaDefault *current;
     MD_u64 base_pos;
@@ -456,7 +456,8 @@ typedef MD_IMPL_Arena MD_Arena;
 //~ Arena Helpers
 
 typedef struct MD_ArenaTemp MD_ArenaTemp;
-struct MD_ArenaTemp{
+struct MD_ArenaTemp
+{
     MD_Arena *arena;
     MD_u64 pos;
 };
@@ -1077,7 +1078,6 @@ MD_FUNCTION MD_MapSlot* MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey 
 
 //~ Parsing
 
-MD_FUNCTION MD_b32         MD_TokenGroupContainsKind(MD_TokenGroups groups, MD_TokenKind kind);
 MD_FUNCTION MD_Token       MD_TokenFromString(MD_String8 string);
 MD_FUNCTION MD_u64         MD_LexAdvanceFromSkips(MD_String8 string, MD_TokenKind skip_kinds);
 MD_FUNCTION MD_ParseResult MD_ParseResultZero(void);

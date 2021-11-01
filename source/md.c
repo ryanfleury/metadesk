@@ -2041,12 +2041,6 @@ MD_MapOverwrite(MD_Arena *arena, MD_Map *map, MD_MapKey key, void *val)
 
 //~ Parsing
 
-MD_FUNCTION MD_b32
-MD_TokenGroupContainsKind(MD_TokenGroups groups, MD_TokenKind kind)
-{
-    return (groups & kind) != 0;
-}
-
 MD_FUNCTION MD_Token
 MD_TokenFromString(MD_String8 string)
 {
