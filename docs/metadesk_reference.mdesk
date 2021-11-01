@@ -694,6 +694,7 @@ The @code node_count and @code total_size are automatically maintained by the he
 @send(Tokens)
 @doc("Flags encoding the kind of a token produced by the lexer.")
 @see(MD_TokenFromString)
+@prefix(MD_TokenKind)
 @flags MD_TokenKind:
 {
     @doc("When this bit is set, the token follows C-like identifier rules. It may start with an alphabetic character or an underscore, and can contain alphanumeric characters or underscores inside it.")
@@ -735,14 +736,15 @@ The @code node_count and @code total_size are automatically maintained by the he
 @see(MD_TokenKind)
 @see(MD_Token)
 @see(MD_TokenFromString)
+@prefix(MD_TokenGroup)
 @flags MD_TokenGroups:
 {
-    MD_TokenGroup_Comment: `MD_TokenKind_Comment`,
-    MD_TokenGroup_Whitespace: `(MD_TokenKind_Whitespace|MD_TokenKind_Newline)`,
-    MD_TokenGroup_Irregular: `(MD_TokenGroup_Comment|MD_TokenGroup_Whitespace)`,
-    MD_TokenGroup_Regular: `~MD_TokenGroup_Irregular`,
-    MD_TokenGroup_Label: `(MD_TokenKind_Identifier|MD_TokenKind_Numeric|MD_TokenKind_StringLiteral|MD_TokenKind_Symbol)`,
-    MD_TokenGroup_Error: `(MD_TokenKind_BrokenComment|MD_TokenKind_BrokenStringLiteral|MD_TokenKind_BadCharacter)`,
+    Comment: `MD_TokenKind_Comment`,
+    Whitespace: `(MD_TokenKind_Whitespace|MD_TokenKind_Newline)`,
+    Irregular: `(MD_TokenGroup_Comment|MD_TokenGroup_Whitespace)`,
+    Regular: `~MD_TokenGroup_Irregular`,
+    Label: `(MD_TokenKind_Identifier|MD_TokenKind_Numeric|MD_TokenKind_StringLiteral|MD_TokenKind_Symbol)`,
+    Error: `(MD_TokenKind_BrokenComment|MD_TokenKind_BrokenStringLiteral|MD_TokenKind_BadCharacter)`,
 }
 
 @send(Tokens)
