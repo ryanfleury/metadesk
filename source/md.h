@@ -8,18 +8,45 @@
 ** use it however you see fit, here are a couple of the uses we have intended
 ** to support:
 **  + quickly writing a C or C++ metaprogram from scratch
-**  + building "low budget" domain specific scripting languages, such as
-**    marked-up website content, or asset metadata
+**  + building "low budget" domain specific languages, such as marked-up
+**    webpage content, or asset metadata
 **  + creating robust and flexible config systems for applications
 ** 
-** If it's your first time working with metadesk you may want to take a look at
-** the examples included with library. The examples_directory.txt file will
-** help you find your way to intro content, and to whatever more advanced
-** aspects of the library you might like to learn more about.
-** 
+** If it's your first time with Metadesk, check out the "How to Build" section
+** below, and consider looking at the examples included with the library. The
+** examples_directory.txt will help you find your way from the intro examples
+** through all the more advanced aspects of the library you might like to
+** learn about.
+**
 ** Direct issues, questions, suggestions, requests, etc to:
 ** https://github.com/Dion-Systems/metadesk
 ** 
+**
+** How To Build:
+**
+** The library is set up as a direct source-include library, so if you have a
+** single unit build you can just #include "md.h" and "md.c". If you have a
+** multiple unit build you can #include "md.h" where necessary and add "md.c"
+** as a separate compilation unit (extra care has to be taken if you intend to
+** use overrides in a multiple unit build).
+**
+** See `bin/compile_flags.txt` for the flags to build with.
+**
+** The tests and examples can be built with the bash scripts in bin. There are
+** a few things to know to use these scripts:
+**  1. First you should run `bld_init.sh` which will initialize your copy of
+**     Metadesk's build system.
+**  2. On Linux the shell scripts should work as written. On Windows you will
+**     need to use a bash interpreter specifically. Generally the `bash.exe`
+**     that comes with an install of git on Windows works well for this.
+**     Add it to your path or setup a batch script that calls it and then
+**     pass the bash scripts to the interpreter to build.
+**  3. You should be able to run the scripts:
+**      `build_tests.sh`
+**      `build_examples.sh`
+**      `run_tests.sh`
+**      `run_examples.sh`
+**      `type_metadata_example.sh`
 */
 
 #ifndef MD_H
