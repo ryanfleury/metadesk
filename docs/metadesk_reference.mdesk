@@ -2192,7 +2192,7 @@ MD_MessageListConcat:
 
 @send(Nodes)
 @doc("Gets the string of the comment that immediately followed @code 'node', if any.")
-@func MD_PrevCommentFromNode:
+@func MD_NextCommentFromNode:
 {
     node: *MD_Node,
     return: MD_String8,
@@ -2419,7 +2419,7 @@ MD_MessageListConcat:
 
 @send(StringGeneration)
 @doc("Writes to @code 'out', writing legal Metadesk strings that attempt to reconstruct the code that was parsed to form @code 'node' as closely as possible.")
-@func MD_DebugDumpFromNode:
+@func MD_ReconstructionFromNode:
 {
     @doc("The arena to use for string allocation.")
         arena: *MD_Arena,
