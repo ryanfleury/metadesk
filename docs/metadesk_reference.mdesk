@@ -1544,18 +1544,18 @@ MD_ParseSetRule:
 //~ Numeric Strings
 
 @send(Strings)
+@doc("Returns @code '1' if @code 'string' appears to encode an integer value with a base of @code 'radix', or @code '0' otherwise.")
 @func MD_StringIsU64:
 {
-    // TODO(rjf): @docs
     string: MD_String8,
     radix: MD_u32,
     return: MD_b32,
 }
 
 @send(Strings)
+@doc("Returns @code '1' if @code 'string' appears to encode an integer value in C-style syntax, or @code '0' otherwise.")
 @func MD_StringIsCStyleInt:
 {
-    // TODO(rjf): @docs
     string: MD_String8,
     return: MD_b32,
 }
