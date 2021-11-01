@@ -314,9 +314,10 @@ main:
 @send(MemoryManagement)
 @doc("The name defined to refer to a memory arena allocator handle. Equivalent to @code 'MD_IMPL_Arena', which can be overridden by a custom arena implementation. If an override is not specified, then this type is equivalent to MD_ArenaDefault.")
 @see(MD_ArenaDefault)
+@opaque
 @struct MD_Arena:
 {
-    // opaque
+    "// opaque"         // TODO(mal): Trailing semicolon after rendered comment. Remove in favor of @opaque 
 }
 
 //~ Arena Helpers
@@ -481,7 +482,7 @@ The @code node_count and @code total_size are automatically maintained by the he
     @doc("When comparing nodes with this flag set, differences in the order and names of tags on a node count as differences in the input nodes. Without this flag tags are ignored in tree comparisons.")
         Tags: `1<<16`,
     
-    @doc("When comparing nodes with this flag set in addition to @code 'MD_NodeMatchFlag_Tags', the differences in the arguments of each tag (the tag's children in the tree) are count as differences in the input nodes. Tag arguments are compared with fully recursive compares, whether or not the compare routine would be recursive or not.")
+    @doc("When comparing nodes with this flag set in addition to @code 'MD_NodeMatchFlag_Tags', the differences in the arguments of each tag (the tag's children in the tree) count as differences in the input nodes. Tag arguments are compared with fully recursive compares, whether or not the compare routine would be recursive or not.")
         TagArguments: `1<<17`,
 };
 
@@ -650,7 +651,7 @@ The @code node_count and @code total_size are automatically maintained by the he
 //~ String-To-Ptr and Ptr-To-Ptr tables
 
 @send(Map)
-@doc("An abstraction over the types of keys used in a MD_Map and the work of hashing those keys, can be constructed from an MD_String8 or a @code 'void *'.")
+@doc("An abstraction over the types of keys used in an MD_Map and the work of hashing those keys. Can be constructed from an MD_String8 or a @code 'void *'.")
 @struct MD_MapKey:
 {
     @doc("The hash of the key. The hash function used is determined from the key type.")
@@ -662,7 +663,7 @@ The @code node_count and @code total_size are automatically maintained by the he
 }
 
 @send(Map)
-@doc("A slot containing one (key,value) pair in a MD_Map.")
+@doc("A slot containing one (key,value) pair in an MD_Map.")
 @struct MD_MapSlot:
 {
     @doc("The next slot in the same bucket of the MD_Map.")
@@ -798,7 +799,7 @@ The @code node_count and @code total_size are automatically maintained by the he
 @doc("This type is for a chain of error messages, with data about the entire list.")
 @struct MD_MessageList:
 {
-    @doc("""The "worst" message kind in this chain, where a message kind is "worse" than another if it has a higher numeric value (if it is defined later in MD_MessageKind) than another.""")
+    @doc("""The most severe message kind in this chain, where a message kind is more severe than another if it has a higher numeric value (if it is defined later in MD_MessageKind) than another.""")
         max_message_kind: MD_MessageKind;
     @doc("The number of errors in this list.")
         node_count: MD_u64;
@@ -855,7 +856,7 @@ MD_ParseSetRule:
 };
 
 @send(ExpressionParser)
-@doc("This type caries the primary information regarding an operator in an expression system.")
+@doc("This type carries the primary information regarding an operator in an expression system.")
 @see(MD_ExprOprKind)
 @struct MD_ExprOpr:
 {
@@ -887,11 +888,12 @@ MD_ParseSetRule:
 };
 
 @send(ExpressionParser)
-@doc("An operator table determines the set of operators that will be understood by the parser. It's exact strucuture is likely to get rearranged whenever it is upgraded to provide faster operator lookups, so it's contents should all be considered 'internal'.")
+@doc("An operator table determines the set of operators that will be understood by the parser. It's exact structure is likely to get rearranged whenever it is upgraded to provide faster operator lookups, so it's contents should all be considered 'internal'.")
 @see(MD_ExprBakeOprTableFromList)
+@opaque
 @struct MD_ExprOprTable:
 {
-    // opaque
+    "// opaque"         // TODO(mal): Trailing semicolon after rendered comment. Remove in favor of @opaque 
 };
 
 @send(ExpressionParser)
@@ -902,7 +904,7 @@ MD_ParseSetRule:
         parent: *MD_Expr;
     @doc("The left operand of binary operators - also the operand of unary operators.")
         left: *MD_Expr;
-    @doc("The left operand of binary operators - null for unary operators.")
+    @doc("The right operand of binary operators - null for unary operators.")
         right: *MD_Expr;
     @doc("If this expression node is an operator this points to the operator's primary data. If this expression node is a leaf then this pointer is null.")
         op: *MD_ExprOpr;
@@ -922,9 +924,10 @@ MD_ParseSetRule:
 
 @send(ExpressionParser)
 @doc("The parse context used in expression parsing. Currently considered entirely internal.")
+@opaque
 @struct MD_ExprParseCtx:
 {
-    // opaque
+    "// opaque"         // TODO(mal): Trailing semicolon after rendered comment. Remove in favor of @opaque 
 };
 
 //~ String Generation Types
@@ -932,7 +935,7 @@ MD_ParseSetRule:
 @send(StringGeneration)
 @prefix(MD_GenerateFlag)
 @base_type(MD_u32)
-@doc("These flags are used to control what is generated in a MD_Node tree string generation function.")
+@doc("These flags are used to control what is generated in an MD_Node tree string generation function.")
 @flags MD_GenerateFlags:
 {
     @doc("This turns on the code that generates strings associated with tags attached to nodes. This will not enable string generation for tag arguments, which is separately controlled by the @code 'MD_GenerateFlag_TagArguments' flag.")
@@ -1086,7 +1089,7 @@ MD_ParseSetRule:
 
 @send(Characters)
 @doc(```
-     Returns whether an ASCII character is a non-reserved symbol as defined by the Metadesk grammar: @code '~', @code '!', @code '$', @code '%', @code '^', @code '&', @code '*', @code '-', @code '=', @code '+', @code '<', @code '.',  @code '>', @code '/', @code '?', @code '|', or @code '\\'.
+     Returns whether an ASCII character is a non-reserved symbol as defined by the Metadesk grammar: @code '~', @code '!', @code '$', @code '%', @code '^', @code '&', @code '*', @code '-', @code '=', @code '+', @code '<', @code '.',  @code '>', @code '/', @code '?', or @code '|'.
      ```)
 @func MD_CharIsUnreservedSymbol:
 {
@@ -1203,7 +1206,7 @@ MD_ParseSetRule:
 }
 
 @send(Strings)
-@doc("Returns a sub-range of the passed MD_String8, chopping off the last @code 'min' bytes.")
+@doc("Returns a sub-range of the passed MD_String8, chopping off the last @code 'nmax' bytes.")
 @func MD_S8Chop:
 {
     @doc("The string for which the substring is returned.")
@@ -1329,7 +1332,7 @@ MD_ParseSetRule:
 }
 
 @send(Strings)
-@doc("Pushes a MD_String8List to another MD_String8List. This will zero all memory in @code 'to_push', so you cannot expect @code 'to_push' to retain any of the list elements it had before this call. This is because no strings nor nodes are copied, so the nodes in @code 'to_push' are repurposed for being a part of @code 'list'.")
+@doc("Pushes an MD_String8List to another MD_String8List. This will zero all memory in @code 'to_push', so you cannot expect @code 'to_push' to retain any of the list elements it had before this call. This is because no strings nor nodes are copied, so the nodes in @code 'to_push' are repurposed for being a part of @code 'list'.")
 @see(MD_String8List)
 @see(MD_String8Node)
 @see(MD_String8)
@@ -1656,7 +1659,7 @@ MD_ParseSetRule:
 }
 
 @send(Map)
-@doc("Forms a MD_Map key from a string.")
+@doc("Forms an MD_Map key from a string.")
 @see(MD_HashStr)
 @func MD_MapKeyStr:
 {
@@ -1665,7 +1668,7 @@ MD_ParseSetRule:
 }
 
 @send(Map)
-@doc("Forms a MD_Map key from a pointer.")
+@doc("Forms an MD_Map key from a pointer.")
 @see(MD_HashPtr)
 @func MD_MapKeyPtr:
 {
@@ -2185,7 +2188,7 @@ MD_MessageListConcat:
 }
 
 @send(Nodes)
-@doc("Gets the string of the comment that immediately preceeded @code 'node', if any.")
+@doc("Gets the string of the comment that immediately preceded @code 'node', if any.")
 @func MD_PrevCommentFromNode:
 {
     node: *MD_Node,
@@ -2402,7 +2405,7 @@ MD_MessageListConcat:
 //~ String Generation
 
 @send(StringGeneration)
-@doc("Writes to @code 'out', writing legal Metadesk strings that documents details of @code 'node'.")
+@doc("Writes to @code 'out', writing legal Metadesk strings that document details of @code 'node'.")
 @func MD_DebugDumpFromNode:
 {
     @doc("The arena to use for string allocation.")
