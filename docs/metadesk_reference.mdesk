@@ -1485,7 +1485,7 @@ MD_ParseSetRule:
 }
 
 @send(Strings)
-@doc("Searches @code 'string' for the last @code '/' or @code '\' character occurring in the string, and skips it and anything before it in the returned string.")
+@doc("Searches @code 'string' for the last @code '/' or @code '\\' character occurring in the string, and skips it and anything before it in the returned string.")
 @see(MD_S8Skip)
 @func MD_PathSkipLastSlash:
 {
