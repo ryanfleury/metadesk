@@ -837,7 +837,7 @@ MD_ParseSetRule:
         errors: MD_MessageList;
 };
 
-//~ Expression Parsing
+//~ Expression Parser
 
 @send(ExpressionParser)
 @doc("This type determines how an operator entered into the expression system is parsed.")
@@ -2319,44 +2319,62 @@ MD_MessageListConcat:
 
 //~ Expression Parser
 
-// TODO(allen): add @docs
-
 @send(ExpressionParser)
+@doc("Pushes a new operator onto the back of an operator list. All of the pushes on a list should be allocated on the same arena.")
+@see(MD_ExprOprList)
+@see(MD_ExprOprKind)
 @func MD_ExprOprPush:
 {
     arena: *MD_Arena,
-    list: *MD_ExprOprList,
-    kind: MD_ExprOprKind,
-    precedence: MD_u64,
-    op_string: MD_String8,
-    op_id: MD_u32,
-    op_ptr: *void,
+    @doc("The list accumulating the operators.")
+        list: *MD_ExprOprList,
+    @doc("This operator's association rule.")
+        kind: MD_ExprOprKind,
+    @doc("This precedence level. Higher precedence means 'more tightly binding'.")
+        precedence: MD_u64,
+    @doc("The string for this operator. It should parse as a single Metadesk token, either a symbol token or an identifier token.")
+        op_string: MD_String8,
+    @doc("User data. Intended for statically allocated ids like enums for operator switches.")
+        op_id: MD_u32,
+    @doc("User data. Intended for dynamically allocated ids like pointers to some other structure.")
+        op_ptr: *void,
 }
 
 @send(ExpressionParser)
+@doc("Convert a simple list of operators into an operator table - and performing correctness checks along the way.")
+@see(MD_ExprOprList)
 @func MD_ExprBakeOprTableFromList:
 {
     arena: *MD_Arena,
-    list: *MD_ExprOprList,
+    @doc("The list of operators to bake into a table.")
+        list: *MD_ExprOprList,
     return: MD_ExprOprTable,
 }
 
 @send(ExpressionParser)
+@doc("Get an operator info pointer from an operator table by looking up it's operator kind and name.")
 @func MD_ExprOprFromKindString:
 {
-    table: *MD_ExprOprTable,
-    kind: MD_ExprOprKind,
-    s: MD_String8,
+    @doc("The table of operators to look into.")
+        table: *MD_ExprOprTable,
+    @doc("Which kind of operator to find. If this is MD_ExprOprKind_Null then any kind of operator can match.")
+        kind: MD_ExprOprKind,
+    @doc("The name of the operator to find.")
+        s: MD_String8,
     return: *MD_ExprOpr,
 }
 
 @send(ExpressionParser)
+@doc("Create an expression tree from a range of Metadesk nodes.")
 @func MD_ExprParse:
 {
     arena: *MD_Arena,
-    op_table: *MD_ExprOprTable,
-    first: *MD_Node,
-    one_past_last: *MD_Node,
+    @doc("The operator table that controls the parse.")
+        op_table: *MD_ExprOprTable,
+    @doc("The first Metadesk node in the range to parse.")
+        first: *MD_Node,
+    @doc("The last Metadesk node in the range to parse.")
+        one_past_last: *MD_Node,
     return: MD_ExprParseResult,
 }
 
