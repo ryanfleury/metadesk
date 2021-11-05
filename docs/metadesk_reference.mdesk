@@ -1048,7 +1048,7 @@ MD_ParseSetRule:
 @see(MD_Arena)
 @see(MD_ArenaAlloc)
 @doc("Releases an MD_Arena allocated originally with MD_ArenaAlloc.")
-@func MD_ArenaAlloc:
+@func MD_ArenaRelease:
 {
     arena: *MD_Arena,
 }
