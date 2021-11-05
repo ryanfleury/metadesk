@@ -2137,7 +2137,7 @@ MD_MessageListConcat:
 }
 
 @send(Nodes)
-@doc("Given a starting node @code 'first', will scan across the node's siblings in-order to find a node that has flags that overlap the passed @code 'flags'. Useful when, for example, finding the set of node ranges delimited by commas or semicolons inside of a single `MD_Node` children list.")
+@doc("Given a starting node @code 'first', will scan across the node's siblings in-order to find a node that has flags that overlap the passed @code 'flags'. Useful when, for example, finding the set of node ranges delimited by commas or semicolons inside of a single MD_Node children list.")
 @see(MD_NodeFlags)
 @func MD_FirstNodeWithFlags:
 {
