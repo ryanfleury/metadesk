@@ -503,13 +503,13 @@ The @code node_count and @code total_size are automatically maintained by the he
 @doc("These constants control how MD_S8Stylize forms strings.")
 @enum MD_IdentifierStyle:
 {
-    @doc("Also known as @code 'PascalCase'. Creates identifiers that look like: @code `ExampleIdentifier`")
+    @doc("Creates identifiers where each word begins with an upper-case letter, with each subsequent letter in the word being lower-case. With no word separators, creates identifiers that look like @code 'ExampleIdentifier'.")
         UpperCamelCase,
-    @doc("Creates identifiers that look like: @code `exampleIdentifier`")
+    @doc("Creates identifiers where each word begins with an upper-case letter, except the first word (which begins with a lower-case letter), with each subsequent letter in the word being lower-case. With no word separators, creates identifiers that look like @code 'exampleIdentifier'.")
         LowerCamelCase,
-    @doc("Creates identifiers that look like: @code `Example_Identifier`")
+    @doc("All letters in all words are upper-case.")
         UpperCase,
-    @doc("Creates identifiers that look like: @code `example_identifier`")
+    @doc("All letters in all words are lower-case.")
         LowerCase,
 }
 
