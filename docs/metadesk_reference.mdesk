@@ -119,6 +119,10 @@ main:
 @doc("Equivalent to MD_Min.")
 @macro MD_ClampTop: {a b}
 
+@send(HelperMacros)
+@doc("Expands to an expression returning a multiple of @code 'b' that is nearest to @code 'x', while still being larger.")
+@macro MD_AlignPow2: {x b}
+
 //~ Linked List Macros.
 
 @send(LinkedListMacros)
@@ -458,10 +462,8 @@ The @code node_count and @code total_size are automatically maintained by the he
 {
     @doc("When comparing strings, consider lower case letters equivalent to upper case equivalents in the ASCII range.")
         CaseInsensitive: `1<<4`,
-    
     @doc("When comparing strings, do not require the strings to be the same length. If one of the strings is a prefix of another, the two strings will count as a match.")
         RightSideSloppy: `1<<5`,
-    
     @doc("When comparing strings, consider forward slash and backward slash to be equivalents.")
         SlashInsensitive: `1<<6`,
 };
@@ -1028,6 +1030,124 @@ MD_ParseSetRule:
 @see(MD_FileIterEnd)
 @opaque
 @struct MD_FileIter: {}
+
+//~ Arena
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaRelease)
+@see(MD_ArenaClear)
+@see(MD_PushArray)
+@see(MD_ArenaTemp)
+@see(MD_ArenaBeginTemp)
+@see(MD_ArenaEndTemp)
+@doc("Returns a newly allocated MD_Arena, which can be used as a bucket for memory allocation.")
+@func MD_ArenaAlloc:
+{
+    return: *MD_Arena,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaAlloc)
+@doc("Releases an MD_Arena allocated originally with MD_ArenaAlloc.")
+@func MD_ArenaAlloc:
+{
+    arena: *MD_Arena,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaAlloc)
+@doc("Allocates a block of memory on @code 'arena' that is @code 'size' bytes large.")
+@func MD_ArenaPush:
+{
+    @doc("The arena from which the block of memory should be allocated.")
+        arena: *MD_Arena,
+    @doc("The number of bytes to allocate.")
+        size: MD_u64,
+    @doc("A pointer to the beginning of the allocated block, or @code '0' on failure.")
+        return: *void,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaPush)
+@doc("Pops @code 'size' bytes off of @code 'arena', freeing that space for more allocations.")
+@func MD_ArenaPutBack:
+{
+    @doc("The arena to pop bytes from.")
+        arena: *MD_Arena,
+    @doc("The number of bytes to pop.")
+        size: MD_u64,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaAlloc)
+@doc("Sets the auto-alignment value for @code 'arena'. Calls to MD_ArenaPush will automatically align to this value.")
+@func MD_ArenaSetAlign:
+{
+    @doc("The arena to set alignment for.")
+        arena: *MD_Arena,
+    @doc("The number of bytes to which allocations should align.")
+        boundary: MD_u64,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaAlloc)
+@see(MD_ArenaPush)
+@doc("Pushes the required number of bytes onto @code 'arena' in order to guarantee that the following call to MD_ArenaPush returns an allocation that is aligned to @code 'boundary' bytes.")
+@func MD_ArenaPushAlign:
+{
+    @doc("The arena to use.")
+        arena: *MD_Arena,
+    @doc("The number of bytes to which the arena's next allocation should align.")
+        boundary: MD_u64,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaPutBack)
+@see(MD_ArenaRelease)
+@doc("Pops all bytes off of @code 'arena', freeing that space for more allocations. Does not deallocate the arena entirely (for that, use MD_ArenaRelease); this function is to be used when more allocations are expected on the same arena, but all of the present allocations are no longer needed.")
+@func MD_ArenaClear:
+{
+    @doc("The arena to clear.")
+        arena: *MD_Arena,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaAlloc)
+@see(MD_ArenaPush)
+@doc("A helper macro for easily allocating blocks of memory for @code 'c' instances of type @code 'T' onto arena @code 'a'.")
+@macro MD_PushArray:
+{
+    @doc("The arena to use for allocation.")
+        a,
+    @doc("The type that should be allocated.")
+        T,
+    @doc("The number of instances of @code 'T' to allocate.")
+        c,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaAlloc)
+@see(MD_ArenaPush)
+@see(MD_MemoryZero)
+@doc("A helper macro for easily allocating blocks of memory for @code 'c' instances of type @code 'T' onto arena @code 'a', with the returned block of memory being guaranteed to be zero-initialized.")
+@macro MD_PushArrayZero:
+{
+    @doc("The arena to use for allocation.")
+        a,
+    @doc("The type that should be allocated.")
+        T,
+    @doc("The number of instances of @code 'T' to allocate.")
+        c,
+}
 
 //~ Arena Scratch Pool
 
