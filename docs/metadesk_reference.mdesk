@@ -1149,6 +1149,31 @@ MD_ParseSetRule:
         c,
 }
 
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaTemp)
+@see(MD_ArenaEndTemp)
+@see(MD_ArenaPush)
+@see(MD_ArenaPutBack)
+@doc("Initializes an MD_ArenaTemp instance for @code 'arena' which can be used for temporary memory allocations. MD_ArenaEndTemp should be called once with the return value of this function, to avoid leaving temporary allocations as being allocated within the memory belonging to @code 'arena'. This function, along with MD_ArenaEndTemp, can be useful for using an arena like a stack.")
+@func MD_ArenaBeginTemp:
+{
+    arena: *MD_Arena,
+    return: MD_ArenaTemp,
+}
+
+@send(MemoryManagement)
+@see(MD_Arena)
+@see(MD_ArenaTemp)
+@see(MD_ArenaBeginTemp)
+@see(MD_ArenaPush)
+@see(MD_ArenaPutBack)
+@doc("Pops all bytes allocated onto the arena stored in @code 'temp', after @code 'temp' was constructed with MD_ArenaBeginTemp.")
+@func MD_ArenaEndTemp:
+{
+    temp: MD_ArenaTemp,
+}
+
 //~ Arena Scratch Pool
 
 @send(MemoryManagement)
