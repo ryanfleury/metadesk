@@ -321,7 +321,6 @@ main:
 @opaque
 @struct MD_Arena:
 {
-    "// opaque"         // TODO(mal): Trailing semicolon after rendered comment. Remove in favor of @opaque 
 }
 
 //~ Arena Helpers
@@ -895,7 +894,6 @@ MD_ParseSetRule:
 @opaque
 @struct MD_ExprOprTable:
 {
-    "// opaque"         // TODO(mal): Trailing semicolon after rendered comment. Remove in favor of @opaque 
 };
 
 @send(ExpressionParser)
@@ -929,7 +927,6 @@ MD_ParseSetRule:
 @opaque
 @struct MD_ExprParseCtx:
 {
-    "// opaque"         // TODO(mal): Trailing semicolon after rendered comment. Remove in favor of @opaque 
 };
 
 //~ String Generation Types
