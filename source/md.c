@@ -2975,16 +2975,24 @@ MD_CodeLocFromFileOffset(MD_String8 filename, MD_u8 *base, MD_u64 offset)
 MD_FUNCTION MD_CodeLoc
 MD_CodeLocFromNode(MD_Node *node)
 {
-    MD_Node *root = MD_RootFromNode(node);
-    MD_Node *first_tag = root->first_tag;
+    MD_Node *file_root = MD_NilNode();
+    for(MD_Node *parent = node->parent; !MD_NodeIsNil(parent); parent = parent->parent)
+    {
+        if(parent->kind == MD_NodeKind_File)
+        {
+            file_root = parent;
+            break;
+        }
+    }
+    MD_Node *first_tag = file_root->first_tag;
     MD_CodeLoc loc = {0};
     if(MD_NodeIsNil(first_tag))
     {
-        loc = MD_CodeLocFromFileOffset(root->string, root->raw_string.str, node->offset);
+        loc = MD_CodeLocFromFileOffset(file_root->string, file_root->raw_string.str, node->offset);
     }
     else
     {
-        loc = MD_CodeLocFromFileOffset(root->string, first_tag->raw_string.str, node->offset);
+        loc = MD_CodeLocFromFileOffset(file_root->string, first_tag->raw_string.str, node->offset);
     }
     return loc;
 }
