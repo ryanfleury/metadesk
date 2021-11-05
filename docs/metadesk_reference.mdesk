@@ -75,7 +75,7 @@ main:
 @macro MD_FUNCTION: {}
 
 @send(HelperMacros)
-@doc("Specified before all Metadesk library global variables. Expands to @code 'static' by default. Can be overridden in usage code by using @code '#define MD_STATIC ...' (where @code '...' is whatever you want to be in front of all global variable declarations).")
+@doc("Specified before all Metadesk library global variables. Expands to @code 'static' by default. Can be overridden in usage code by using @code '#define MD_GLOBAL ...' (where @code '...' is whatever you want to be in front of all global variable declarations).")
 @macro MD_GLOBAL: {}
 
 //~ Basic Utilities
