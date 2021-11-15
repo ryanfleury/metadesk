@@ -21,6 +21,8 @@
 
 #if MD_OS_WINDOWS
 # include <Windows.h>
+#elif MD_OS_MAC || MD_OS_LINUX
+# include <pthread.h>
 #else
 # error Not implemented for this OS
 #endif
@@ -29,10 +31,13 @@
 
 // for this intrinsic we're assume pre-increment behavior
 
-#if MD_OS_WINDOWS
-# define atomic_inc_then_eval_u64(p) InterlockedIncrement64((LONG64*)p)
+#if MD_COMPILER_CL
+# include <intrin.h>
+# define atomic_inc_then_eval_u64(p) _InterlockedIncrement64((volatile __int64*)p)
+#elif MD_COMPILER_CLANG || MD_COMPILER_GCC
+# define atomic_inc_then_eval_u64(p) __sync_add_and_fetch(p, 1)
 #else
-# error Not implemented for this OS
+# error Not implemented for this compiler
 #endif
 
 // @notes We use one structure that describes the whole multi-threaded parse
@@ -97,6 +102,13 @@ parse_worker_win32(LPVOID parameter)
     parse_worker_loop((ThreadData*)parameter);
     return(0);
 }
+#elif MD_OS_MAC || MD_OS_LINUX
+void *
+parse_worker_pthread(void *parameter)
+{
+    parse_worker_loop((ThreadData*)parameter);
+    return(0);
+}
 #else
 # error Not implemented for this OS
 #endif
@@ -131,33 +143,40 @@ main(int argc, char **argv)
     
     // launch the worker threads
     //  (no worker thread 0)
+#if MD_OS_WINDOWS
+    HANDLE handles[THREAD_COUNT];
     for (int i = 1; i < THREAD_COUNT; i += 1)
     {
-#if MD_OS_WINDOWS
-        HANDLE handle = CreateThread(0, 0, parse_worker_win32, threads + i, 0, 0);
-        CloseHandle(handle);
+        handles[i] = CreateThread(0, 0, &parse_worker_win32, threads + i, 0, 0);
+    }
+#elif MD_OS_MAC || MD_OS_LINUX
+    pthread_t handles[THREAD_COUNT];
+    for (int i = 1; i < THREAD_COUNT; i += 1)
+    {
+        pthread_create(&handles[i], 0, &parse_worker_pthread, threads + i);
+    }
 #else
 # error Not implemented for this OS
 #endif
-    }
-    
+
     // let the main thread act as thread 0
     parse_worker_loop(&threads[0]);
     
     // wait for all threads to be finished
-    for (;;)
-    {
-        MD_u64 thread_counter = task.thread_counter;
-        if (thread_counter >= THREAD_COUNT)
-        {
-            break;
-        }
 #if MD_OS_WINDOWS
-        Sleep(0);
+    WaitForMultipleObjects(THREAD_COUNT-1, handles+1, TRUE, INFINITE);
+    for (int i = 1; i < THREAD_COUNT; i += 1)
+    {
+        CloseHandle(handles[i]);
+    }
+#elif MD_OS_MAC || MD_OS_LINUX
+    for (int i = 1; i < THREAD_COUNT; i += 1)
+    {
+        pthread_join(handles[i], 0);
+    }
 #else
 # error Not implemented for this OS
 #endif
-    }
     
     // print results
     for (int i = 0; i < THREAD_COUNT; i += 1)
