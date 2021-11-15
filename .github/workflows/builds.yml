@@ -1,0 +1,43 @@
+
+name: builds
+
+on: [push, pull_request]
+
+jobs:
+  build-windows:
+    runs-on: windows-2019
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: build
+        shell: cmd
+        run: |
+          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
+          "C:\Program Files\Git\bin\bash.exe" "bin/bld_init.sh"
+          "C:\Program Files\Git\bin\bash.exe" "bin/all_dev_checks.sh"
+
+  build-linux:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: build
+        shell: bash
+        run: |
+          ./bin/bld_init.sh
+          sed -i.bak 's/cl/clang/' local/compiler.sh
+          sed -i.bak 's/lld-link/clang/' local/linker.sh
+          ./bin/all_dev_checks.sh
+
+  build-macos:
+    runs-on: macos-11
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: build
+        shell: bash
+        run: |
+          ./bin/bld_init.sh
+          sed -i.bak 's/cl/clang/' local/compiler.sh
+          sed -i.bak 's/lld-link/clang/' local/linker.sh
+          ./bin/all_dev_checks.sh

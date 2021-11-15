@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 ###### Usage ##################################################################
 # ./bld_core.sh <command> [arguments ...]
 #
@@ -548,8 +550,8 @@ if [ "$OSTYPE" == "win32" ] ||
   os="windows"
 elif [ "$OSTYPE" == "linux-gnu" ]; then
   os="linux"
-elif [ "$OSTYPE" == "darwin" ]; then
-  os="osx"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  os="mac"
 fi
 
 
@@ -593,13 +595,11 @@ fi
 
 
 ###### Binary File Extension ##################################################
-dot_ext_exe=""
+dot_ext_exe=".exe"
 dot_ext_dll=""
 if [ "$os" == "windows" ]; then
-  dot_ext_exe=".exe"
   dot_ext_dll=".dll"
 elif [ "$os" == "linux" ] || [ "$os" == "mac" ]; then
-  dot_ext_exe=""
   dot_ext_dll=".so"
 else
   echo "ERROR: binary extension not defined for OS: $os"

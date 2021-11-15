@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 ###### Usage ##################################################################
 # ./bld_init.sh
 # Clears out the local folder and populates it with default initial scripts.

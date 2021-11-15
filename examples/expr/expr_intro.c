@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 #if 1
     char *argv_dummy[2] = {
         0,
-        "W:\\metadesk\\examples\\expr\\expr_intro.mdesk",
+        "examples/expr/expr_intro.mdesk",
     };
     argc = 2;
     argv = argv_dummy;

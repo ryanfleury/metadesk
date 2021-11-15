@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 ###### Get Paths ##############################################################
 og_path=$PWD
 cd "$(dirname "$0")"
