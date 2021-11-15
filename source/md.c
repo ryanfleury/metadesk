@@ -276,7 +276,7 @@ MD_WIN32_Release(void *ptr, MD_u64 size)
 ////////////////////////////////////////////////////////////////////////////////
 
 //- linux headers
-#if (MD_DEFAULT_FILE_ITER || MD_DEFAULT_MEMORY) && MD_OS_LINUX
+#if (MD_DEFAULT_FILE_ITER || MD_DEFAULT_MEMORY) && (MD_OS_LINUX || MD_OS_MAC)
 # include <dirent.h>
 # include <sys/stat.h>
 # include <fcntl.h>
@@ -288,8 +288,12 @@ MD_WIN32_Release(void *ptr, MD_u64 size)
 # ifndef O_PATH
 #  define O_PATH                010000000
 # endif
-# define AT_NO_AUTOMOUNT        0x800
-# define AT_SYMLINK_NOFOLLOW    0x100
+# ifndef AT_NO_AUTOMOUNT
+#  define AT_NO_AUTOMOUNT        0x800
+# endif
+# ifndef AT_SYMLINK_NOFOLLOW
+#  define AT_SYMLINK_NOFOLLOW    0x100
+# endif
 #endif
 
 //- linux "file iteration"
@@ -361,7 +365,7 @@ MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 p
 #endif
 
 //- linux "low level memory"
-#if MD_DEFAULT_MEMORY && MD_OS_LINUX
+#if MD_DEFAULT_MEMORY && (MD_OS_LINUX || MD_OS_MAC)
 
 #if !defined(MD_IMPL_Reserve)
 # define MD_IMPL_Reserve MD_LINUX_Reserve
