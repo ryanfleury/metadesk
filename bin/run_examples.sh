@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 ###### Get Paths ##############################################################
 og_path=$PWD
 cd "$(dirname "$0")"
@@ -11,8 +13,6 @@ examps=$root_path/examples
 echo ~~~ Running Expression Intro ~~~
 $build_path/expr_intro.exe $examps/expr/expr_intro.mdesk
 echo
-
-exit
 
 # Setup a big list of files for a few of the examples
 big_list=()
