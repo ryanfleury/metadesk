@@ -975,7 +975,7 @@ MD_FUNCTION MD_String8     MD_S8(MD_u8 *str, MD_u64 size);
 #endif
 #define MD_S8LitComp(s)     {(MD_u8 *)(s), sizeof(s)-1}
 
-#if MD_CPP_VERSION >= 11
+#if MD_CPP_VERSION != 0 && MD_CPP_VERSION != 98 // anything C++11 and up
 static inline MD_String8
 operator "" _md(const char *s, size_t size)
 {
