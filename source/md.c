@@ -1891,6 +1891,7 @@ MD_StringListFromNodeFlags(MD_Arena *arena, MD_NodeFlags flags)
         "Numeric",
         "Identifier",
         "StringLiteral",
+        "Symbol",
     };
     
     MD_String8List list = MD_ZERO_STRUCT;
