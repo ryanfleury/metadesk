@@ -856,7 +856,7 @@ MD_CharIsReservedSymbol(MD_u8 c)
 MD_FUNCTION MD_b32
 MD_CharIsSpace(MD_u8 c)
 {
-    return c == ' ' || c == '\r' || c == '\t' || c == '\f' || c == '\v';
+    return c == ' ' || c == '\r' || c == '\t' || c == '\f' || c == '\v' || c == '\n';
 }
 
 MD_FUNCTION MD_u8
