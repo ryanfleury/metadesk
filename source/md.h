@@ -1013,6 +1013,8 @@ MD_FUNCTION MD_String8List MD_S8Split(MD_Arena *arena, MD_String8 string, int sp
                                       MD_String8 *splits);
 MD_FUNCTION MD_String8     MD_S8ListJoin(MD_Arena *arena, MD_String8List list,
                                          MD_StringJoin *join);
+MD_FUNCTION MD_String8     MD_S8ListJoinMid(MD_Arena *arena, MD_String8List list,
+                                            MD_String8 mid_separator);
 
 MD_FUNCTION MD_String8     MD_S8Stylize(MD_Arena *arena, MD_String8 string,
                                         MD_IdentifierStyle style, MD_String8 separator);

@@ -1168,6 +1168,18 @@ MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
 }
 
 MD_FUNCTION MD_String8
+MD_S8ListJoinMid(MD_Arena *arena, MD_String8List list,
+                 MD_String8 mid_separator)
+{
+    MD_StringJoin join = MD_ZERO_STRUCT;
+    join.pre = MD_S8Lit("");
+    join.post = MD_S8Lit("");
+    join.mid = mid_separator;
+    MD_String8 result = MD_S8ListJoin(arena, list, &join);
+    return result;
+}
+
+MD_FUNCTION MD_String8
 MD_S8Stylize(MD_Arena *arena, MD_String8 string, MD_IdentifierStyle word_style,
              MD_String8 separator)
 {
