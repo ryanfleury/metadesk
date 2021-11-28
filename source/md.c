@@ -222,7 +222,7 @@ static void
 MD_WIN32_FileIterEnd(MD_FileIter *it)
 {
     MD_WIN32_FileIter *win32_it = (MD_WIN32_FileIter*)it; 
-    CloseHandle(win32_it->state);
+    FindClose(win32_it->state);
 }
 
 #endif
@@ -1081,7 +1081,8 @@ MD_S8ListConcat(MD_String8List *list, MD_String8List *to_push)
 }
 
 MD_FUNCTION MD_String8List
-MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count, MD_String8 *splits)
+MD_S8Split(MD_Arena *arena, MD_String8 string, int splitter_count,
+           MD_String8 *splitters)
 {
     MD_String8List list = MD_ZERO_STRUCT;
     
@@ -1089,15 +1090,15 @@ MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count, MD_String8 *spli
     for(MD_u64 i = 0; i < string.size; i += 1)
     {
         MD_b32 was_split = 0;
-        for(int split_idx = 0; split_idx < split_count; split_idx += 1)
+        for(int split_idx = 0; split_idx < splitter_count; split_idx += 1)
         {
             MD_b32 match = 0;
-            if(i + splits[split_idx].size <= string.size)
+            if(i + splitters[split_idx].size <= string.size)
             {
                 match = 1;
-                for(MD_u64 split_i = 0; split_i < splits[split_idx].size && i + split_i < string.size; split_i += 1)
+                for(MD_u64 split_i = 0; split_i < splitters[split_idx].size && i + split_i < string.size; split_i += 1)
                 {
-                    if(splits[split_idx].str[split_i] != string.str[i + split_i])
+                    if(splitters[split_idx].str[split_i] != string.str[i + split_i])
                     {
                         match = 0;
                         break;
@@ -1108,8 +1109,8 @@ MD_S8Split(MD_Arena *arena, MD_String8 string, int split_count, MD_String8 *spli
             {
                 MD_String8 split_string = MD_S8(string.str + split_start, i - split_start);
                 MD_S8ListPush(arena, &list, split_string);
-                split_start = i + splits[split_idx].size;
-                i += splits[split_idx].size - 1;
+                split_start = i + splitters[split_idx].size;
+                i += splitters[split_idx].size - 1;
                 was_split = 1;
                 break;
             }
