@@ -1,7 +1,7 @@
 // LICENSE AT END OF FILE (MIT).
 
 /*
-** Weclome to Metadesk!
+** Welcome to Metadesk!
 ** 
 ** Metadesk is a data description language designed to look like a programming
 ** language, and this is the accompanying parser library. While you are free to
