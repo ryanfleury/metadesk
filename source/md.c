@@ -2440,12 +2440,18 @@ MD_ParseNodeSet(MD_Arena *arena, MD_String8 string, MD_u64 offset, MD_Node *pare
                     if(potential_closer.kind == MD_TokenKind_Newline)
                     {
                         closer_check_off += potential_closer.raw_string.size;
-                        off = closer_check_off;
+                        // TODO(rjf): As far as I can tell, we can't actually do this,
+                        // because higher-level unscoped sets may depend on this newline
+                        // so they can be terminated.
+                        // off = closer_check_off;
                         
                         // NOTE(rjf): always terminate with a newline if we have >0 children
                         if(parsed_child_count > 0)
                         {
-                            off = closer_check_off;
+                            // TODO(rjf): As far as I can tell, we can't actually do this,
+                            // because higher-level unscoped sets may depend on this newline
+                            // so they can be terminated.
+                            // off = closer_check_off;
                             got_closer = 1;
                             break;
                         }
