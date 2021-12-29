@@ -608,6 +608,24 @@ int main(void)
     {
         MD_String8 file_name = MD_S8Lit("raw_text");
         
+        // nested unscoped sets with following children
+        {
+            MD_String8 text = MD_S8Lit("a:\nb:\nc\nd");
+            
+            MD_Node *tree = MD_MakeNode(arena, MD_NodeKind_File, file_name, text, 0);
+            MD_Node *a = MakeTestNode(MD_NodeKind_Main, MD_S8Lit("a"));
+            MD_Node *b = MakeTestNode(MD_NodeKind_Main, MD_S8Lit("b"));
+            MD_Node *c = MakeTestNode(MD_NodeKind_Main, MD_S8Lit("c"));
+            MD_Node *d = MakeTestNode(MD_NodeKind_Main, MD_S8Lit("d"));
+            MD_PushChild(a, b);
+            MD_PushChild(b, c);
+            MD_PushChild(tree, a);
+            MD_PushChild(tree, d);
+            MD_ParseResult result = MD_ParseWholeString(arena, file_name, text);
+            TestResult(result.errors.first == 0);
+            TestResult(MD_NodeDeepMatch(tree, result.node, 0));
+        }
+        
         // finished unscoped set
         {
             MD_String8 text = MD_S8Lit("a:\nb:\nc");
