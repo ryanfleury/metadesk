@@ -15,13 +15,13 @@ test_ctx;
 static void
 BeginTest(char *name)
 {
-    int length = MD_CalculateCStringLength(name);
-    int spaces = 25 - length;
+    MD_u64 length = MD_CalculateCStringLength(name);
+    MD_u64 spaces = 25 - length;
     if(spaces < 0)
     {
         spaces = 0;
     }
-    printf("\"%s\" %.*s [", name, spaces, "------------------------------");
+    printf("\"%s\" %.*s [", name, (int)spaces, "------------------------------");
     test_ctx.number_of_tests = 0;
     test_ctx.number_passed = 0;
 }
@@ -389,7 +389,7 @@ int main(void)
     
     Test("Errors")
     {
-        struct { char *s; int columns[2]; } tests[] = {
+        struct { char *s; MD_u64 columns[2]; } tests[] = {
             {"{", {1}},
             {"}", {1}},
             {"'", {1}},
@@ -438,9 +438,9 @@ int main(void)
     {
         MD_String8 key_strings[] = 
         {
-            MD_S8Lit("\xed\x80\x73\x71\x78\xba\xff\xd6\x87\x83\xcd\x20\x28\xf7\x1c\xc1\x5f\xca\x98\x9c\x5a\xab\x0c\xae\x9a\x60\x57\x03\xeb\x1f\xde\x99"),
-            MD_S8Lit("\x4c\x80\xb7\x8b\xbf\x65\x5a\x4b\xc1\x2a\xc3\x5f\xe1\x66\xfb\x0d\x72\x83\x1c\x63\xba\xb5\x97\x02\x3f\x6a\xe0\x2a\x1b\x82\x07\x76"),
-            MD_S8Lit("\xd8\xfd\x11\x4b\x04\xdf\xe5\x20\x5b\xd6\x4f\x87\x00\x70\x6a\xc8\xde\xed\xc7\x79\xdb\x87\x24\x36\xa8\x7a\x31\x41\x00\x57\xbd\x8d"),
+            MD_S8LitComp("\xed\x80\x73\x71\x78\xba\xff\xd6\x87\x83\xcd\x20\x28\xf7\x1c\xc1\x5f\xca\x98\x9c\x5a\xab\x0c\xae\x9a\x60\x57\x03\xeb\x1f\xde\x99"),
+            MD_S8LitComp("\x4c\x80\xb7\x8b\xbf\x65\x5a\x4b\xc1\x2a\xc3\x5f\xe1\x66\xfb\x0d\x72\x83\x1c\x63\xba\xb5\x97\x02\x3f\x6a\xe0\x2a\x1b\x82\x07\x76"),
+            MD_S8LitComp("\xd8\xfd\x11\x4b\x04\xdf\xe5\x20\x5b\xd6\x4f\x87\x00\x70\x6a\xc8\xde\xed\xc7\x79\xdb\x87\x24\x36\xa8\x7a\x31\x41\x00\x57\xbd\x8d"),
         };
         
         MD_MapKey keys[MD_ArrayCount(key_strings)*2];
@@ -479,12 +479,12 @@ int main(void)
     Test("String Inner & Outer")
     {
         MD_String8 samples[6] = {
-            MD_S8Lit("'foo-bar'"),
-            MD_S8Lit("'''foo-bar'''"),
-            MD_S8Lit("\"foo-bar\""),
-            MD_S8Lit("\"\"\"foo-bar\"\"\""),
-            MD_S8Lit("`foo-bar`"),
-            MD_S8Lit("```foo-bar```"),
+            MD_S8LitComp("'foo-bar'"),
+            MD_S8LitComp("'''foo-bar'''"),
+            MD_S8LitComp("\"foo-bar\""),
+            MD_S8LitComp("\"\"\"foo-bar\"\"\""),
+            MD_S8LitComp("`foo-bar`"),
+            MD_S8LitComp("```foo-bar```"),
         };
         
         MD_Node *nodes[MD_ArrayCount(samples)];
@@ -734,10 +734,10 @@ int main(void)
         MD_String8 file_name = MD_S8Lit("raw_text");
         
         MD_String8 test_strings[] = {
-            MD_S8Lit("0765"),
-            MD_S8Lit("0xABC"),
-            MD_S8Lit("0x123"),
-            MD_S8Lit("0b010"),
+            MD_S8LitComp("0765"),
+            MD_S8LitComp("0xABC"),
+            MD_S8LitComp("0x123"),
+            MD_S8LitComp("0b010"),
         };
         
         MD_String8 *string = test_strings;
@@ -755,15 +755,15 @@ int main(void)
         MD_String8 file_name = MD_S8Lit("raw_text");
         
         MD_String8 test_strings[] = {
-            MD_S8Lit("0"),
-            MD_S8Lit("1"),
-            MD_S8Lit("0.5"),
-            MD_S8Lit("1e2"),
-            MD_S8Lit("1e+2"),
-            MD_S8Lit("1e-2"),
-            MD_S8Lit("1.5e2"),
-            MD_S8Lit("1.5e+2"),
-            MD_S8Lit("1.5e-2"),
+            MD_S8LitComp("0"),
+            MD_S8LitComp("1"),
+            MD_S8LitComp("0.5"),
+            MD_S8LitComp("1e2"),
+            MD_S8LitComp("1e+2"),
+            MD_S8LitComp("1e-2"),
+            MD_S8LitComp("1.5e2"),
+            MD_S8LitComp("1.5e+2"),
+            MD_S8LitComp("1.5e-2"),
         };
         
         MD_String8 *string = test_strings;

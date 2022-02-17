@@ -3,7 +3,7 @@
 #include "md.h"
 #include "md.c"
 
-MD_Arena *arena = 0;
+MD_Arena *g_arena = 0;
 
 typedef enum{
     ExpressionErrorKind_Null,
@@ -233,7 +233,7 @@ static void reset_global_messages()
 static void bake_operator_error_handler(MD_MessageKind kind, MD_String8 s)
 {
     // NOTE: Append error to global error list
-    MD_Message *message = MD_PushArrayZero(arena, MD_Message, 1);
+    MD_Message *message = MD_PushArrayZero(g_arena, MD_Message, 1);
     message->kind = kind;
     message->string = s;
     MD_MessageListPush(&global_message_list, message);
@@ -249,7 +249,7 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
     OPERATORS
 #undef X 
     
-    arena = MD_ArenaAlloc();
+    g_arena = MD_ArenaAlloc();
     
     /* NOTE: Operator table bake errors */ 
     {
@@ -259,79 +259,79 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_String8 plus = MD_S8Lit("+");
         MD_String8 minus = MD_S8Lit("-");
         MD_String8 cast = MD_S8Lit("()");
-        MD_Node *plus_node = MD_MakeNode(arena, MD_NodeKind_Main, plus, plus, 0);
-        MD_Node *cast_node = MD_MakeNode(arena, MD_NodeKind_Main, cast, cast, 0);
-        MD_Node *minus_node = MD_MakeNode(arena, MD_NodeKind_Main, minus, minus, 0);
-        MD_Node *plus_node_bis = MD_MakeNode(arena, MD_NodeKind_Main, plus, plus, 0);
+        MD_Node *plus_node = MD_MakeNode(g_arena, MD_NodeKind_Main, plus, plus, 0);
+        MD_Node *cast_node = MD_MakeNode(g_arena, MD_NodeKind_Main, cast, cast, 0);
+        MD_Node *minus_node = MD_MakeNode(g_arena, MD_NodeKind_Main, minus, minus, 0);
+        MD_Node *plus_node_bis = MD_MakeNode(g_arena, MD_NodeKind_Main, plus, plus, 0);
         
         MD_ExprSetBakeOperatorErrorHandler(bake_operator_error_handler);
         
         // NOTE: Wrong operator kind
         reset_global_messages();
         operator_list = (MD_ExprOprList){0};
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Null, 1, MD_S8Lit("+"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Null, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
-        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(g_arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
         // NOTE: () not as unary postfix
         operator_list = (MD_ExprOprList){0};
         reset_global_messages();
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("()"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("()"),
                        23 /* arbitrary MD_ExprOprKind */, cast_node);
-        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(g_arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
         // NOTE: Repeat operator
         operator_list = (MD_ExprOprList){0};
         reset_global_messages();
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node_bis);
-        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(g_arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
         operator_list = (MD_ExprOprList){0};
         reset_global_messages();
         // NOTE: Binary-postfix operator conflict
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Postfix, 1, MD_S8Lit("+"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Postfix, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node_bis);
-        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(g_arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning
                   && global_message_list.node_count == 1);
         
         operator_list = (MD_ExprOprList){0};
         reset_global_messages();
         // NOTE: Same precedence difference associativity conflict
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Binary, 1, MD_S8Lit("+"),
                        Op_Addition, plus_node);
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_BinaryRightAssociative, 1, MD_S8Lit("-"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_BinaryRightAssociative, 1, MD_S8Lit("-"),
                        Op_Addition, minus_node);
-        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(g_arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
         // NOTE: Multitoken operator
         reset_global_messages();
         operator_list = (MD_ExprOprList){0};
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("+ +"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("+ +"),
                        23 /* arbitrary MD_ExprOprKind */, plus_node);
-        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(g_arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
         
         // NOTE: Wrong token kind operator
         reset_global_messages();
         operator_list = (MD_ExprOprList){0};
-        MD_ExprOprPush(arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("123"),
+        MD_ExprOprPush(g_arena, &operator_list, MD_ExprOprKind_Prefix, 1, MD_S8Lit("123"),
                        23 /* arbitrary MD_ExprOprKind */, plus_node);
-        op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
+        op_table = MD_ExprBakeOprTableFromList(g_arena, &operator_list);
         MD_Assert(global_max_message_kind == MD_MessageKind_Warning &&
                   global_message_list.node_count == 1);
     }
@@ -341,12 +341,12 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
     for(Op op = Op_Null+1; op < Op_COUNT; ++op)
     {
         OperatorDescription *desc = operator_array + op;
-        MD_Node *node = MD_MakeNode(arena, MD_NodeKind_Main, desc->s, desc->s, 0);
-        MD_ExprOprPush(arena, &operator_list, desc->op.kind, desc->op.precedence, desc->s,
+        MD_Node *node = MD_MakeNode(g_arena, MD_NodeKind_Main, desc->s, desc->s, 0);
+        MD_ExprOprPush(g_arena, &operator_list, desc->op.kind, desc->op.precedence, desc->s,
                        op, node);
     }
     
-    MD_ExprOprTable op_table = MD_ExprBakeOprTableFromList(arena, &operator_list);
+    MD_ExprOprTable op_table = MD_ExprBakeOprTableFromList(g_arena, &operator_list);
     
     // NOTE(mal): I'm trying something different for expression parser tests. Normally one would take the
     //            output of MD_ExprParse and compare it against the expected output expression tree.
@@ -417,13 +417,13 @@ operator_array[Op_##name].op = (MD_ExprOpr){ .op_id = Op_##name, .kind = MD_Expr
         MD_String8 q = MD_S8CString(test.q);
         MD_String8 a = MD_S8CString(test.a);
         
-        MD_ParseResult parse = MD_ParseWholeString(arena, MD_S8Lit("test"), q);
+        MD_ParseResult parse = MD_ParseWholeString(g_arena, MD_S8Lit("test"), q);
         if(parse.errors.max_message_kind == MD_MessageKind_Null)
         {
-            MD_ExprParseResult expr_parse = MD_ExprParse(arena, &op_table, parse.node->first_child, MD_NilNode());
+            MD_ExprParseResult expr_parse = MD_ExprParse(g_arena, &op_table, parse.node->first_child, MD_NilNode());
             if(expr_parse.errors.max_message_kind == MD_MessageKind_Null)
             {
-                MD_String8 parser_answer = parenthesize(arena, operator_array, expr_parse.expr);
+                MD_String8 parser_answer = parenthesize(g_arena, operator_array, expr_parse.expr);
                 if(!MD_S8Match(parser_answer, a, 0))
                 {
                     printf("Example %d : Expected answer for %.*s is %.*s. Got %.*s\n", 

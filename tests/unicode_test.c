@@ -21,7 +21,7 @@ int main(void)
     // TODO(allen): throw more at this.
     
     char test_string_c[] = "Foo bar; test the unicode\n\t\0Etc";
-    MD_String8 test_string = MD_S8(test_string_c, sizeof(test_string_c) - 1);
+    MD_String8 test_string = MD_S8((MD_u8 *)test_string_c, sizeof(test_string_c) - 1);
     
     run_test_on_string(test_string);
     

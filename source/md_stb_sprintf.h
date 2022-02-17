@@ -585,7 +585,7 @@ cl = lg;                                 \
                 //- rjf: get string length
                 s = (char *)str.str;
                 sn = (const char *)(str.str + str.size);
-                l = str.size;
+                l = (int)str.size;
                 
                 //- rjf: clamp to precision
                 lead[0] = 0;

@@ -621,8 +621,6 @@ The @code node_count and @code total_size are automatically maintained by the he
         string: MD_String8,
     @doc("The raw string of the token labeling this node.")
         raw_string: MD_String8,
-    @doc("A hash of the string field using the metadesk built in hash function.")
-        string_hash: MD_u64,
     
     @doc("The raw string of the comment token before this node, if there is one.")
         prev_comment: MD_String8,
@@ -1987,22 +1985,6 @@ MD_MakeNodeError:
 }
 
 @send(Parsing) @func
-@doc("Allocates and initializes an MD_Message associated with a user-controlled pointer.")
-@see(MD_Message)
-MD_MakeDetachedError:
-{
-    @doc("The arena onto which the returned message should be allocated.")
-        arena: *MD_Arena,
-    @doc("The node associated with the message.")
-        node: *MD_Node;
-    @doc("The message kind, encoding its severity.")
-        kind: MD_MessageKind;
-    @doc("The string for the message.")
-        str: MD_String8;
-    return: *MD_Message
-}
-
-@send(Parsing) @func
 @doc("Allocates and initializes an MD_Message associated with a particular MD_Token.")
 @see(MD_Message)
 MD_MakeTokenError:
@@ -2100,6 +2082,7 @@ MD_MessageListConcat:
 @doc("Creates a new reference node, pointing at @code 'target', and links it up as a child of @code 'list'.")
 @func MD_PushNewReference:
 {
+    arena: *M_Arena,
     list: *MD_Node,
     target: *MD_Node,
     return: *MD_Node,
@@ -2254,7 +2237,7 @@ MD_MessageListConcat:
     @doc("Controls what is considered a string match, when finding the appropriate tag.")
         tag_str_flags: MD_MatchFlags,
     @doc("The string that the found tag argument should match.")
-        arg_string: int,
+        arg_string: MD_String8,
     @doc("Controls what is considered a string match, when finding the appropriate tag argument.")
         arg_str_flags: MD_MatchFlags,
     @doc("The found node, or a nil node pointer if no such node was found.")
