@@ -1166,8 +1166,8 @@ MD_S8ListJoin(MD_Arena *arena, MD_String8List list, MD_StringJoin *join_ptr)
             ptr += join.mid.size;
         }
     }
-    MD_MemoryCopy(ptr, join.pre.str, join.pre.size);
-    ptr += join.pre.size;
+    MD_MemoryCopy(ptr, join.post.str, join.post.size);
+    ptr += join.post.size;
     
     return(result);
 }
