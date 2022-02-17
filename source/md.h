@@ -1181,7 +1181,7 @@ MD_FUNCTION MD_b32 MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 //~ Expression Parsing
 
 MD_FUNCTION void               MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *list,
-                                              MD_ExprOprKind kind, MD_u64 precedence,
+                                              MD_ExprOprKind kind, MD_u32 precedence,
                                               MD_String8 op_string,
                                               MD_u32 op_id, void *op_ptr);
 

@@ -210,7 +210,9 @@ MD_WIN32_FileIterNext(MD_Arena *arena, MD_FileIter *it)
         MD_u16 *filename_base = (MD_u16*)find_data->cFileName;
         MD_u16 *ptr = filename_base;
         for (;*ptr != 0; ptr += 1);
-        MD_String16 filename16 = {filename_base, (MD_u64)(ptr - filename_base)};
+        MD_String16 filename16 = {0};
+        filename16.str = filename_base;
+        filename16.size = (MD_u64)(ptr - filename_base);
         result.filename = MD_S8FromS16(arena, filename16);
         result.file_size = ((((MD_u64)find_data->nFileSizeHigh) << 32) |
                             ((MD_u64)find_data->nFileSizeLow));
@@ -266,6 +268,7 @@ MD_WIN32_Decommit(void *ptr, MD_u64 size)
 static void
 MD_WIN32_Release(void *ptr, MD_u64 size)
 {
+    (void)size;
     VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
@@ -574,6 +577,7 @@ MD_ArenaDefaultPopTo(MD_ArenaDefault *arena, MD_u64 pos)
 {
     // pop chunks in the chain
     MD_u64 pos_clamped = MD_ClampBot(MD_IMPL_ArenaMinPos, pos);
+    (void)pos_clamped;
     {
         MD_ArenaDefault *node = arena->current;
         for (MD_ArenaDefault *prev = 0;
@@ -1024,7 +1028,7 @@ MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
     result.str = MD_PushArray(arena, MD_u8, needed_bytes);
     result.size = needed_bytes - 1;
     result.str[needed_bytes-1] = 0;
-    MD_IMPL_Vsnprintf((char*)result.str, needed_bytes, fmt, args2);
+    MD_IMPL_Vsnprintf((char*)result.str, (int)needed_bytes, fmt, args2);
     return result;
 }
 
@@ -1358,7 +1362,9 @@ MD_DecodeCodepointFromUtf8(MD_u8 *str, MD_u64 max)
         {
             if (3 <= max)
             {
-                MD_u8 cont_byte[2] = {str[1], str[2]};
+                MD_u8 cont_byte[2] = {0};
+                cont_byte[0] = str[1];
+                cont_byte[1] = str[2];
                 if (md_utf8_class[cont_byte[0] >> 3] == 0 &&
                     md_utf8_class[cont_byte[1] >> 3] == 0)
                 {
@@ -1374,7 +1380,10 @@ MD_DecodeCodepointFromUtf8(MD_u8 *str, MD_u64 max)
         {
             if (4 <= max)
             {
-                MD_u8 cont_byte[3] = {str[1], str[2], str[3]};
+                MD_u8 cont_byte[3] = {0};
+                cont_byte[0] = str[1];
+                cont_byte[1] = str[2];
+                cont_byte[2] = str[3];
                 if (md_utf8_class[cont_byte[0] >> 3] == 0 &&
                     md_utf8_class[cont_byte[1] >> 3] == 0 &&
                     md_utf8_class[cont_byte[2] >> 3] == 0)
@@ -1460,7 +1469,7 @@ MD_Utf16FromCodepoint(MD_u16 *out, MD_u32 codepoint)
     else
     {
         MD_u64 v = codepoint - 0x10000;
-        out[0] = 0xD800 + (v >> 10);
+        out[0] = (MD_u16)(0xD800 + (v >> 10));
         out[1] = 0xDC00 + (v & MD_bitmask10);
         advance = 2;
     }
@@ -1504,7 +1513,9 @@ MD_S16FromS8(MD_Arena *arena, MD_String8 in)
     }
     str[size] = 0;
     MD_ArenaPutBack(arena, 2*(cap - size)); // := 2*((cap + 1) - (size + 1))
-    MD_String16 result = {str, size};
+    MD_String16 result = {0};
+    result.str = str;
+    result.size = size;
     return(result);
 }
 
@@ -1516,7 +1527,6 @@ MD_S8FromS32(MD_Arena *arena, MD_String32 in)
     MD_u32 *ptr = in.str;
     MD_u32 *opl = ptr + in.size;
     MD_u64 size = 0;
-    MD_DecodedCodepoint consume;
     for (;ptr < opl; ptr += 1)
     {
         size += MD_Utf8FromCodepoint(str + size, *ptr);
@@ -1544,7 +1554,9 @@ MD_S32FromS8(MD_Arena *arena, MD_String8 in)
     }
     str[size] = 0;
     MD_ArenaPutBack(arena, 4*(cap - size)); // := 4*((cap + 1) - (size + 1))
-    MD_String32 result = {str, size};
+    MD_String32 result = {0};
+    result.str = str;
+    result.size = size;
     return(result);
 }
 
@@ -1681,7 +1693,7 @@ MD_StringIsCStyleInt(MD_String8 string)
     for (;ptr < opl && (*ptr == '+' || *ptr == '-'); ptr += 1);
     
     // radix from prefix
-    MD_u64 radix = 10;
+    MD_u32 radix = 10;
     if (ptr < opl)
     {
         MD_u8 c0 = *ptr;
@@ -1749,7 +1761,7 @@ MD_CStyleIntFromString(MD_String8 string)
     }
     
     // radix from prefix
-    MD_u64 radix = 10;
+    MD_u32 radix = 10;
     if (p < string.size)
     {
         MD_u8 c0 = string.str[p];
@@ -3398,7 +3410,7 @@ MD_NodeDeepMatch(MD_Node *a, MD_Node *b, MD_MatchFlags flags)
 
 MD_FUNCTION void
 MD_ExprOprPush(MD_Arena *arena, MD_ExprOprList *list,
-               MD_ExprOprKind kind, MD_u64 precedence, MD_String8 string,
+               MD_ExprOprKind kind, MD_u32 precedence, MD_String8 string,
                MD_u32 op_id, void *op_ptr)
 {
     MD_ExprOpr *op = MD_PushArrayZero(arena, MD_ExprOpr, 1);
@@ -3512,11 +3524,11 @@ MD_ExprBakeOprTableFromList(MD_Arena *arena, MD_ExprOprList *list)
         // save list
         else
         {
-            MD_ExprOprList *list = result.table + op_kind;
+            MD_ExprOprList *saved_list = result.table + op_kind;
             MD_ExprOpr *op_node_copy = MD_PushArray(arena, MD_ExprOpr, 1);
             *op_node_copy = *op;
-            MD_QueuePush(list->first, list->last, op_node_copy);
-            list->count += 1;
+            MD_QueuePush(saved_list->first, saved_list->last, op_node_copy);
+            saved_list->count += 1;
         }
     }
     
@@ -3780,12 +3792,12 @@ MD_ExprParse_MinPrecedence(MD_Arena *arena, MD_ExprParseCtx *ctx,
                     i_op < MD_ArrayCount(ctx->accel.postfix_set_ops);
                     ++i_op)
                 {
-                    MD_ExprOpr *op = ctx->accel.postfix_set_ops[i_op];
-                    if(op && op->precedence >= min_precedence &&
+                    MD_ExprOpr *op2 = ctx->accel.postfix_set_ops[i_op];
+                    if(op2 && op2->precedence >= min_precedence &&
                        node->flags == ctx->accel.postfix_set_flags[i_op])
                     {
                         *iter = MD_NodeNextWithLimit(*iter, opl);
-                        result = MD_Expr_NewOpr(arena, op, node, result, 0);
+                        result = MD_Expr_NewOpr(arena, op2, node, result, 0);
                         found_postfix_setlike_operator = 1;
                         break;
                     }
@@ -3852,7 +3864,7 @@ MD_S8ListPush(arena, out, indent_string);\
             MD_S8ListPush(arena, out, tag->string);
             if(flags & MD_GenerateFlag_TagArguments && !MD_NodeIsNil(tag->first_child))
             {
-                int tag_arg_indent = indent + 1 + tag->string.size + 1;
+                int tag_arg_indent = (int)(indent + 1 + tag->string.size + 1);
                 MD_S8ListPush(arena, out, MD_S8Lit("("));
                 for(MD_EachNode(child, tag->first_child))
                 {
@@ -3891,7 +3903,7 @@ MD_S8ListPush(arena, out, indent_string);\
         MD_PrintIndent(indent);
         MD_ArenaTemp scratch = MD_GetScratch(&arena, 1);
         MD_String8List flag_strs = MD_StringListFromNodeFlags(scratch.arena, node->flags);
-        MD_StringJoin join = { MD_S8Lit(""), MD_S8Lit("|"), MD_S8Lit("") };
+        MD_StringJoin join = { MD_S8LitComp(""), MD_S8LitComp("|"), MD_S8LitComp("") };
         MD_String8 flag_str = MD_S8ListJoin(arena, flag_strs, &join);
         MD_S8ListPush(arena, out, MD_S8Lit("// flags: \""));
         MD_S8ListPush(arena, out, flag_str);
@@ -4019,7 +4031,7 @@ MD_S8ListPush(arena, out, indent_string);\
             MD_S8ListPush(arena, out, tag->string);
             if(!MD_NodeIsNil(tag->first_child))
             {
-                int tag_arg_indent = indent + 1 + tag->string.size + 1;
+                int tag_arg_indent = (int)(indent + 1 + tag->string.size + 1);
                 MD_S8ListPush(arena, out, MD_S8Lit("("));
                 MD_u32 last_line = MD_CodeLocFromNode(tag).line;
                 for(MD_EachNode(child, tag->first_child))
