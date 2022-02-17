@@ -1097,8 +1097,6 @@ MD_FUNCTION MD_Node*   MD_MakeErrorMarkerNode(MD_Arena *arena, MD_String8 parse_
 
 MD_FUNCTION MD_Message*MD_MakeNodeError(MD_Arena *arena, MD_Node *node,
                                         MD_MessageKind kind, MD_String8 str);
-MD_FUNCTION MD_Message*MD_MakeDetachedError(MD_Arena *arena, MD_MessageKind kind,
-                                            MD_String8 str, void *ptr);
 MD_FUNCTION MD_Message*MD_MakeTokenError(MD_Arena *arena, MD_String8 parse_contents,
                                          MD_Token token, MD_MessageKind kind,
                                          MD_String8 str);
