@@ -962,7 +962,7 @@ MD_S8Match(MD_String8 a, MD_String8 b, MD_MatchFlags flags)
     if(a.size == b.size || flags & MD_StringMatchFlag_RightSideSloppy)
     {
         result = 1;
-        for(MD_u64 i = 0; i < a.size; i += 1)
+        for(MD_u64 i = 0; i < a.size && i < b.size; i += 1)
         {
             MD_b32 match = (a.str[i] == b.str[i]);
             if(flags & MD_StringMatchFlag_CaseInsensitive)
