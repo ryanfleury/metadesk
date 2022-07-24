@@ -302,68 +302,90 @@ MD_WIN32_Release(void *ptr, MD_u64 size)
 //- linux "file iteration"
 #if MD_DEFAULT_FILE_ITER && MD_OS_LINUX
 
-#if !defined(MD_IMPL_FileIterIncrement)
-# define MD_IMPL_FileIterIncrement MD_LINUX_FileIterIncrement
+#if !defined(MD_IMPL_FileIterBegin)
+# define MD_IMPL_FileIterBegin MD_LINUX_FileIterBegin
+#endif
+#if !defined(MD_IMPL_FileIterNext)
+# define MD_IMPL_FileIterNext MD_LINUX_FileIterNext
+#endif
+#if !defined(MD_IMPL_FileIterEnd)
+# define MD_IMPL_FileIterEnd MD_LINUX_FileIterEnd
 #endif
 
-typedef struct MD_LINUX_FileIter MD_LINUX_FileIter;
-struct MD_LINUX_FileIter
-{
-    int dir_fd;
-    DIR *dir;
-};
-MD_StaticAssert(sizeof(MD_LINUX_FileIter) <= sizeof(MD_FileIter), file_iter_size_check);
+typedef struct MD_LINUX_FileIter {
+  int dir_fd;
+  DIR *dir;
+
+} MD_LINUX_FileIter;
+
+MD_StaticAssert(sizeof(MD_FileIter) >= sizeof(MD_LINUX_FileIter), file_iter_size_check);
 
 static MD_b32
-MD_LINUX_FileIterIncrement(MD_Arena *arena, MD_FileIter *opaque_it, MD_String8 path,
-                           MD_FileInfo *out_info)
+MD_LINUX_FileIterBegin(MD_FileIter *it, MD_String8 path)
 {
-    MD_b32 result = 0;
-    
-    MD_LINUX_FileIter *it = (MD_LINUX_FileIter *)opaque_it;
-    if(it->dir == 0)
-    {
-        it->dir = opendir((char*)path.str);
-        it->dir_fd = open((char *)path.str, O_PATH|O_CLOEXEC);
-    }
-    
-    if(it->dir != 0 && it->dir_fd != -1)
-    {
-        struct dirent *dir_entry = readdir(it->dir);
-        if(dir_entry)
-        {
-            out_info->filename = MD_S8Fmt(arena, "%s", dir_entry->d_name);
-            out_info->flags = 0;
-            
-            struct stat st; 
-            if(fstatat(it->dir_fd, dir_entry->d_name, &st, AT_NO_AUTOMOUNT|AT_SYMLINK_NOFOLLOW) == 0)
-            {
-                if((st.st_mode & S_IFMT) == S_IFDIR)
-                {
-                    out_info->flags |= MD_FileFlag_Directory;
-                }
-                out_info->file_size = st.st_size;
-            }
-            result = 1;
-        }
-    }
-    
-    if(result == 0)
-    {
-        if(it->dir != 0)
-        {
-            closedir(it->dir);
-            it->dir = 0;
-        }
-        if(it->dir_fd != -1)
-        {
-            close(it->dir_fd);
-            it->dir_fd = -1;
-        }
-    }
-    
-    return result;
+  MD_ArenaTemp scratch = MD_GetScratch(0, 0);
+
+  MD_LINUX_FileIter *linux_it = (MD_LINUX_FileIter*)it;
+
+  MD_String8 cpath = MD_S8Copy(scratch.arena, path);
+
+  linux_it->dir = opendir((char*)cpath.str);
+  linux_it->dir_fd = open((char*)cpath.str, O_PATH | O_CLOEXEC);
+
+  MD_ReleaseScratch(scratch);
+
+  MD_b32 result = 0;
+  if (linux_it->dir != 0 && linux_it->dir_fd != -1)
+  {
+    result = 1;
+  }
+
+  return result;
 }
+
+static MD_FileInfo
+MD_LINUX_FileIterNext(MD_Arena *arena, MD_FileIter *it)
+{
+  MD_LINUX_FileIter *linux_it = (MD_LINUX_FileIter*)it;
+
+  MD_FileInfo result = MD_ZERO_STRUCT;
+
+  struct dirent *dir_entry = readdir(linux_it->dir);
+  if (dir_entry)
+  {
+    result.filename = MD_S8Fmt(arena, "%s", dir_entry->d_name);
+
+    struct stat st;
+    if(fstatat(linux_it->dir_fd, dir_entry->d_name, &st, AT_NO_AUTOMOUNT|AT_SYMLINK_NOFOLLOW) == 0)
+    {
+      if((st.st_mode & S_IFMT) == S_IFDIR)
+      {
+        result.flags |= MD_FileFlag_Directory;
+      }
+      result.file_size = st.st_size;
+    }
+  }
+
+  return result;
+}
+
+static void
+MD_LINUX_FileIterEnd(MD_FileIter *it)
+{
+  MD_LINUX_FileIter *linux_it = (MD_LINUX_FileIter*)it;
+
+  if(linux_it->dir != 0)
+  {
+    closedir(linux_it->dir);
+    linux_it->dir = 0;
+  }
+  if(linux_it->dir_fd != -1)
+  {
+    close(linux_it->dir_fd);
+    linux_it->dir_fd = -1;
+  }
+}
+
 
 #endif
 
