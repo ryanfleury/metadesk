@@ -200,7 +200,7 @@ MD_WIN32_FileIterNext(MD_Arena *arena, MD_FileIter *it)
     }
     
     //- convert to MD_FileInfo
-    MD_FileInfo result = {0};
+    MD_FileInfo result = MD_ZERO_STRUCT;
     if (good)
     {
         if (find_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -210,7 +210,7 @@ MD_WIN32_FileIterNext(MD_Arena *arena, MD_FileIter *it)
         MD_u16 *filename_base = (MD_u16*)find_data->cFileName;
         MD_u16 *ptr = filename_base;
         for (;*ptr != 0; ptr += 1);
-        MD_String16 filename16 = {0};
+        MD_String16 filename16 = MD_ZERO_STRUCT;
         filename16.str = filename_base;
         filename16.size = (MD_u64)(ptr - filename_base);
         result.filename = MD_S8FromS16(arena, filename16);
@@ -659,7 +659,7 @@ MD_ArenaDefaultAbsorb(MD_ArenaDefault *arena, MD_ArenaDefault *sub_arena)
 # define MD_IMPL_GetScratch MD_GetScratchDefault
 #endif
 
-MD_THREAD_LOCAL MD_Arena *md_thread_scratch_pool[MD_IMPL_ScratchCount] = {0, 0};
+static MD_THREAD_LOCAL MD_Arena *md_thread_scratch_pool[MD_IMPL_ScratchCount] = {0, 0};
 
 static MD_Arena*
 MD_GetScratchDefault(MD_Arena **conflicts, MD_u64 count)
@@ -884,7 +884,7 @@ MD_CharToForwardSlash(MD_u8 c)
 //~ Strings
 
 MD_FUNCTION MD_u64
-MD_CalculateCStringLength(char *cstr)
+MD_CalculateCStringLength(const char *cstr)
 {
     MD_u64 i = 0;
     for(; cstr[i]; i += 1);
@@ -986,7 +986,6 @@ MD_S8Match(MD_String8 a, MD_String8 b, MD_MatchFlags flags)
 MD_FUNCTION MD_u64
 MD_S8FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_MatchFlags flags)
 {
-    MD_b32 found = 0;
     MD_u64 found_idx = str.size;
     for(MD_u64 i = start_pos; i < str.size; i += 1)
     {
@@ -996,7 +995,6 @@ MD_S8FindSubstring(MD_String8 str, MD_String8 substring, MD_u64 start_pos, MD_Ma
             if(MD_S8Match(substr_from_str, substring, flags))
             {
                 found_idx = i;
-                found = 1;
                 if(!(flags & MD_MatchFlag_FindLast))
                 {
                     break;
@@ -1019,7 +1017,7 @@ MD_S8Copy(MD_Arena *arena, MD_String8 string)
 }
 
 MD_FUNCTION MD_String8
-MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
+MD_S8FmtV(MD_Arena *arena, const char *fmt, va_list args)
 {
     MD_String8 result = MD_ZERO_STRUCT;
     va_list args2;
@@ -1033,7 +1031,7 @@ MD_S8FmtV(MD_Arena *arena, char *fmt, va_list args)
 }
 
 MD_FUNCTION MD_String8
-MD_S8Fmt(MD_Arena *arena, char *fmt, ...)
+MD_S8Fmt(MD_Arena *arena, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -1054,7 +1052,7 @@ MD_S8ListPush(MD_Arena *arena, MD_String8List *list, MD_String8 string)
 }
 
 MD_FUNCTION void
-MD_S8ListPushFmt(MD_Arena *arena, MD_String8List *list, char *fmt, ...)
+MD_S8ListPushFmt(MD_Arena *arena, MD_String8List *list, const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -1362,7 +1360,7 @@ MD_DecodeCodepointFromUtf8(MD_u8 *str, MD_u64 max)
         {
             if (3 <= max)
             {
-                MD_u8 cont_byte[2] = {0};
+                MD_u8 cont_byte[2] = MD_ZERO_STRUCT;
                 cont_byte[0] = str[1];
                 cont_byte[1] = str[2];
                 if (md_utf8_class[cont_byte[0] >> 3] == 0 &&
@@ -1380,7 +1378,7 @@ MD_DecodeCodepointFromUtf8(MD_u8 *str, MD_u64 max)
         {
             if (4 <= max)
             {
-                MD_u8 cont_byte[3] = {0};
+                MD_u8 cont_byte[3] = MD_ZERO_STRUCT;
                 cont_byte[0] = str[1];
                 cont_byte[1] = str[2];
                 cont_byte[2] = str[3];
@@ -1513,7 +1511,7 @@ MD_S16FromS8(MD_Arena *arena, MD_String8 in)
     }
     str[size] = 0;
     MD_ArenaPutBack(arena, 2*(cap - size)); // := 2*((cap + 1) - (size + 1))
-    MD_String16 result = {0};
+    MD_String16 result = MD_ZERO_STRUCT;
     result.str = str;
     result.size = size;
     return(result);
@@ -1554,7 +1552,7 @@ MD_S32FromS8(MD_Arena *arena, MD_String8 in)
     }
     str[size] = 0;
     MD_ArenaPutBack(arena, 4*(cap - size)); // := 4*((cap + 1) - (size + 1))
-    MD_String32 result = {0};
+    MD_String32 result = MD_ZERO_STRUCT;
     result.str = str;
     result.size = size;
     return(result);
@@ -1860,7 +1858,7 @@ MD_FUNCTION MD_String8
 MD_StringFromNodeKind(MD_NodeKind kind)
 {
     // NOTE(rjf): @maintenance Must be kept in sync with MD_NodeKind enum.
-    static char *cstrs[MD_NodeKind_COUNT] =
+    static const char *cstrs[MD_NodeKind_COUNT] =
     {
         "Nil",
         
@@ -1880,7 +1878,7 @@ MD_FUNCTION MD_String8List
 MD_StringListFromNodeFlags(MD_Arena *arena, MD_NodeFlags flags)
 {
     // NOTE(rjf): @maintenance Must be kept in sync with MD_NodeFlags enum.
-    static char *flag_cstrs[] =
+    static const char *flag_cstrs[] =
     {
         "HasParenLeft",
         "HasParenRight",
@@ -1946,7 +1944,7 @@ MD_HashPtr(void *p)
 MD_FUNCTION MD_Map
 MD_MapMakeBucketCount(MD_Arena *arena, MD_u64 bucket_count)
 {
-    MD_Map result = {0};
+    MD_Map result = MD_ZERO_STRUCT;
     result.bucket_count = bucket_count;
     result.buckets = MD_PushArrayZero(arena, MD_MapBucket, bucket_count);
     return(result);
@@ -1962,7 +1960,7 @@ MD_MapMake(MD_Arena *arena)
 MD_FUNCTION MD_MapKey
 MD_MapKeyStr(MD_String8 string)
 {
-    MD_MapKey result = {0};
+    MD_MapKey result = MD_ZERO_STRUCT;
     if (string.size != 0)
     {
         result.hash = MD_HashStr(string);
@@ -1978,7 +1976,7 @@ MD_MapKeyStr(MD_String8 string)
 MD_FUNCTION MD_MapKey
 MD_MapKeyPtr(void *ptr)
 {
-    MD_MapKey result = {0};
+    MD_MapKey result = MD_ZERO_STRUCT;
     if (ptr != 0)
     {
         result.hash = MD_HashPtr(ptr);
@@ -2796,7 +2794,7 @@ MD_ParseOneNode(MD_Arena *arena, MD_String8 string, MD_u64 offset)
             {
                 case MD_TokenKind_BadCharacter:
                 {
-                    MD_String8List bytes = {0};
+                    MD_String8List bytes = MD_ZERO_STRUCT;
                     for(int i_byte = 0; i_byte < bad_token.raw_string.size; ++i_byte)
                     {
                         MD_u8 b = bad_token.raw_string.str[i_byte];
@@ -3021,7 +3019,7 @@ MD_CodeLocFromNode(MD_Node *node)
         }
     }
     MD_Node *first_tag = file_root->first_tag;
-    MD_CodeLoc loc = {0};
+    MD_CodeLoc loc = MD_ZERO_STRUCT;
     if(MD_NodeIsNil(first_tag))
     {
         loc = MD_CodeLocFromFileOffset(file_root->string, file_root->raw_string.str, node->offset);
@@ -3082,7 +3080,7 @@ MD_PushTag(MD_Node *node, MD_Node *tag)
 MD_FUNCTION MD_Node*
 MD_MakeList(MD_Arena *arena)
 {
-    MD_String8 empty = {0};
+    MD_String8 empty = MD_ZERO_STRUCT;
     MD_Node *result = MD_MakeNode(arena, MD_NodeKind_List, empty, empty, 0);
     return(result);
 }
@@ -3330,7 +3328,7 @@ MD_PrintMessage(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, MD_String8
 }
 
 MD_FUNCTION void
-MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, char *fmt, ...)
+MD_PrintMessageFmt(FILE *file, MD_CodeLoc code_loc, MD_MessageKind kind, const char *fmt, ...)
 {
     MD_ArenaTemp scratch = MD_GetScratch(0, 0);
     va_list args;
@@ -3581,7 +3579,7 @@ MD_ExprParse(MD_Arena *arena, MD_ExprOprTable *op_table, MD_Node *first, MD_Node
     MD_Expr *expr = MD_ExprParse_TopLevel(arena, &ctx, first, opl);
     
     // fill result
-    MD_ExprParseResult result = {0};
+    MD_ExprParseResult result = MD_ZERO_STRUCT;
     result.expr = expr;
     result.errors = ctx.errors;
     return(result);
@@ -4212,7 +4210,7 @@ MD_FUNCTION void
 MD_PrintDebugDumpFromNode(FILE *file, MD_Node *node, MD_GenerateFlags flags)
 {
     MD_ArenaTemp scratch = MD_GetScratch(0, 0);
-    MD_String8List list = {0};
+    MD_String8List list = MD_ZERO_STRUCT;
     MD_DebugDumpFromNode(scratch.arena, &list, node,
                          0, MD_S8Lit(" "), flags);
     MD_String8 string = MD_S8ListJoin(scratch.arena, list, 0);
@@ -4418,7 +4416,7 @@ MD_FUNCTION MD_FileInfo
 MD_FileIterNext(MD_Arena *arena, MD_FileIter *it)
 {
 #if !defined(MD_IMPL_FileIterNext)
-    MD_FileInfo result = {0};
+    MD_FileInfo result = MD_ZERO_STRUCT;
     return(result);
 #else
     return(MD_IMPL_FileIterNext(arena, it));
