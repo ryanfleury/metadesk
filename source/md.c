@@ -387,6 +387,10 @@ static void*
 MD_LINUX_Reserve(MD_u64 size)
 {
     void *result = mmap(0, size, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, (off_t)0);
+    if(result == (void *)-1)
+    {
+        result = 0;
+    }
     return(result);
 }
 
