@@ -1703,10 +1703,10 @@ MD_StringIsCStyleInt(MD_String8 string)
         MD_u8 c0 = *ptr;
         if (c0 == '0')
         {
-            ptr += 1;
             radix = 8;
-            if (ptr < opl)
+            if (ptr + 1 < opl)
             {
+                ptr += 1;
                 MD_u8 c1 = *ptr;
                 if (c1 == 'x')
                 {
