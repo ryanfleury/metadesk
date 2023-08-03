@@ -9,6 +9,7 @@ static struct
 {
     int number_of_tests;
     int number_passed;
+    int return_result;
 }
 test_ctx;
 
@@ -29,6 +30,10 @@ BeginTest(char *name)
 static void
 TestResult(MD_b32 result)
 {
+    if (!result)
+    {
+        test_ctx.return_result = 1;
+    }
     test_ctx.number_of_tests += 1;
     test_ctx.number_passed += !!result;
     printf(result ? "." : "X");
@@ -877,5 +882,5 @@ int main(void)
         }
     }
     
-    return 0;
+    return test_ctx.return_result;
 }
