@@ -1633,11 +1633,11 @@ MD_S8SkipWhitespace(MD_String8 string)
 MD_FUNCTION MD_String8
 MD_S8ChopWhitespace(MD_String8 string)
 {
-    for(MD_u64 i = string.size-1; i < string.size; i -= 1)
+    for(MD_u64 i = 1; i <= string.size; i += 1)
     {
-        if(!MD_CharIsSpace(string.str[i]))
+        if(!MD_CharIsSpace(string.str[string.size-i]))
         {
-            string = MD_S8Prefix(string, i+1);
+            string = MD_S8Prefix(string, string.size-i+1);
             break;
         }
     }
