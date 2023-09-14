@@ -1219,6 +1219,10 @@ MD_FUNCTION void MD_DebugDumpFromNode(MD_Arena *arena, MD_String8List *out, MD_N
 MD_FUNCTION void MD_ReconstructionFromNode(MD_Arena *arena, MD_String8List *out, MD_Node *node,
                                            int indent, MD_String8 indent_string);
 
+#if !MD_DISABLE_PRINT_HELPERS
+MD_FUNCTION void MD_PrintDebugDumpFromNode(FILE *file, MD_Node *node, MD_GenerateFlags flags);
+#endif
+
 //~ Command Line Argument Helper
 
 MD_FUNCTION MD_String8List MD_StringListFromArgCV(MD_Arena *arena, int argument_count,
