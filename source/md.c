@@ -543,6 +543,7 @@ MD_ArenaDefaultPush(MD_ArenaDefault *arena, MD_u64 size)
                 new_arena->base_pos = current->base_pos + current->cap;
                 new_arena->prev = current;
                 current = new_arena;
+                arena->current = current;
                 pos_aligned = current->pos;
                 new_pos = pos_aligned + size;
             }
